@@ -1,88 +1,137 @@
-body {
+/* Обнуляем отступы, чтобы игра была на весь экран */
+html, body {
   margin: 0;
-  background-color: #000; /* Черный фон */
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #0b0b0b;
   color: white;
   font-family: 'Arial', sans-serif;
   overflow: hidden;
+}
+
+#root {
+  height: 100%;
 }
 
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  width: 100vw;
+  justify-content: space-between;
   align-items: center;
+  background: radial-gradient(circle at top, #1c1c1c 0%, #0b0b0b 100%);
 }
 
-.header { padding: 20px; text-align: center; }
-.balance-main { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
-.balance-main h1 { font-size: 42px; margin: 0; }
+/* Верхняя статистика */
+.top-stats {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  padding: 20px 0;
+  background: rgba(255, 255, 255, 0.05);
+}
 
-/* КЛИКЕР */
-.clicker-view {
+.stat-card {
+  text-align: center;
   flex: 1;
+}
+
+.stat-card span { font-size: 11px; color: #888; text-transform: uppercase; }
+.stat-card b { font-size: 18px; color: #f1c40f; display: block; }
+
+/* КНОПКА КЛИКА - ТЕПЕРЬ ОГРОМНАЯ И ПО ЦЕНТРУ */
+.content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.game-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  width: 100%;
 }
 
-.hamster-target {
-  width: 250px;
-  height: 250px;
-  background: radial-gradient(circle, #f1c40f 0%, #d35400 100%);
+.hamster-main {
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, #f39c12 0%, #d35400 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 100px;
-  box-shadow: 0 0 50px rgba(243, 156, 18, 0.5);
+  font-size: 110px;
+  box-shadow: 0 0 50px rgba(211, 84, 0, 0.4);
+  border: 10px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
   user-select: none;
-  transition: transform 0.1s;
+  touch-action: manipulation;
+  transition: transform 0.1s ease;
 }
-.hamster-target:active { transform: scale(0.95); }
 
-/* ЛИДЕРБОРД */
-.leaderboard-view { width: 100%; padding: 20px; box-sizing: border-box; }
-.list-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 15px;
-  background: #1a1a1a;
-  margin-bottom: 8px;
-  border-radius: 12px;
+.hamster-main:active {
+  transform: scale(0.9);
 }
-.top-three { border: 1px solid #f1c40f; background: #2c2c2e; }
-.rank { font-weight: bold; width: 30px; }
-.name { flex: 1; margin-left: 10px; }
-.val { color: #f1c40f; font-weight: bold; }
 
-/* НИЖНЕЕ МЕНЮ */
-.nav-bar {
+/* Энергия */
+.energy-wrap {
+  width: 80%;
+  margin-top: 40px;
+}
+
+.energy-bg {
   width: 100%;
-  height: 80px;
-  background: #111;
+  height: 12px;
+  background: #222;
+  border-radius: 10px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+
+.energy-fill {
+  height: 100%;
+  background: #f1c40f;
+  transition: width 0.3s ease;
+}
+
+/* Нижнее меню */
+.menu {
+  width: 100%;
   display: flex;
   justify-content: space-around;
-  border-top: 1px solid #333;
+  background: #151515;
+  padding: 20px 0;
+  padding-bottom: 30px; /* Отступ для айфонов */
 }
-.nav-bar button {
-  background: none; border: none; color: #888; font-size: 16px; font-weight: bold;
+
+.menu button {
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 16px;
+  font-weight: bold;
 }
-.nav-bar button.active { color: #f1c40f; }
 
-.energy-bar { width: 200px; height: 10px; background: #333; border-radius: 5px; margin-top: 10px; }
-.fill { height: 100%; background: #f1c40f; border-radius: 5px; }
-
-.tap-pop {
-  position: fixed;
+.menu button.active {
   color: #f1c40f;
-  font-size: 30px;
-  font-weight: 900;
-  animation: float 0.8s forwards;
-  pointer-events: none;
 }
-@keyframes float {
-  0% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-100px); }
+
+/* Анимация цифр при клике */
+.tap-pop {
+  position: absolute;
+  color: white;
+  font-size: 32px;
+  font-weight: bold;
+  pointer-events: none;
+  animation: floatUp 0.6s ease-out forwards;
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100px); opacity: 0; }
 }
