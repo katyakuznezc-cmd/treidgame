@@ -1,69 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set } from "firebase/database";
 import Chart from 'react-apexcharts';
 import './App.css';
-
-const firebaseConfig = {
- apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
-  authDomain: "kreptogame.firebaseapp.com",
-  databaseURL: "https://kreptogame-default-rtdb.firebaseio.com/",
-  projectId: "kreptogame",
-  storageBucket: "kreptogame.appspot.com",
-  messagingSenderId: "528985774017",
-  appId: "1:528985774017:web:50ed5fd68898775e7d8140"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
 
 function App() {
   const [balance, setBalance] = useState(1000);
   const [tab, setTab] = useState('home');
+  
+  // Создаем массив данных в формате свечей: [Open, High, Low, Close]
   const [candles, setCandles] = useState([
-    { x: new Date().getTime(), y: [65000, 65100, 64900, 65050] }
+    { x: new Date().getTime() - 60000, y: [65000, 65080, 64920, 65020] },
+    { x: new Date().getTime() - 40000, y: [65020, 65100, 65010, 65070] },
+    { x: new Date().getTime() - 20000, y: [65070, 65150, 65050, 65120] }
   ]);
 
   useEffect(() => {
-    const i = setInterval(() => {
+    const interval = setInterval(() => {
       setCandles(prev => {
         const last = prev[prev.length - 1];
-        const o = last.y[3];
-        const c = o + (Math.random() * 40 - 20);
-        return [...prev.slice(-15), { x: new Date().getTime(), y: [o, Math.max(o,c)+5, Math.min(o,c)-5, c] }];
+        const open = last.y[3]; // Close предыдущей свечи становится Open новой
+        const close = open + (Math.random() * 60 - 30);
+        const high = Math.max(open, close) + 10;
+        const low = Math.min(open, close) - 10;
+        
+        const newCandle = { x: new Date().getTime(), y: [open, high, low, close] };
+        return [...prev.slice(-15), newCandle];
       });
-    }, 2000);
-    return () => clearInterval(i);
+    }, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="app-container" style={{background: '#000', color: '#fff', minHeight: '100vh', padding: '20px'}}>
-      <h2 style={{color: '#f1c40f'}}>💰 {balance}</h2>
-      
-      {tab === 'home' && (
-        <div style={{textAlign: 'center', marginTop: '50px'}}>
-          <div style={{fontSize: '100px', cursor: 'pointer'}} onClick={() => setBalance(b => b + 1)}>🐹</div>
-          <p>Нажми на хомяка!</p>
-        </div>
-      )}
+    <div className="app-container" style={{ background: '#000', color: '#fff', minHeight: '100vh' }}>
+      <div className="header" style={{ padding: '20px', fontSize: '24px', textAlign: 'center' }}>
+        💰 {Math.floor(balance)}
+      </div>
 
-      {tab === 'trade' && (
-        <div>
-          <div style={{background: '#111', borderRadius: '10px', padding: '10px', border: '2px solid #00ff00'}}>
-            <Chart 
-              options={{ chart: { type: 'candlestick', toolbar: { show: false } }, theme: { mode: 'dark' }, xaxis: { type: 'datetime', labels: { show: false } } }}
-              series={[{ data: candles }]} type="candlestick" height={250}
-            />
+      <main>
+        {tab === 'home' && (
+          <div style={{ textAlign: 'center', paddingTop: '50px' }}>
+            <div style={{ fontSize: '120px', cursor: 'pointer' }} onClick={() => setBalance(b => b + 1)}>🐹</div>
+            <p>Жми на хомяка!</p>
           </div>
-          <button style={{width: '100%', padding: '15px', marginTop: '20px', background: '#00ff00', fontWeight: 'bold'}} onClick={() => setBalance(b => b - 100)}>СТАВКА 100</button>
-        </div>
-      )}
+        )}
 
-      <nav style={{position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', background: '#111', padding: '10px'}}>
-        <button style={{flex: 1, padding: '10px'}} onClick={() => setTab('home')}>ИГРА</button>
-        <button style={{flex: 1, padding: '10px', background: '#f1c40f'}} onClick={() => setTab('trade')}>БИРЖА</button>
+        {tab === 'trade' && (
+          <div style={{ padding: '10px' }}>
+            <h3 style={{ textAlign: 'center', color: '#00ff88' }}>BTC / USD (Свечной график)</h3>
+            <div style={{ background: '#111', borderRadius: '10px', padding: '5px' }}>
+              <Chart 
+                options={{
+                  chart: { type: 'candlestick', toolbar: { show: false }, background: 'transparent' },
+                  theme: { mode: 'dark' },
+                  xaxis: { type: 'datetime', labels: { show: false } },
+                  yaxis: { tooltip: { enabled: true } },
+                  plotOptions: { 
+                    candlestick: { 
+                      colors: { upward: '#00ff88', downward: '#ff4d4d' }, // ТУТ ЗАДАЕМ ЦВЕТА СВЕЧЕЙ
+                      wick: { useFillColor: true } 
+                    } 
+                  }
+                }}
+                series={[{ name: 'BTC', data: candles }]}
+                type="candlestick"
+                height={300}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+              <button style={{ flex: 1, padding: '15px', background: '#00ff88', border: 'none', fontWeight: 'bold' }} onClick={() => setBalance(b => b - 100)}>ВВЕРХ</button>
+              <button style={{ flex: 1, padding: '15px', background: '#ff4d4d', border: 'none', color: '#fff', fontWeight: 'bold' }} onClick={() => setBalance(b => b - 100)}>ВНИЗ</button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <nav style={{ position: 'fixed', bottom: 0, width: '100%', display: 'flex', background: '#111' }}>
+        <button onClick={() => setTab('home')} style={{ flex: 1, padding: '15px', color: tab==='home'?'#f1c40f':'#fff' }}>Игра</button>
+        <button onClick={() => setTab('trade')} style={{ flex: 1, padding: '15px', color: tab==='trade'?'#f1c40f':'#fff' }}>БИРЖА</button>
       </nav>
     </div>
   );
 }
+
 export default App;
