@@ -1,184 +1,88 @@
-import React, { useState, useEffect } from 'react';
-import './App.css';
-
-const tg = window.Telegram?.WebApp;
-
-function App() {
-  // Состояния
-  const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
-  const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
-  const [tab, setTab] = useState('home'); // Вкладки: home или shop
-
-  // Улучшения (Upgrades)
-  const [multiTap, setMultiTap] = useState(() => Number(localStorage.getItem('hMulti')) || 1);
-  const [energyRegen, setEnergyRegen] = useState(() => Number(localStorage.getItem('hRegen')) || 1);
-
-  const [clicks, setClicks] = useState([]);
-
-  // Стоимость улучшений
-  const multiTapCost = multiTap * 1000;
-  const energyRegenCost = energyRegen * 1500;
-
-  // Регенерация энергии (зависит от уровня прокачки)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setEnergy(prev => (prev < 1000 ? prev + energyRegen : 1000));
-    }, 1500);
-    return () => clearInterval(timer);
-  }, [energyRegen]);
-
-  // Сохранение
-  useEffect(() => {
-    localStorage.setItem('hBal', balance);
-    localStorage.setItem('hEn', energy);
-    localStorage.setItem('hMulti', multiTap);
-    localStorage.setItem('hRegen', energyRegen);
-  }, [balance, energy, multiTap, energyRegen]);
-
-  const handleTap = (e) => {
-    if (energy < multiTap) return;
-    if (tg) tg.HapticFeedback.impactOccurred('medium');
-
-    setBalance(b => b + multiTap);
-    setEnergy(e => e - multiTap);
-
-    const id = Date.now();
-    const x = e.clientX || e.touches[0].clientX;
-    const y = e.clientY || e.touches[0].clientY;
-    setClicks(prev => [...prev, { id, x, y }]);
-    setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 800);
-  };
-
-  // Функции покупки
-  const buyMultiTap = () => {
-    if (balance >= multiTapCost) {
-      setBalance(b => b - multiTapCost);
-      setMultiTap(m => m + 1);
-    }
-  };
-
-  const buyEnergyRegen = () => {
-    if (balance >= energyRegenCost) {
-      setBalance(b => b - energyRegenCost);
-      setEnergyRegen(r => r + 1);
-    }
-  };
-
-  return (
-    <div className="app-container">
-      <div className="balance-header">
-        <img src="https://cryptologos.cc/logos/tether-usdt-logo.png" width="25" alt="coin" />
-        <h1>{Math.floor(balance).toLocaleString()}</h1>
-      </div>
-
-      <main className="main-content">
-        {tab === 'home' ? (
-          <div className="home-view">
-            <div className="clicker-area" onClick={handleTap}>
-              <div className="hamster-circle">🐹</div>
-              {clicks.map(c => (
-                <div key={c.id} className="tap-text" style={{ left: c.x, top: c.y }}>
-                  +{multiTap}
-                </div>
-              ))}
-            </div>
-            
-            <div className="energy-bar-container">
-              <div className="energy-info">⚡ {energy} / 1000</div>
-              <div className="energy-bg"><div className="energy-fill" style={{ width: `${(energy / 10) || 0}%` }}></div></div>
-            </div>
-          </div>
-        ) : (
-          <div className="shop-view">
-            <h2>Магазин улучшений</h2>
-            
-            <div className="shop-item" onClick={buyMultiTap}>
-              <div className="item-info">
-                <h3>Мульти-тап (Lvl {multiTap})</h3>
-                <p>Дает +1 к каждому клику</p>
-                <span className="price">💰 {multiTapCost}</span>
-              </div>
-              <button disabled={balance < multiTapCost}>Купить</button>
-            </div>
-
-            <div className="shop-item" onClick={buyEnergyRegen}>
-              <div className="item-info">
-                <h3>Регенерация (Lvl {energyRegen})</h3>
-                <p>Восстанавливает энергию быстрее</p>
-                <span className="price">💰 {energyRegenCost}</span>
-              </div>
-              <button disabled={balance < energyRegenCost}>Купить</button>
-            </div>
-          </div>
-        )}
-      </main>
-
-      <nav className="bottom-menu">
-        <button onClick={() => setTab('home')} className={tab === 'home' ? 'active' : ''}>🐹 Игра</button>
-        <button onClick={() => setTab('shop')} className={tab === 'shop' ? 'active' : ''}>🛒 Магазин</button>
-      </nav>
-    </div>
-  );
+body {
+  margin: 0;
+  background-color: #000; /* Черный фон */
+  color: white;
+  font-family: 'Arial', sans-serif;
+  overflow: hidden;
 }
 
-export default App;
-/* Магазин */
-.shop-view { width: 100%; padding: 20px; box-sizing: border-box; }
-.shop-item {
-  background: #1c1c1e;
-  border-radius: 15px;
-  padding: 15px;
-  margin-bottom: 15px;
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  align-items: center;
+}
+
+.header { padding: 20px; text-align: center; }
+.balance-main { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.balance-main h1 { font-size: 42px; margin: 0; }
+
+/* КЛИКЕР */
+.clicker-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamster-target {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, #f1c40f 0%, #d35400 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 100px;
+  box-shadow: 0 0 50px rgba(243, 156, 18, 0.5);
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.1s;
+}
+.hamster-target:active { transform: scale(0.95); }
+
+/* ЛИДЕРБОРД */
+.leaderboard-view { width: 100%; padding: 20px; box-sizing: border-box; }
+.list-item {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  border: 1px solid #333;
+  padding: 15px;
+  background: #1a1a1a;
+  margin-bottom: 8px;
+  border-radius: 12px;
 }
-.item-info h3 { margin: 0; font-size: 16px; color: #fff; }
-.item-info p { margin: 5px 0; font-size: 12px; color: #888; }
-.price { color: #f1c40f; font-weight: bold; }
+.top-three { border: 1px solid #f1c40f; background: #2c2c2e; }
+.rank { font-weight: bold; width: 30px; }
+.name { flex: 1; margin-left: 10px; }
+.val { color: #f1c40f; font-weight: bold; }
 
-.shop-item button {
-  background: #f1c40f;
-  color: #000;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 10px;
-  font-weight: bold;
-}
-.shop-item button:disabled { background: #555; color: #888; }
-
-/* Нижнее меню */
-.bottom-menu {
-  position: fixed;
-  bottom: 0;
+/* НИЖНЕЕ МЕНЮ */
+.nav-bar {
   width: 100%;
-  height: 70px;
+  height: 80px;
   background: #111;
   display: flex;
   justify-content: space-around;
-  align-items: center;
   border-top: 1px solid #333;
 }
-.bottom-menu button {
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 16px;
-  font-weight: bold;
+.nav-bar button {
+  background: none; border: none; color: #888; font-size: 16px; font-weight: bold;
 }
-.bottom-menu button.active { color: #f1c40f; }
+.nav-bar button.active { color: #f1c40f; }
 
-.tap-text {
+.energy-bar { width: 200px; height: 10px; background: #333; border-radius: 5px; margin-top: 10px; }
+.fill { height: 100%; background: #f1c40f; border-radius: 5px; }
+
+.tap-pop {
   position: fixed;
   color: #f1c40f;
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 900;
+  animation: float 0.8s forwards;
   pointer-events: none;
-  animation: floatUp 0.8s forwards;
 }
-.shop-item button:disabled {
-  background: #2ecc71; /* Зеленый цвет для выполненных заданий */
-  color: white;
-  opacity: 1;
+@keyframes float {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-100px); }
 }
