@@ -4,13 +4,13 @@ import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from
 import './App.css';
 
 const firebaseConfig = {
-  apiKey: "ТВОЙ_API_KEY",
+  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
   databaseURL: "https://kreptogame-default-rtdb.firebaseio.com/",
   projectId: "kreptogame",
   storageBucket: "kreptogame.appspot.com",
-  messagingSenderId: "ТВОЙ_SENDER_ID",
-  appId: "ТВОЙ_APP_ID"
+  messagingSenderId: "528985774017",
+  appId: "1:528985774017:web:50ed5fd68898775e7d8140"
 };
 
 const app = initializeApp(firebaseConfig);
