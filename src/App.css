@@ -67,3 +67,9 @@ body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: 
   border-radius: 10px;
   font-weight: bold;
 }
+.chart-box { 
+  background: #000 !important; 
+  height: 300px !important; 
+  width: 100% !important; 
+  border: 2px solid green !important; 
+}
