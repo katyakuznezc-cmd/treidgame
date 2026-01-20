@@ -51,7 +51,7 @@ function App() {
     if (isSubscribed) return;
     
     // 1. Открываем ссылку на канал
-    window.open('https://t.me/твой_канал', '_blank'); // ЗАМЕНИ НА СВОЙ КАНАЛ
+    window.open('https://t.me/kriptoalians', '_blank'); // ЗАМЕНИ НА СВОЙ КАНАЛ
 
     // 2. Даем награду (например 50,000 монет)
     setTimeout(() => {
