@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
-import { LineChart, Line, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
 import './App.css';
 
-// ТВОЙ CONFIG (обязательно вставь свои ключи сюда)
+// ВСТАВЬТЕ СВОИ ДАННЫЕ ИЗ FIREBASE НИЖЕ
 const firebaseConfig = {
   apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
@@ -17,65 +17,53 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const tg = window.Telegram?.WebApp;
 
 function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
   const [tab, setTab] = useState('home');
-  const [passiveIncome, setPassiveIncome] = useState(() => Number(localStorage.getItem('hPass')) || 0);
   const [orders, setOrders] = useState([]);
 
-  // Генерация данных для графика
+  // Данные для графика котировок
   const chartData = useMemo(() => {
-    let price = 67200;
-    return Array.from({ length: 30 }).map((_, i) => {
-      price += Math.random() > 0.5 ? Math.random() * 200 : -Math.random() * 180;
-      return { time: i, price: Math.floor(price) };
-    });
+    let price = 67000;
+    return Array.from({ length: 25 }).map((_, i) => ({
+      time: i,
+      price: price + (Math.random() * 400 - 200)
+    }));
   }, [tab]);
 
-  // Симуляция "стакана ордеров"
+  // Симуляция живого стакана ордеров
   useEffect(() => {
     const interval = setInterval(() => {
+      const type = Math.random() > 0.5 ? 'buy' : 'sell';
       const newOrder = {
         id: Date.now(),
-        type: Math.random() > 0.5 ? 'buy' : 'sell',
-        amount: (Math.random() * 2).toFixed(3),
-        price: (67000 + Math.random() * 500).toFixed(1)
+        type,
+        amount: (Math.random() * 1.5).toFixed(3),
+        price: (67000 + Math.random() * 300).toFixed(1)
       };
-      setOrders(prev => [newOrder, ...prev].slice(0, 5));
-    }, 1500);
+      setOrders(prev => [newOrder, ...prev].slice(0, 6));
+    }, 1200);
     return () => clearInterval(interval);
   }, []);
 
-  // Пассивный доход
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (passiveIncome > 0) setBalance(b => b + (passiveIncome / 3600));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [passiveIncome]);
-
   return (
     <div className="app-container">
-      <div className="top-stats">
-        <div className="stat-card"><span>Доход/час</span><b>+{passiveIncome}</b></div>
-        <div className="stat-card"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
-      </div>
+      <header className="stats-header">
+        <div className="stat"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
+      </header>
 
-      <main className="content">
+      <main className="main-content">
         {tab === 'home' && (
-          <div className="game-screen">
-             <div className="hamster-main" onClick={(e) => setBalance(b => b + 1)}>
-                <div className="hamster-face">🐹</div>
-             </div>
+          <div className="clicker-view">
+            <div className="main-target" onClick={() => setBalance(b => b + 1)}>🐹</div>
           </div>
         )}
 
         {tab === 'trade' && (
-          <div className="trade-screen">
-            <div className="chart-box">
-              <div className="chart-header">BTC / USDT <span>LIVE</span></div>
+          <div className="trade-view">
+            <div className="chart-wrapper">
+              <div className="chart-label">BTC / USDT <span>• LIVE</span></div>
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={chartData}>
                   <YAxis hide domain={['auto', 'auto']} />
@@ -85,26 +73,19 @@ function App() {
             </div>
 
             <div className="order-book">
-              <h4>Стакан ордеров</h4>
+              <div className="order-header">Стакан ордеров</div>
               {orders.map(o => (
-                <div key={o.id} className={`order-row ${o.type}`}>
+                <div key={o.id} className={`order-line ${o.type}`}>
                   <span>{o.amount} BTC</span>
                   <b>{o.price}</b>
                 </div>
               ))}
             </div>
-
-            <div className="trade-actions">
-              <div className="trade-item" onClick={() => balance >= 1000 && (setBalance(b => b - 1000), setPassiveIncome(p => p + 250))}>
-                <span>Бот-скальпер v2</span>
-                <button disabled={balance < 1000}>{balance < 1000 ? '1000' : 'КУПИТЬ'}</button>
-              </div>
-            </div>
           </div>
         )}
       </main>
 
-      <nav className="menu">
+      <nav className="nav-footer">
         <button onClick={() => setTab('home')} className={tab === 'home' ? 'active' : ''}>🏠 Игра</button>
         <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>📈 Биржа</button>
       </nav>
