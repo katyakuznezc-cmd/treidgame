@@ -56,3 +56,41 @@ body { background: var(--dark); color: #fff; font-family: 'Inter', sans-serif; m
 .animate-in { animation: slideUp 0.3s ease-out; }
 @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .glow-text { color: var(--gold); text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
+/* Анимация вылетающих цифр */
+.tap-animation {
+  position: fixed;
+  color: #f1c40f;
+  font-size: 28px;
+  font-weight: 900;
+  pointer-events: none;
+  animation: floatUp 0.8s ease-out forwards;
+  z-index: 1000;
+  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-100px); }
+}
+
+/* Статус-бар и уровни */
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px;
+  font-weight: bold;
+}
+
+.level-badge {
+  background: rgba(241, 196, 15, 0.2);
+  color: #f1c40f;
+  padding: 5px 15px;
+  border-radius: 20px;
+  border: 1px solid #f1c40f;
+}
+
+/* Красивая полоска энергии */
+.progress-container { width: 90%; margin-top: 30px; }
+.progress-bg { height: 12px; background: #222; border-radius: 10px; overflow: hidden; border: 1px solid #333; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #f1c40f, #f39c12); transition: width 0.2s; }
