@@ -1,11 +1,11 @@
 
-imimport React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
 import Chart from 'react-apexcharts';
 import './App.css';
 
-// ТВОЙ CONFIG (Вставь свои ключи из Firebase)
+// ВСТАВЬ СВОИ КЛЮЧИ ТУТ
 const firebaseConfig = {
  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
@@ -21,17 +21,12 @@ const db = getDatabase(app);
 const tg = window.Telegram?.WebApp;
 
 function App() {
-  // Состояния игры
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
   const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
   const [passiveIncome, setPassiveIncome] = useState(() => Number(localStorage.getItem('hPass')) || 0);
   const [tab, setTab] = useState('home');
-  
-  // Состояния биржи
   const [tradeAmount, setTradeAmount] = useState(100);
   const [candles, setCandles] = useState([]);
-  
-  // Настройки и прочее
   const [isVibro, setIsVibro] = useState(() => localStorage.getItem('hVib') !== 'false');
   const [leaderboard, setLeaderboard] = useState([]);
 
@@ -40,7 +35,6 @@ function App() {
   const username = user?.first_name || "Игрок";
   const inviteLink = `https://t.me/ТВОЙ_БОТ?start=${userId}`;
 
-  // 1. Логика Firebase и сохранения
   useEffect(() => {
     if (balance > 0) set(ref(db, 'users/' + userId), { username, balance: Math.floor(balance) });
     localStorage.setItem('hBal', balance);
@@ -49,7 +43,6 @@ function App() {
     localStorage.setItem('hVib', isVibro);
   }, [balance, energy, passiveIncome, isVibro, userId, username]);
 
-  // 2. Генерация свечей для графика (каждые 3 сек)
   useEffect(() => {
     const interval = setInterval(() => {
       setCandles(prev => {
@@ -66,14 +59,12 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // 3. Регенерация энергии и пассивный доход
   useEffect(() => {
     const eI = setInterval(() => setEnergy(e => e < 1000 ? e + 1 : 1000), 1500);
     const pI = setInterval(() => { if (passiveIncome > 0) setBalance(b => b + (passiveIncome / 3600)); }, 1000);
     return () => { clearInterval(eI); clearInterval(pI); };
   }, [passiveIncome]);
 
-  // 4. Загрузка ТОПа
   useEffect(() => {
     onValue(query(ref(db, 'users'), orderByChild('balance'), limitToLast(10)), (s) => {
       const data = s.val();
@@ -91,17 +82,15 @@ function App() {
   const startTrade = (type) => {
     if (balance < tradeAmount) return tg?.showAlert("Мало монет!");
     setBalance(b => b - tradeAmount);
-    tg?.showConfirm(`Сделка ${type === 'up' ? 'ВВЕРХ' : 'ВНИЗ'} открыта. Ждем результат...`, (ok) => {
-      setTimeout(() => {
-        const win = Math.random() > 0.5;
-        if (win) {
-          setBalance(b => b + tradeAmount * 2);
-          tg?.showAlert("Профит! + " + tradeAmount);
-        } else {
-          tg?.showAlert("Сделка в минус...");
-        }
-      }, 2000);
-    });
+    setTimeout(() => {
+      const win = Math.random() > 0.5;
+      if (win) {
+        setBalance(b => b + tradeAmount * 2);
+        tg?.showAlert("Профит! + " + tradeAmount);
+      } else {
+        tg?.showAlert("Сделка в минус...");
+      }
+    }, 2000);
   };
 
   return (
@@ -110,7 +99,6 @@ function App() {
         <div className="stat"><span>В час</span><b>+{passiveIncome}</b></div>
         <div className="stat"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
       </div>
-
       <main className="content">
         {tab === 'home' && (
           <div className="home-view">
@@ -121,14 +109,12 @@ function App() {
             </div>
           </div>
         )}
-
         {tab === 'trade' && (
           <div className="trade-view">
             <div className="chart-box">
               <Chart 
                 options={{ 
                     chart: { type: 'candlestick', toolbar: {show:false}, background: 'transparent' },
-                    theme: { mode: 'dark' },
                     xaxis: { type: 'datetime', labels: {show:false} },
                     grid: { borderColor: '#222' }
                 }}
@@ -149,19 +135,16 @@ function App() {
             </div>
           </div>
         )}
-
         {tab === 'friends' && (
           <div className="friends-view">
             <h2>Друзья</h2>
             <div className="invite-card">
-              <p>Твой ID: {userId}</p>
               <button onClick={() => { navigator.clipboard.writeText(inviteLink); tg?.showAlert("Ссылка скопирована!"); }}>
                 Копировать реф-ссылку
               </button>
             </div>
           </div>
         )}
-
         {tab === 'top' && (
           <div className="top-view">
             {leaderboard.map((u, i) => (
@@ -169,18 +152,12 @@ function App() {
             ))}
           </div>
         )}
-
         {tab === 'settings' && (
           <div className="settings-view">
-            <div className="s-row">
-              <span>Вибрация</span>
-              <button onClick={() => setIsVibro(!isVibro)}>{isVibro ? 'ВКЛ' : 'ВЫКЛ'}</button>
-            </div>
-            <p>Создатель: @ТвойНик</p>
+            <button onClick={() => setIsVibro(!isVibro)}>Вибрация: {isVibro ? 'ВКЛ' : 'ВЫКЛ'}</button>
           </div>
         )}
       </main>
-
       <nav className="nav">
         <button onClick={()=>setTab('home')} className={tab==='home'?'active':''}>Игра</button>
         <button onClick={()=>setTab('trade')} className={tab==='trade'?'active':''}>Биржа</button>
