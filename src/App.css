@@ -1,0 +1,58 @@
+:root { --gold: #f1c40f; --green: #00ffa3; --red: #ff3b3b; --dark: #0a0a0b; }
+body { background: var(--dark); color: #fff; font-family: 'Inter', sans-serif; margin: 0; }
+
+.app-container { height: 100vh; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+.logo { font-size: 16px; color: var(--gold); letter-spacing: 2px; margin: 0; }
+.energy-pill { font-size: 12px; color: var(--green); margin-top: 5px; }
+.balance-card { background: #1a1a1c; padding: 10px 20px; border-radius: 15px; font-weight: bold; font-size: 20px; border: 1px solid #333; }
+
+/* Clicker */
+.view-home { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; }
+.main-clicker { cursor: pointer; }
+.ring-outer { width: 220px; height: 220px; border-radius: 50%; background: #111; border: 6px solid var(--gold); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 40px rgba(241, 196, 15, 0.2); transition: 0.1s; }
+.ring-outer:active { transform: scale(0.92); }
+.ring-inner { font-size: 110px; }
+
+.bonus-btn { background: var(--gold); border: none; padding: 12px 25px; border-radius: 12px; font-weight: 900; cursor: pointer; }
+.energy-system { width: 80%; }
+.progress-bg { height: 8px; background: #222; border-radius: 10px; overflow: hidden; margin-bottom: 8px; }
+.progress-fill { height: 100%; background: var(--green); box-shadow: 0 0 10px var(--green); transition: 0.3s; }
+.energy-system span { font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 1px; display: block; text-align: center; }
+
+/* Trading Chart */
+.chart-container { height: 220px; background: #000; border-radius: 20px; border: 1px solid #1a1a1a; padding: 15px; display: flex; flex-direction: column; }
+.chart-header { font-size: 10px; color: #444; margin-bottom: 15px; }
+.candles-area { flex: 1; display: flex; align-items: flex-end; gap: 8px; }
+.candle-col { flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.candle-bar { width: 100%; border-radius: 3px; transition: 0.5s; }
+.candle-bar.up { background: var(--green); }
+.candle-bar.down { background: var(--red); }
+
+.trade-ui { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+.bet-field { background: #111; border: 1px solid #333; color: #fff; padding: 12px; border-radius: 12px; text-align: center; }
+.lev-grid { display: flex; gap: 5px; }
+.lev-grid button { flex: 1; background: #1a1a1c; border: 1px solid #333; color: #555; padding: 10px; border-radius: 8px; }
+.lev-grid button.active { background: var(--gold); color: #000; border-color: var(--gold); }
+.action-grid { display: flex; gap: 10px; }
+.buy, .sell { flex: 1; padding: 18px; border-radius: 15px; border: none; font-weight: 900; }
+.buy { background: var(--green); color: #000; }
+.sell { background: var(--red); color: #fff; }
+
+/* Inventory */
+.items-grid { display: flex; flex-direction: column; gap: 10px; padding-bottom: 100px; }
+.item-card { background: #0f0f11; padding: 15px; border-radius: 20px; border: 1px solid #1a1a1c; display: flex; align-items: center; gap: 15px; }
+.item-card.select { border-color: var(--gold); background: rgba(241, 196, 15, 0.05); }
+.item-card.lock { opacity: 0.3; filter: grayscale(1); }
+.item-emoji { font-size: 40px; }
+
+/* Navbar */
+.navbar { position: fixed; bottom: 15px; left: 15px; right: 15px; background: rgba(15, 15, 17, 0.95); backdrop-filter: blur(10px); height: 75px; border-radius: 25px; display: flex; border: 1px solid #222; }
+.navbar button { flex: 1; background: none; border: none; color: #444; font-size: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.navbar button span { font-size: 8px; font-weight: bold; }
+.navbar button.active { color: var(--gold); }
+
+.animate-in { animation: slideUp 0.3s ease-out; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.glow-text { color: var(--gold); text-shadow: 0 0 15px rgba(241, 196, 15, 0.5); }
