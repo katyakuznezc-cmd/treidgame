@@ -75,7 +75,7 @@ function App() {
 
       <nav style={{ position: 'fixed', bottom: 0, width: '100%', display: 'flex', background: '#111' }}>
         <button onClick={() => setTab('home')} style={{ flex: 1, padding: '15px', color: tab==='home'?'#f1c40f':'#fff' }}>Игра</button>
-        <button onClick={() => setTab('trade')} style={{ flex: 1, padding: '15px', color: tab==='trade'?'#f1c40f':'#fff' }}>БИРЖА</button>
+        <button onClick={() => setTab('trade')} style={{ flex: 1, padding: '15px', color: tab==='trade'?'#f1c40f':'#fff' }}>ИГРАТЙЙЙ</button>
       </nav>
     </div>
   );
