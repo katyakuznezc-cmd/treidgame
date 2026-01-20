@@ -43,3 +43,27 @@ body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: 
 
 /* ЛИДЕРБОРД */
 .l-row { display: flex; justify-content: space-between; padding: 15px; background: #111; margin: 5px 10px; border-radius: 10px; border: 1px solid #222; }
+.chart-box {
+  width: 100%;
+  min-height: 250px; /* Важно! */
+  background: #000;
+  border: 1px solid #333;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.trade-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 10px;
+}
+
+.main-trade-btn {
+  background: #f1c40f;
+  color: #000;
+  border: none;
+  padding: 15px;
+  border-radius: 10px;
+  font-weight: bold;
+}
