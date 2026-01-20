@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
 import Chart from 'react-apexcharts';
 import './App.css';
 
-// ВСТАВЬ СВОИ КЛЮЧИ ТУТ
 const firebaseConfig = {
  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
@@ -31,7 +29,7 @@ function App() {
   const [leaderboard, setLeaderboard] = useState([]);
 
   const user = tg?.initDataUnsafe?.user;
-  const userId = user?.id ? String(user.id) : "guest_1";
+  const userId = user?.id ? String(user.id) : "guest_" + Math.floor(Math.random() * 1000);
   const username = user?.first_name || "Игрок";
   const inviteLink = `https://t.me/ТВОЙ_БОТ?start=${userId}`;
 
@@ -66,7 +64,8 @@ function App() {
   }, [passiveIncome]);
 
   useEffect(() => {
-    onValue(query(ref(db, 'users'), orderByChild('balance'), limitToLast(10)), (s) => {
+    const q = query(ref(db, 'users'), orderByChild('balance'), limitToLast(10));
+    onValue(q, (s) => {
       const data = s.val();
       if (data) setLeaderboard(Object.values(data).sort((a,b) => b.balance - a.balance));
     });
@@ -83,12 +82,11 @@ function App() {
     if (balance < tradeAmount) return tg?.showAlert("Мало монет!");
     setBalance(b => b - tradeAmount);
     setTimeout(() => {
-      const win = Math.random() > 0.5;
-      if (win) {
+      if (Math.random() > 0.5) {
         setBalance(b => b + tradeAmount * 2);
-        tg?.showAlert("Профит! + " + tradeAmount);
+        tg?.showAlert("Профит!");
       } else {
-        tg?.showAlert("Сделка в минус...");
+        tg?.showAlert("Минус...");
       }
     }, 2000);
   };
@@ -113,13 +111,8 @@ function App() {
           <div className="trade-view">
             <div className="chart-box">
               <Chart 
-                options={{ 
-                    chart: { type: 'candlestick', toolbar: {show:false}, background: 'transparent' },
-                    xaxis: { type: 'datetime', labels: {show:false} },
-                    grid: { borderColor: '#222' }
-                }}
-                series={[{ data: candles }]}
-                type="candlestick" height={220}
+                options={{ chart: { type: 'candlestick', toolbar: {show:false} }, xaxis: { type: 'datetime', labels: {show:false} } }}
+                series={[{ data: candles }]} type="candlestick" height={220}
               />
             </div>
             <div className="trade-ui">
@@ -138,11 +131,9 @@ function App() {
         {tab === 'friends' && (
           <div className="friends-view">
             <h2>Друзья</h2>
-            <div className="invite-card">
-              <button onClick={() => { navigator.clipboard.writeText(inviteLink); tg?.showAlert("Ссылка скопирована!"); }}>
-                Копировать реф-ссылку
-              </button>
-            </div>
+            <button onClick={() => { navigator.clipboard.writeText(inviteLink); tg?.showAlert("Скопировано!"); }}>
+              Копировать реф-ссылку
+            </button>
           </div>
         )}
         {tab === 'top' && (
