@@ -49,3 +49,40 @@ body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: 
 
 .floating-text { position: fixed; color: #fff; font-size: 24px; font-weight: bold; pointer-events: none; animation: up 0.6s forwards; }
 @keyframes up { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-80px); } }
+body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
+.app-container { display: flex; flex-direction: column; height: 100vh; }
+
+.top-stats { display: flex; justify-content: space-around; padding: 15px; background: #111; border-bottom: 1px solid #222; }
+.stat-card { text-align: center; }
+.stat-card span { font-size: 10px; color: #888; }
+.stat-card b { display: block; font-size: 18px; color: #f1c40f; }
+
+.content-area { flex: 1; overflow-y: auto; padding-bottom: 70px; }
+
+/* ГЛАВНАЯ */
+.home-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+.hamster-body { 
+  width: 260px; height: 260px; background: radial-gradient(circle, #f39c12, #d35400); 
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+  font-size: 110px; border: 8px solid #222; cursor: pointer;
+}
+.hamster-body:active { transform: scale(0.95); }
+.energy-wrap { width: 80%; margin-top: 30px; }
+.en-bar { width: 100%; height: 10px; background: #222; border-radius: 5px; overflow: hidden; margin-top: 8px; }
+.en-fill { height: 100%; background: #f1c40f; transition: width 0.3s; }
+
+/* ДРУЗЬЯ И НАСТРОЙКИ */
+.friends-view, .settings-view { padding: 20px; text-align: center; }
+.invite-box { background: #111; padding: 20px; border-radius: 15px; border: 1px solid #333; }
+.invite-box input { width: 100%; background: #222; border: none; color: #888; padding: 10px; border-radius: 5px; margin: 10px 0; font-size: 12px; }
+.invite-box button { background: #f1c40f; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; }
+
+.set-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #111; margin-bottom: 10px; border-radius: 10px; }
+.set-row button { background: #333; border: none; color: #fff; padding: 8px 15px; border-radius: 5px; }
+
+/* МЕНЮ */
+.bottom-nav { position: fixed; bottom: 0; width: 100%; background: #111; display: flex; justify-content: space-between; padding: 15px 5px; border-top: 1px solid #222; }
+.bottom-nav button { background: none; border: none; color: #555; font-size: 12px; font-weight: bold; flex: 1; }
+.bottom-nav button.active { color: #f1c40f; }
+
+.l-item { display: flex; justify-content: space-between; padding: 15px; background: #111; margin: 5px 10px; border-radius: 10px; }
