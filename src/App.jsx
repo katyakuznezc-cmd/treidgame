@@ -1,121 +1,91 @@
 import React, { useState, useEffect } from 'react';
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
 import './App.css';
 
+https://kreptogame-default-rtdb.firebaseio.com/
+null
+const firebaseConfig = {
+  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
+  authDomain: "твой-проект.firebaseapp.com",
+  databaseURL: "https://твой-проект.firebaseio.com",
+  projectId: "твой-проект",
+  storageBucket: "твой-проект.appspot.com",
+  messagingSenderId: "528985774017",
+  appId: "1:528985774017:web:50ed5fd68898775e7d8140"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 const tg = window.Telegram?.WebApp;
 
 function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
-  const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
   const [tab, setTab] = useState('home');
-
-  // Улучшения
-  const [multiTap, setMultiTap] = useState(() => Number(localStorage.getItem('hMulti')) || 1);
-  const [energyRegen, setEnergyRegen] = useState(() => Number(localStorage.getItem('hRegen')) || 1);
+  const [leaderboard, setLeaderboard] = useState([]);
   
-  // Состояние задания (выполнено или нет)
-  const [isSubscribed, setIsSubscribed] = useState(() => localStorage.getItem('hSub') === 'true');
+  // Имя пользователя из Telegram
+  const username = tg?.initDataUnsafe?.user?.first_name || "Аноним";
+  const userId = tg?.initDataUnsafe?.user?.id || "guest";
 
-  const [clicks, setClicks] = useState([]);
-
-  // Регенерация
+  // Сохранение баланса в базу данных
   useEffect(() => {
-    const timer = setInterval(() => {
-      setEnergy(prev => (prev < 1000 ? prev + energyRegen : 1000));
-    }, 1500);
-    return () => clearInterval(timer);
-  }, [energyRegen]);
-
-  // Сохранение
-  useEffect(() => {
+    if (balance > 0) {
+      set(ref(db, 'users/' + userId), {
+        username: username,
+        balance: balance
+      });
+    }
     localStorage.setItem('hBal', balance);
-    localStorage.setItem('hEn', energy);
-    localStorage.setItem('hMulti', multiTap);
-    localStorage.setItem('hRegen', energyRegen);
-    localStorage.setItem('hSub', isSubscribed);
-  }, [balance, energy, multiTap, energyRegen, isSubscribed]);
+  }, [balance, userId, username]);
 
-  const handleTap = (e) => {
-    if (energy < multiTap) return;
-    if (tg) tg.HapticFeedback.impactOccurred('medium');
-    setBalance(b => b + multiTap);
-    setEnergy(e => e - multiTap);
-    const id = Date.now();
-    const x = e.clientX || (e.touches && e.touches[0].clientX);
-    const y = e.clientY || (e.touches && e.touches[0].clientY);
-    setClicks(prev => [...prev, { id, x, y }]);
-    setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 800);
-  };
-
-  // Логика задания
-  const handleQuest = () => {
-    if (isSubscribed) return;
-    
-    // 1. Открываем ссылку на канал
-    window.open('https://t.me/kriptoalians', '_blank'); // ЗАМЕНИ НА СВОЙ КАНАЛ
-
-    // 2. Даем награду (например 50,000 монет)
-    setTimeout(() => {
-      if (!isSubscribed) {
-        setBalance(b => b + 50000);
-        setIsSubscribed(true);
-        if (tg) tg.showAlert('Награда 50,000 USDT получена!');
+  // Загрузка ТОП-10
+  useEffect(() => {
+    const topQuery = query(ref(db, 'users'), orderByChild('balance'), limitToLast(10));
+    onValue(topQuery, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const sorted = Object.values(data).sort((a, b) => b.balance - a.balance);
+        setLeaderboard(sorted);
       }
-    }, 2000);
+    });
+  }, []);
+
+  const handleTap = () => {
+    setBalance(prev => prev + 1);
+    if (tg) tg.HapticFeedback.impactOccurred('light');
   };
 
   return (
     <div className="app-container">
       <div className="balance-header">
-        <img src="https://cryptologos.cc/logos/tether-usdt-logo.png" width="25" alt="coin" />
-        <h1>{Math.floor(balance).toLocaleString()}</h1>
+        <h1>💰 {Math.floor(balance).toLocaleString()}</h1>
       </div>
 
       <main className="main-content">
         {tab === 'home' && (
-          <div className="home-view">
-            <div className="clicker-area" onClick={handleTap}>
-              <div className="hamster-circle">🐹</div>
-              {clicks.map(c => (
-                <div key={c.id} className="tap-text" style={{ left: c.x, top: c.y }}>+{multiTap}</div>
-              ))}
-            </div>
-            <div className="energy-bar-container">
-              <div className="energy-info">⚡ {energy} / 1000</div>
-              <div className="energy-bg"><div className="energy-fill" style={{ width: `${energy/10}%` }}></div></div>
-            </div>
+          <div className="home-view" onClick={handleTap}>
+            <div className="hamster-circle">🐹</div>
+            <p>Нажимай на хомяка!</p>
           </div>
         )}
 
-        {tab === 'shop' && (
+        {tab === 'top' && (
           <div className="shop-view">
-            <h2>Магазин</h2>
-            <button className="shop-item" onClick={() => balance >= multiTap * 1000 && (setBalance(b => b - multiTap * 1000), setMultiTap(m => m + 1))}>
-              <div>Мульти-тап (Lvl {multiTap})<br/><span>💰 {multiTap * 1000}</span></div>
-            </button>
-            <button className="shop-item" onClick={() => balance >= energyRegen * 1500 && (setBalance(b => b - energyRegen * 1500), setEnergyRegen(r => r + 1))}>
-              <div>Реген (Lvl {energyRegen})<br/><span>💰 {energyRegen * 1500}</span></div>
-            </button>
-          </div>
-        )}
-
-        {tab === 'tasks' && (
-          <div className="shop-view">
-            <h2>Задания</h2>
-            <div className="shop-item" onClick={handleQuest} style={{ opacity: isSubscribed ? 0.6 : 1 }}>
-              <div>
-                Подпишись на канал<br/>
-                <span style={{color: '#f1c40f'}}>Награда: +50,000</span>
+            <h2>Топ Игроков 🏆</h2>
+            {leaderboard.map((user, index) => (
+              <div className="shop-item" key={index}>
+                <div>{index + 1}. {user.username}</div>
+                <div style={{color: '#f1c40f'}}>{user.balance.toLocaleString()}</div>
               </div>
-              <button disabled={isSubscribed}>{isSubscribed ? 'Выполнено' : 'GO'}</button>
-            </div>
+            ))}
           </div>
         )}
       </main>
 
       <nav className="bottom-menu">
         <button onClick={() => setTab('home')} className={tab === 'home' ? 'active' : ''}>🐹 Игра</button>
-        <button onClick={() => setTab('shop')} className={tab === 'shop' ? 'active' : ''}>🛒 Магазин</button>
-        <button onClick={() => setTab('tasks')} className={tab === 'tasks' ? 'active' : ''}>📋 Задания</button>
+        <button onClick={() => setTab('top')} className={tab === 'top' ? 'active' : ''}>🏆 Топ</button>
       </nav>
     </div>
   );
