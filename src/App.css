@@ -177,3 +177,8 @@ export default App;
   pointer-events: none;
   animation: floatUp 0.8s forwards;
 }
+.shop-item button:disabled {
+  background: #2ecc71; /* Зеленый цвет для выполненных заданий */
+  color: white;
+  opacity: 1;
+}
