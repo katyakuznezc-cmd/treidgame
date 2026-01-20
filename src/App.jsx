@@ -5,7 +5,7 @@ import Chart from 'react-apexcharts';
 import './App.css';
 
 const firebaseConfig = {
-   apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
+ apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
   databaseURL: "https://kreptogame-default-rtdb.firebaseio.com/",
   projectId: "kreptogame",
