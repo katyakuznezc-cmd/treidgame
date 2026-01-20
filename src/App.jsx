@@ -16,18 +16,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const tg = window.Telegram?.WebApp;
 
 function App() {
-  const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 1000);
+  const [balance, setBalance] = useState(1000);
   const [tab, setTab] = useState('home');
   const [candles, setCandles] = useState([
     { x: new Date().getTime(), y: [65000, 65100, 64900, 65050] }
   ]);
-
-  useEffect(() => {
-    localStorage.setItem('hBal', balance);
-  }, [balance]);
 
   useEffect(() => {
     const i = setInterval(() => {
@@ -42,29 +37,31 @@ function App() {
   }, []);
 
   return (
-    <div className="app-container">
-      <div className="balance-header">💰 {Math.floor(balance)}</div>
-      <main className="main-content">
-        {tab === 'home' && (
-          <div className="clicker">
-            <div className="circle" onClick={() => setBalance(b => b + 1)}>🐹</div>
+    <div className="app-container" style={{background: '#000', color: '#fff', minHeight: '100vh', padding: '20px'}}>
+      <h2 style={{color: '#f1c40f'}}>💰 {balance}</h2>
+      
+      {tab === 'home' && (
+        <div style={{textAlign: 'center', marginTop: '50px'}}>
+          <div style={{fontSize: '100px', cursor: 'pointer'}} onClick={() => setBalance(b => b + 1)}>🐹</div>
+          <p>Нажми на хомяка!</p>
+        </div>
+      )}
+
+      {tab === 'trade' && (
+        <div>
+          <div style={{background: '#111', borderRadius: '10px', padding: '10px', border: '2px solid #00ff00'}}>
+            <Chart 
+              options={{ chart: { type: 'candlestick', toolbar: { show: false } }, theme: { mode: 'dark' }, xaxis: { type: 'datetime', labels: { show: false } } }}
+              series={[{ data: candles }]} type="candlestick" height={250}
+            />
           </div>
-        )}
-        {tab === 'trade' && (
-          <div className="trading-area">
-            <div className="chart-container" style={{ minHeight: '300px', background: '#000' }}>
-              <Chart 
-                options={{ chart: { type: 'candlestick', toolbar: { show: false } }, theme: { mode: 'dark' }, xaxis: { type: 'datetime', labels: { show: false } } }}
-                series={[{ data: candles }]} type="candlestick" height={300}
-              />
-            </div>
-            <button className="trade-btn" onClick={() => setBalance(b => b - 100)}>СТАВКА 100</button>
-          </div>
-        )}
-      </main>
-      <nav className="bottom-nav">
-        <button onClick={() => setTab('home')}>Игра</button>
-        <button onClick={() => setTab('trade')}>БИРЖА</button>
+          <button style={{width: '100%', padding: '15px', marginTop: '20px', background: '#00ff00', fontWeight: 'bold'}} onClick={() => setBalance(b => b - 100)}>СТАВКА 100</button>
+        </div>
+      )}
+
+      <nav style={{position: 'fixed', bottom: 0, left: 0, right: 0, display: 'flex', background: '#111', padding: '10px'}}>
+        <button style={{flex: 1, padding: '10px'}} onClick={() => setTab('home')}>ИГРА</button>
+        <button style={{flex: 1, padding: '10px', background: '#f1c40f'}} onClick={() => setTab('trade')}>БИРЖА</button>
       </nav>
     </div>
   );
