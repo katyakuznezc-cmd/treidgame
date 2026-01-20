@@ -1,94 +1,122 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Подключаем Telegram SDK для вибрации
 const tg = window.Telegram?.WebApp;
 
 function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
   const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
-  const [clicks, setClicks] = useState([]); // Для анимации +1
+  const [tab, setTab] = useState('home');
 
-  // Система уровней
-  const levels = [
-    { name: "Новичок 👶", min: 0 },
-    { name: "Трейдер 📈", min: 5000 },
-    { name: "Инвестор 💰", min: 25000 },
-    { name: "Крипто-Лорд 👑", min: 100000 },
-    { name: "Миллиардер 💎", min: 1000000 }
-  ];
+  // Улучшения
+  const [multiTap, setMultiTap] = useState(() => Number(localStorage.getItem('hMulti')) || 1);
+  const [energyRegen, setEnergyRegen] = useState(() => Number(localStorage.getItem('hRegen')) || 1);
+  
+  // Состояние задания (выполнено или нет)
+  const [isSubscribed, setIsSubscribed] = useState(() => localStorage.getItem('hSub') === 'true');
 
-  const currentLevel = [...levels].reverse().find(l => balance >= l.min) || levels[0];
+  const [clicks, setClicks] = useState([]);
 
-  // Регенерация энергии
+  // Регенерация
   useEffect(() => {
     const timer = setInterval(() => {
-      setEnergy(prev => (prev < 1000 ? prev + 1 : 1000));
+      setEnergy(prev => (prev < 1000 ? prev + energyRegen : 1000));
     }, 1500);
     return () => clearInterval(timer);
-  }, []);
+  }, [energyRegen]);
 
-  // Автосохранение
+  // Сохранение
   useEffect(() => {
     localStorage.setItem('hBal', balance);
     localStorage.setItem('hEn', energy);
-  }, [balance, energy]);
+    localStorage.setItem('hMulti', multiTap);
+    localStorage.setItem('hRegen', energyRegen);
+    localStorage.setItem('hSub', isSubscribed);
+  }, [balance, energy, multiTap, energyRegen, isSubscribed]);
 
   const handleTap = (e) => {
-    if (energy <= 0) return;
-
-    // Вибрация (Haptic Feedback)
+    if (energy < multiTap) return;
     if (tg) tg.HapticFeedback.impactOccurred('medium');
-
-    setBalance(b => b + 1);
-    setEnergy(e => e - 1);
-
-    // Добавляем анимацию +1
+    setBalance(b => b + multiTap);
+    setEnergy(e => e - multiTap);
     const id = Date.now();
-    const x = e.clientX || e.touches[0].clientX;
-    const y = e.clientY || e.touches[0].clientY;
-    
+    const x = e.clientX || (e.touches && e.touches[0].clientX);
+    const y = e.clientY || (e.touches && e.touches[0].clientY);
     setClicks(prev => [...prev, { id, x, y }]);
+    setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 800);
+  };
+
+  // Логика задания
+  const handleQuest = () => {
+    if (isSubscribed) return;
     
-    // Удаляем объект анимации через 1 секунду
+    // 1. Открываем ссылку на канал
+    window.open('https://t.me/твой_канал', '_blank'); // ЗАМЕНИ НА СВОЙ КАНАЛ
+
+    // 2. Даем награду (например 50,000 монет)
     setTimeout(() => {
-      setClicks(prev => prev.filter(click => click.id !== id));
-    }, 800);
+      if (!isSubscribed) {
+        setBalance(b => b + 50000);
+        setIsSubscribed(true);
+        if (tg) tg.showAlert('Награда 50,000 USDT получена!');
+      }
+    }, 2000);
   };
 
   return (
     <div className="app-container">
-      <div className="status-bar">
-        <div className="level-badge">{currentLevel.name}</div>
-        <div className="energy-text">⚡ {energy}/1000</div>
+      <div className="balance-header">
+        <img src="https://cryptologos.cc/logos/tether-usdt-logo.png" width="25" alt="coin" />
+        <h1>{Math.floor(balance).toLocaleString()}</h1>
       </div>
 
-      <div className="balance-display">
-        <img src="https://cryptologos.cc/logos/tether-usdt-logo.png" width="30" alt="coin" />
-        <h1>{balance.toLocaleString()}</h1>
-      </div>
-
-      <div className="clicker-section">
-        <div className="circle-outer" onClick={handleTap}>
-          <div className="circle-inner">
-            <span className="hamster-emoji">🐹</span>
+      <main className="main-content">
+        {tab === 'home' && (
+          <div className="home-view">
+            <div className="clicker-area" onClick={handleTap}>
+              <div className="hamster-circle">🐹</div>
+              {clicks.map(c => (
+                <div key={c.id} className="tap-text" style={{ left: c.x, top: c.y }}>+{multiTap}</div>
+              ))}
+            </div>
+            <div className="energy-bar-container">
+              <div className="energy-info">⚡ {energy} / 1000</div>
+              <div className="energy-bg"><div className="energy-fill" style={{ width: `${energy/10}%` }}></div></div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Рендерим всплывающие +1 */}
-        {clicks.map(click => (
-          <div key={click.id} className="tap-animation" style={{ left: click.x, top: click.y }}>
-            +1
+        {tab === 'shop' && (
+          <div className="shop-view">
+            <h2>Магазин</h2>
+            <button className="shop-item" onClick={() => balance >= multiTap * 1000 && (setBalance(b => b - multiTap * 1000), setMultiTap(m => m + 1))}>
+              <div>Мульти-тап (Lvl {multiTap})<br/><span>💰 {multiTap * 1000}</span></div>
+            </button>
+            <button className="shop-item" onClick={() => balance >= energyRegen * 1500 && (setBalance(b => b - energyRegen * 1500), setEnergyRegen(r => r + 1))}>
+              <div>Реген (Lvl {energyRegen})<br/><span>💰 {energyRegen * 1500}</span></div>
+            </button>
           </div>
-        ))}
-      </div>
+        )}
 
-      <div className="progress-container">
-        <div className="progress-label">Энергия</div>
-        <div className="progress-bg">
-          <div className="progress-fill" style={{ width: `${(energy / 1000) * 100}%` }}></div>
-        </div>
-      </div>
+        {tab === 'tasks' && (
+          <div className="shop-view">
+            <h2>Задания</h2>
+            <div className="shop-item" onClick={handleQuest} style={{ opacity: isSubscribed ? 0.6 : 1 }}>
+              <div>
+                Подпишись на канал<br/>
+                <span style={{color: '#f1c40f'}}>Награда: +50,000</span>
+              </div>
+              <button disabled={isSubscribed}>{isSubscribed ? 'Выполнено' : 'GO'}</button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="bottom-menu">
+        <button onClick={() => setTab('home')} className={tab === 'home' ? 'active' : ''}>🐹 Игра</button>
+        <button onClick={() => setTab('shop')} className={tab === 'shop' ? 'active' : ''}>🛒 Магазин</button>
+        <button onClick={() => setTab('tasks')} className={tab === 'tasks' ? 'active' : ''}>📋 Задания</button>
+      </nav>
     </div>
   );
 }
