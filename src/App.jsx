@@ -1,9 +1,17 @@
+Держи полный и исправленный код. Я убрал из него всё лишнее, чтобы он весил мало и загружался быстро.
+
+Важно: Перед тем как нажать "Commit changes", убедись, что ты удалил весь старый текст из файла.
+
+Полный код для src/App.jsx
+JavaScript
+
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set } from "firebase/database";
+import { getDatabase, ref, set, onValue } from "firebase/database";
 import Chart from 'react-apexcharts';
 import './App.css';
 
+// ВСТАВЬ СВОИ ДАННЫЕ ИЗ FIREBASE НИЖЕ
 const firebaseConfig = {
    apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
@@ -21,76 +29,108 @@ const tg = window.Telegram?.WebApp;
 function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 1000);
   const [tab, setTab] = useState('home');
+  const [tradeAmount, setTradeAmount] = useState(100);
+  
+  // Начальные данные для графика
   const [candles, setCandles] = useState([
-    { x: new Date().getTime(), y: [65000, 65100, 64900, 65050] }
+    { x: new Date().getTime() - 60000, y: [65000, 65050, 64950, 65010] },
+    { x: new Date().getTime() - 30000, y: [65010, 65080, 65000, 65040] }
   ]);
 
+  // Сохранение баланса
   useEffect(() => {
     localStorage.setItem('hBal', balance);
+    const userId = tg?.initDataUnsafe?.user?.id || "guest";
+    set(ref(db, 'users/' + userId), { 
+      username: tg?.initDataUnsafe?.user?.first_name || "Игрок", 
+      balance: Math.floor(balance) 
+    });
   }, [balance]);
 
+  // Движение графика (каждые 2 секунды)
   useEffect(() => {
-    const i = setInterval(() => {
+    const interval = setInterval(() => {
       setCandles(prev => {
         const last = prev[prev.length - 1];
-        const o = last.y[3];
-        const c = o + (Math.random() * 40 - 20);
-        return [...prev.slice(-10), { x: new Date().getTime(), y: [o, Math.max(o,c)+5, Math.min(o,c)-5, c] }];
+        const open = last.y[3];
+        const close = open + (Math.random() * 60 - 30);
+        const high = Math.max(open, close) + 10;
+        const low = Math.min(open, close) - 10;
+        return [...prev.slice(-15), { x: new Date().getTime(), y: [open, high, low, close] }];
       });
     }, 2000);
-    return () => clearInterval(i);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleTrade = (win) => {
-    if (balance < 100) return tg?.showAlert("Нужно минимум 100 монет!");
-    setBalance(b => b - 100);
+  const startTrade = (type) => {
+    if (balance < tradeAmount) return tg?.showAlert("Мало монет!");
+    setBalance(b => b - tradeAmount);
+    
+    // Результат через 2 секунды
     setTimeout(() => {
-      if (Math.random() > 0.5) {
-        setBalance(b => b + 250);
-        tg?.showAlert("Профит +150!");
+      const win = Math.random() > 0.5;
+      if (win) {
+        setBalance(b => b + tradeAmount * 2);
+        tg?.showAlert("Победа! + " + tradeAmount);
       } else {
-        tg?.showAlert("Убыток -100");
+        tg?.showAlert("Проигрыш...");
       }
-    }, 1500);
+    }, 2000);
   };
 
   return (
     <div className="app-container">
-      <div className="balance-header">💰 {Math.floor(balance)}</div>
-      
-      <main className="main-content">
+      <div className="top-stats">
+        <span>Ваш баланс:</span>
+        <b>💰 {Math.floor(balance).toLocaleString()}</b>
+      </div>
+
+      <main className="content">
         {tab === 'home' && (
-          <div className="clicker">
-            <div className="circle" onClick={() => setBalance(b => b + 1)}>🐹</div>
-            <p>Нажми, чтобы заработать на сделку!</p>
+          <div className="home-view">
+            <div className="hamster-big" onClick={() => {
+              setBalance(b => b + 1);
+              tg?.HapticFeedback.impactOccurred('light');
+            }}>🐹</div>
+            <p>Нажимай на хомяка, чтобы копить на сделки!</p>
           </div>
         )}
 
         {tab === 'trade' && (
-          <div className="trading-area">
-            <div className="chart-container">
+          <div className="trade-view">
+            <div className="chart-box">
               <Chart 
                 options={{
-                  chart: { type: 'candlestick', toolbar: { show: false } },
+                  chart: { type: 'candlestick', toolbar: { show: false }, background: 'transparent' },
                   xaxis: { type: 'datetime', labels: { show: false } },
-                  theme: { mode: 'dark' }
+                  yaxis: { labels: { style: { colors: '#888' } } },
+                  theme: { mode: 'dark' },
+                  plotOptions: { candlestick: { colors: { upward: '#00ff88', downward: '#ff4d4d' } } }
                 }}
                 series={[{ data: candles }]}
                 type="candlestick"
-                height={300}
+                height={250}
               />
             </div>
-            <div className="trade-buttons">
-              <button className="buy" onClick={() => handleTrade(true)}>ВВЕРХ (100)</button>
-              <button className="sell" onClick={() => handleTrade(false)}>ВНИЗ (100)</button>
+            
+            <div className="trade-ui">
+              <div className="amount-step">
+                <button onClick={() => setTradeAmount(a => Math.max(10, a - 50))}>-</button>
+                <span>Ставка: {tradeAmount}</span>
+                <button onClick={() => setTradeAmount(a => a + 50)}>+</button>
+              </div>
+              <div className="trade-btns">
+                <button className="btn-up" onClick={() => startTrade('up')}>ВВЕРХ</button>
+                <button className="btn-down" onClick={() => startTrade('down')}>ВНИЗ</button>
+              </div>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="bottom-nav">
-        <button onClick={() => setTab('home')}>Кликать</button>
-        <button onClick={() => setTab('trade')}>БИРЖА</button>
+      <nav className="nav">
+        <button onClick={() => setTab('home')} className={tab === 'home' ? 'active' : ''}>Кликать</button>
+        <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>БИРЖА</button>
       </nav>
     </div>
   );
