@@ -4,8 +4,9 @@ import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from
 import Chart from 'react-apexcharts';
 import './App.css';
 
+// ВСТАВЬ СВОЙ КОНФИГ ТУТ
 const firebaseConfig = {
- apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
+  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
   databaseURL: "https://kreptogame-default-rtdb.firebaseio.com/",
   projectId: "kreptogame",
@@ -29,9 +30,8 @@ function App() {
   const [leaderboard, setLeaderboard] = useState([]);
 
   const user = tg?.initDataUnsafe?.user;
-  const userId = user?.id ? String(user.id) : "guest_" + Math.floor(Math.random() * 1000);
+  const userId = user?.id ? String(user.id) : "guest_1";
   const username = user?.first_name || "Игрок";
-  const inviteLink = `https://t.me/ТВОЙ_БОТ?start=${userId}`;
 
   useEffect(() => {
     if (balance > 0) set(ref(db, 'users/' + userId), { username, balance: Math.floor(balance) });
@@ -64,8 +64,7 @@ function App() {
   }, [passiveIncome]);
 
   useEffect(() => {
-    const q = query(ref(db, 'users'), orderByChild('balance'), limitToLast(10));
-    onValue(q, (s) => {
+    onValue(query(ref(db, 'users'), orderByChild('balance'), limitToLast(10)), (s) => {
       const data = s.val();
       if (data) setLeaderboard(Object.values(data).sort((a,b) => b.balance - a.balance));
     });
@@ -78,7 +77,7 @@ function App() {
     setEnergy(e => e - 1);
   };
 
-  const startTrade = (type) => {
+  const startTrade = () => {
     if (balance < tradeAmount) return tg?.showAlert("Мало монет!");
     setBalance(b => b - tradeAmount);
     setTimeout(() => {
@@ -94,7 +93,7 @@ function App() {
   return (
     <div className="app-container">
       <div className="top-stats">
-        <div className="stat"><span>В час</span><b>+{passiveIncome}</b></div>
+        <div className="stat"><span>Доход</span><b>+{passiveIncome}</b></div>
         <div className="stat"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
       </div>
       <main className="content">
@@ -111,7 +110,11 @@ function App() {
           <div className="trade-view">
             <div className="chart-box">
               <Chart 
-                options={{ chart: { type: 'candlestick', toolbar: {show:false} }, xaxis: { type: 'datetime', labels: {show:false} } }}
+                options={{ 
+                    chart: { type: 'candlestick', toolbar: {show:false}, background: 'transparent' },
+                    xaxis: { type: 'datetime', labels: {show:false} },
+                    theme: { mode: 'dark' }
+                }}
                 series={[{ data: candles }]} type="candlestick" height={220}
               />
             </div>
@@ -121,19 +124,8 @@ function App() {
                 <b>{tradeAmount}</b>
                 <button onClick={() => setTradeAmount(tradeAmount + 50)}>+</button>
               </div>
-              <div className="trade-btns">
-                <button className="btn-up" onClick={() => startTrade('up')}>ВВЕРХ</button>
-                <button className="btn-down" onClick={() => startTrade('down')}>ВНИЗ</button>
-              </div>
+              <button className="btn-up" style={{width:'100%', padding:'15px'}} onClick={startTrade}>ОТКРЫТЬ СДЕЛКУ</button>
             </div>
-          </div>
-        )}
-        {tab === 'friends' && (
-          <div className="friends-view">
-            <h2>Друзья</h2>
-            <button onClick={() => { navigator.clipboard.writeText(inviteLink); tg?.showAlert("Скопировано!"); }}>
-              Копировать реф-ссылку
-            </button>
           </div>
         )}
         {tab === 'top' && (
@@ -143,21 +135,13 @@ function App() {
             ))}
           </div>
         )}
-        {tab === 'settings' && (
-          <div className="settings-view">
-            <button onClick={() => setIsVibro(!isVibro)}>Вибрация: {isVibro ? 'ВКЛ' : 'ВЫКЛ'}</button>
-          </div>
-        )}
       </main>
       <nav className="nav">
         <button onClick={()=>setTab('home')} className={tab==='home'?'active':''}>Игра</button>
         <button onClick={()=>setTab('trade')} className={tab==='trade'?'active':''}>Биржа</button>
-        <button onClick={()=>setTab('friends')} className={tab==='friends'?'active':''}>Друзья</button>
         <button onClick={()=>setTab('top')} className={tab==='top'?'active':''}>Топ</button>
-        <button onClick={()=>setTab('settings')} className={tab==='settings'?'active':''}>⚙️</button>
       </nav>
     </div>
   );
 }
-
 export default App;
