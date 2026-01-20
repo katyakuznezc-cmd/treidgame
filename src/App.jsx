@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
+imimport React, { useState, useEffect, useMemo } from 'react';
+import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
-import { LineChart, Line, YAxis, ResponsiveContainer } from 'recharts';
+import Chart from 'react-apexcharts';
 import './App.css';
 
+// ТВОЙ CONFIG (Вставь свои ключи из Firebase)
 const firebaseConfig = {
-  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
+ apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
   authDomain: "kreptogame.firebaseapp.com",
   databaseURL: "https://kreptogame-default-rtdb.firebaseio.com/",
   projectId: "kreptogame",
@@ -21,40 +24,61 @@ const db = getDatabase(app);
 const tg = window.Telegram?.WebApp;
 
 function App() {
+  // Состояния игры
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
   const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
   const [passiveIncome, setPassiveIncome] = useState(() => Number(localStorage.getItem('hPass')) || 0);
   const [tab, setTab] = useState('home');
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [orders, setOrders] = useState([]);
   
-  // Настройки
-  const [isMusic, setIsMusic] = useState(() => localStorage.getItem('hMus') === 'true');
+  // Состояния биржи
+  const [tradeAmount, setTradeAmount] = useState(100);
+  const [candles, setCandles] = useState([]);
+  
+  // Настройки и прочее
   const [isVibro, setIsVibro] = useState(() => localStorage.getItem('hVib') !== 'false');
+  const [leaderboard, setLeaderboard] = useState([]);
 
   const user = tg?.initDataUnsafe?.user;
   const userId = user?.id ? String(user.id) : "guest_1";
   const username = user?.first_name || "Игрок";
   const inviteLink = `https://t.me/ТВОЙ_БОТ?start=${userId}`;
 
+  // 1. Логика Firebase и сохранения
   useEffect(() => {
     if (balance > 0) set(ref(db, 'users/' + userId), { username, balance: Math.floor(balance) });
     localStorage.setItem('hBal', balance);
     localStorage.setItem('hEn', energy);
     localStorage.setItem('hPass', passiveIncome);
-    localStorage.setItem('hMus', isMusic);
     localStorage.setItem('hVib', isVibro);
-  }, [balance, energy, passiveIncome, isMusic, isVibro, userId, username]);
+  }, [balance, energy, passiveIncome, isVibro, userId, username]);
 
+  // 2. Генерация свечей для графика (каждые 3 сек)
   useEffect(() => {
+    const interval = setInterval(() => {
+      setCandles(prev => {
+        const lastCandle = prev[prev.length - 1] || { y: [65000, 65100, 64900, 65050] };
+        const open = lastCandle.y[3];
+        const close = open + (Math.random() * 200 - 100);
+        const newCandle = { 
+          x: new Date().getTime(), 
+          y: [open, Math.max(open, close) + 20, Math.min(open, close) - 20, close] 
+        };
+        return [...prev.slice(-15), newCandle];
+      });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 3. Регенерация энергии и пассивный доход
+  useEffect(() => {
+    const eI = setInterval(() => setEnergy(e => e < 1000 ? e + 1 : 1000), 1500);
     const pI = setInterval(() => { if (passiveIncome > 0) setBalance(b => b + (passiveIncome / 3600)); }, 1000);
-    const eI = setInterval(() => setEnergy(e => e < 1000 ? e + 1 : 1000), 2000);
-    return () => { clearInterval(pI); clearInterval(eI); };
+    return () => { clearInterval(eI); clearInterval(pI); };
   }, [passiveIncome]);
 
+  // 4. Загрузка ТОПа
   useEffect(() => {
-    const qTop = query(ref(db, 'users'), orderByChild('balance'), limitToLast(15));
-    onValue(qTop, (s) => {
+    onValue(query(ref(db, 'users'), orderByChild('balance'), limitToLast(10)), (s) => {
       const data = s.val();
       if (data) setLeaderboard(Object.values(data).sort((a,b) => b.balance - a.balance));
     });
@@ -67,27 +91,36 @@ function App() {
     setEnergy(e => e - 1);
   };
 
-  const copyInvite = () => {
-    navigator.clipboard.writeText(inviteLink);
-    if (tg) tg.showAlert("Ссылка скопирована! Отправь её другу.");
+  const startTrade = (type) => {
+    if (balance < tradeAmount) return tg?.showAlert("Мало монет!");
+    setBalance(b => b - tradeAmount);
+    tg?.showConfirm(`Сделка ${type === 'up' ? 'ВВЕРХ' : 'ВНИЗ'} открыта. Ждем результат...`, (ok) => {
+      setTimeout(() => {
+        const win = Math.random() > 0.5;
+        if (win) {
+          setBalance(b => b + tradeAmount * 2);
+          tg?.showAlert("Профит! + " + tradeAmount);
+        } else {
+          tg?.showAlert("Сделка в минус...");
+        }
+      }, 2000);
+    });
   };
-
-  const chartData = useMemo(() => Array.from({ length: 15 }).map(() => ({ p: 60000 + Math.random()*2000 })), [tab]);
 
   return (
     <div className="app-container">
       <div className="top-stats">
-        <div className="stat-card"><span>Прибыль</span><b>+{passiveIncome}</b></div>
-        <div className="stat-card"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
+        <div className="stat"><span>В час</span><b>+{passiveIncome}</b></div>
+        <div className="stat"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
       </div>
 
-      <main className="content-area">
+      <main className="content">
         {tab === 'home' && (
           <div className="home-view">
-            <div className="hamster-body" onClick={handleTap}>🐹</div>
-            <div className="energy-wrap">
-              <div className="en-text">⚡ {energy} / 1000</div>
-              <div className="en-bar"><div className="en-fill" style={{width:`${energy/10}%`}}></div></div>
+            <div className="hamster-big" onClick={handleTap}>🐹</div>
+            <div className="en-box">
+              <span>⚡ {energy} / 1000</span>
+              <div className="en-bar"><div className="fill" style={{width: `${energy/10}%`}}></div></div>
             </div>
           </div>
         )}
@@ -95,14 +128,26 @@ function App() {
         {tab === 'trade' && (
           <div className="trade-view">
             <div className="chart-box">
-              <ResponsiveContainer width="100%" height={100}>
-                <LineChart data={chartData}><Line type="monotone" dataKey="p" stroke="#00ff88" dot={false} strokeWidth={2}/></LineChart>
-              </ResponsiveContainer>
+              <Chart 
+                options={{ 
+                    chart: { type: 'candlestick', toolbar: {show:false}, background: 'transparent' },
+                    theme: { mode: 'dark' },
+                    xaxis: { type: 'datetime', labels: {show:false} },
+                    grid: { borderColor: '#222' }
+                }}
+                series={[{ data: candles }]}
+                type="candlestick" height={220}
+              />
             </div>
-            <div className="shop-grid">
-              <div className="item-card" onClick={() => balance >= 1000 && (setBalance(b=>b-1000), setPassiveIncome(p=>p+150))}>
-                <b>Trading Bot v1</b><p>+150/час</p>
-                <button className={balance >= 1000 ? 'ok' : ''}>1,000</button>
+            <div className="trade-ui">
+              <div className="amount-step">
+                <button onClick={() => setTradeAmount(Math.max(10, tradeAmount - 50))}>-</button>
+                <b>{tradeAmount}</b>
+                <button onClick={() => setTradeAmount(tradeAmount + 50)}>+</button>
+              </div>
+              <div className="trade-btns">
+                <button className="btn-up" onClick={() => startTrade('up')}>ВВЕРХ</button>
+                <button className="btn-down" onClick={() => startTrade('down')}>ВНИЗ</button>
               </div>
             </div>
           </div>
@@ -110,11 +155,12 @@ function App() {
 
         {tab === 'friends' && (
           <div className="friends-view">
-            <h2>Пригласи друзей</h2>
-            <div className="invite-box">
-              <p>За каждого друга ты получишь 5,000 💰</p>
-              <input readOnly value={inviteLink} />
-              <button onClick={copyInvite}>Копировать ссылку</button>
+            <h2>Друзья</h2>
+            <div className="invite-card">
+              <p>Твой ID: {userId}</p>
+              <button onClick={() => { navigator.clipboard.writeText(inviteLink); tg?.showAlert("Ссылка скопирована!"); }}>
+                Копировать реф-ссылку
+              </button>
             </div>
           </div>
         )}
@@ -122,32 +168,23 @@ function App() {
         {tab === 'top' && (
           <div className="top-view">
             {leaderboard.map((u, i) => (
-              <div className="l-item" key={i}><span>{i+1}. {u.username}</span><b>{u.balance}</b></div>
+              <div className="l-row" key={i}><span>{i+1}. {u.username}</span><b>{u.balance}</b></div>
             ))}
           </div>
         )}
 
         {tab === 'settings' && (
           <div className="settings-view">
-            <h2>Настройки</h2>
-            <div className="set-row">
+            <div className="s-row">
               <span>Вибрация</span>
               <button onClick={() => setIsVibro(!isVibro)}>{isVibro ? 'ВКЛ' : 'ВЫКЛ'}</button>
             </div>
-            <div className="set-row">
-              <span>Музыка</span>
-              <button onClick={() => setIsMusic(!isMusic)}>{isMusic ? 'ВКЛ' : 'ВЫКЛ'}</button>
-            </div>
-            <hr/>
-            <div className="creator-info">
-              <p>Создатель: <b>@ТВОЙ_НИК</b></p>
-              <p>Версия: 1.2.0 Stable</p>
-            </div>
+            <p>Создатель: @ТвойНик</p>
           </div>
         )}
       </main>
 
-      <nav className="bottom-nav">
+      <nav className="nav">
         <button onClick={()=>setTab('home')} className={tab==='home'?'active':''}>Игра</button>
         <button onClick={()=>setTab('trade')} className={tab==='trade'?'active':''}>Биржа</button>
         <button onClick={()=>setTab('friends')} className={tab==='friends'?'active':''}>Друзья</button>
@@ -157,4 +194,5 @@ function App() {
     </div>
   );
 }
+
 export default App;
