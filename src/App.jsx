@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
+import { getDatabase, ref, set } from "firebase/database";
 import Chart from 'react-apexcharts';
 import './App.css';
 
@@ -19,89 +19,81 @@ const db = getDatabase(app);
 const tg = window.Telegram?.WebApp;
 
 function App() {
-  const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
-  const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
+  const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 1000);
   const [tab, setTab] = useState('home');
-  const [tradeAmount, setTradeAmount] = useState(100);
-  
-  // Добавляем стартовые свечи сразу, чтобы график не был пустым
   const [candles, setCandles] = useState([
-    { x: new Date().getTime() - 30000, y: [65000, 65050, 64950, 65020] },
-    { x: new Date().getTime() - 15000, y: [65020, 65100, 65010, 65080] }
+    { x: new Date().getTime(), y: [65000, 65100, 64900, 65050] }
   ]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    localStorage.setItem('hBal', balance);
+  }, [balance]);
+
+  useEffect(() => {
+    const i = setInterval(() => {
       setCandles(prev => {
         const last = prev[prev.length - 1];
         const o = last.y[3];
-        const c = o + (Math.random() * 100 - 50);
-        const h = Math.max(o, c) + 10;
-        const l = Math.min(o, c) - 10;
-        const newCandle = { x: new Date().getTime(), y: [o, h, l, c] };
-        return [...prev.slice(-15), newCandle];
+        const c = o + (Math.random() * 40 - 20);
+        return [...prev.slice(-10), { x: new Date().getTime(), y: [o, Math.max(o,c)+5, Math.min(o,c)-5, c] }];
       });
-    }, 3000);
-    return () => clearInterval(interval);
+    }, 2000);
+    return () => clearInterval(i);
   }, []);
 
-  const startTrade = () => {
-    if(balance < tradeAmount) return tg?.showAlert("Недостаточно монет!");
-    setBalance(b => b - tradeAmount);
+  const handleTrade = (win) => {
+    if (balance < 100) return tg?.showAlert("Нужно минимум 100 монет!");
+    setBalance(b => b - 100);
     setTimeout(() => {
-      if(Math.random() > 0.48) { setBalance(b => b + tradeAmount * 2); tg?.showAlert("Профит! 📈"); }
-      else { tg?.showAlert("Минус... 📉"); }
-    }, 2000);
+      if (Math.random() > 0.5) {
+        setBalance(b => b + 250);
+        tg?.showAlert("Профит +150!");
+      } else {
+        tg?.showAlert("Убыток -100");
+      }
+    }, 1500);
   };
 
   return (
     <div className="app-container">
-      <div className="top-stats">
-        <b>💰 {Math.floor(balance).toLocaleString()}</b>
-      </div>
-
-      <main className="content">
+      <div className="balance-header">💰 {Math.floor(balance)}</div>
+      
+      <main className="main-content">
         {tab === 'home' && (
-          <div className="home-view">
-            <div className="hamster-big" onClick={() => {
-              if(energy > 0) { setBalance(b => b + 1); setEnergy(e => e - 1); tg?.HapticFeedback.impactOccurred('light'); }
-            }}>🐹</div>
-            <div className="en-box">⚡ {energy} / 1000</div>
+          <div className="clicker">
+            <div className="circle" onClick={() => setBalance(b => b + 1)}>🐹</div>
+            <p>Нажми, чтобы заработать на сделку!</p>
           </div>
         )}
 
         {tab === 'trade' && (
-          <div className="trade-view">
-            <div className="chart-box" style={{ minHeight: '250px' }}>
+          <div className="trading-area">
+            <div className="chart-container">
               <Chart 
                 options={{
-                  chart: { type: 'candlestick', toolbar: { show: false }, background: '#000' },
+                  chart: { type: 'candlestick', toolbar: { show: false } },
                   xaxis: { type: 'datetime', labels: { show: false } },
-                  yaxis: { tooltip: { enabled: true }, labels: { style: { colors: '#fff' } } },
-                  plotOptions: { candlestick: { colors: { upward: '#00ff88', downward: '#ff4d4d' } } }
+                  theme: { mode: 'dark' }
                 }}
-                series={[{ name: 'BTC', data: candles }]}
+                series={[{ data: candles }]}
                 type="candlestick"
-                height={250}
+                height={300}
               />
             </div>
-            <div className="trade-ui">
-               <div className="trade-btns">
-                 <button onClick={() => setTradeAmount(a => Math.max(10, a - 50))}>-</button>
-                 <span>{tradeAmount}</span>
-                 <button onClick={() => setTradeAmount(a => a + 50)}>+</button>
-               </div>
-               <button className="main-trade-btn" onClick={startTrade}>ОТКРЫТЬ СДЕЛКУ</button>
+            <div className="trade-buttons">
+              <button className="buy" onClick={() => handleTrade(true)}>ВВЕРХ (100)</button>
+              <button className="sell" onClick={() => handleTrade(false)}>ВНИЗ (100)</button>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="nav">
-        <button onClick={()=>setTab('home')} className={tab==='home'?'active':''}>Игра</button>
-        <button onClick={()=>setTab('trade')} className={tab==='trade'?'active':''}>Биржа</button>
+      <nav className="bottom-nav">
+        <button onClick={() => setTab('home')}>Кликать</button>
+        <button onClick={() => setTab('trade')}>БИРЖА</button>
       </nav>
     </div>
   );
 }
+
 export default App;
