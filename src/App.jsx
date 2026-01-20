@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue, query, orderByChild, limitToLast } from "firebase/database";
+import { LineChart, Line, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import './App.css';
 
+// ТВОЙ CONFIG (обязательно вставь свои ключи сюда)
 const firebaseConfig = {
-  apiKey: "AIzaSyAR2T3Rz0A9hDllrWmtRRY-4rfPEdJle6g",
+  apiKey: "ТВОЙ_API_KEY",
   authDomain: "kreptogame.firebaseapp.com",
   databaseURL: "https://kreptogame-default-rtdb.firebaseio.com/",
   projectId: "kreptogame",
   storageBucket: "kreptogame.appspot.com",
-  messagingSenderId: "528985774017",
-  appId: "1:528985774017:web:50ed5fd68898775e7d8140"
+  messagingSenderId: "ТВОЙ_SENDER_ID",
+  appId: "ТВОЙ_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -19,107 +21,95 @@ const tg = window.Telegram?.WebApp;
 
 function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('hBal')) || 0);
-  const [energy, setEnergy] = useState(() => Number(localStorage.getItem('hEn')) || 1000);
   const [tab, setTab] = useState('home');
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [clicks, setClicks] = useState([]);
-  
-  // ПАССИВНЫЙ ДОХОД (Трейдинг)
   const [passiveIncome, setPassiveIncome] = useState(() => Number(localStorage.getItem('hPass')) || 0);
+  const [orders, setOrders] = useState([]);
 
-  const username = tg?.initDataUnsafe?.user?.first_name || "Игрок";
-  const userId = tg?.initDataUnsafe?.user?.id || "guest_" + Math.floor(Math.random() * 1000);
+  // Генерация данных для графика
+  const chartData = useMemo(() => {
+    let price = 67200;
+    return Array.from({ length: 30 }).map((_, i) => {
+      price += Math.random() > 0.5 ? Math.random() * 200 : -Math.random() * 180;
+      return { time: i, price: Math.floor(price) };
+    });
+  }, [tab]);
 
-  // Логика пассивного дохода (начисление каждую секунду)
+  // Симуляция "стакана ордеров"
   useEffect(() => {
     const interval = setInterval(() => {
-      if (passiveIncome > 0) {
-        setBalance(prev => prev + (passiveIncome / 60)); // Начисляем часть дохода каждую секунду
-      }
+      const newOrder = {
+        id: Date.now(),
+        type: Math.random() > 0.5 ? 'buy' : 'sell',
+        amount: (Math.random() * 2).toFixed(3),
+        price: (67000 + Math.random() * 500).toFixed(1)
+      };
+      setOrders(prev => [newOrder, ...prev].slice(0, 5));
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Пассивный доход
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (passiveIncome > 0) setBalance(b => b + (passiveIncome / 3600));
     }, 1000);
     return () => clearInterval(interval);
   }, [passiveIncome]);
 
-  useEffect(() => {
-    if (balance > 0) set(ref(db, 'users/' + userId), { username, balance: Math.floor(balance) });
-    localStorage.setItem('hBal', balance);
-    localStorage.setItem('hEn', energy);
-    localStorage.setItem('hPass', passiveIncome);
-  }, [balance, energy, passiveIncome, userId, username]);
-
-  useEffect(() => {
-    const topQuery = query(ref(db, 'users'), orderByChild('balance'), limitToLast(10));
-    onValue(topQuery, (snapshot) => {
-      const data = snapshot.val();
-      if (data) setLeaderboard(Object.values(data).sort((a, b) => b.balance - a.balance));
-    });
-  }, []);
-
-  const handleTap = (e) => {
-    if (energy <= 0) return;
-    if (tg) tg.HapticFeedback.impactOccurred('medium');
-    setBalance(b => b + 1);
-    setEnergy(e => e - 1);
-    const id = Date.now();
-    const x = e.clientX || (e.touches && e.touches[0].clientX);
-    const y = e.clientY || (e.touches && e.touches[0].clientY);
-    setClicks(prev => [...prev, { id, x, y }]);
-    setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 600);
-  };
-
   return (
     <div className="app-container">
       <div className="top-stats">
-        <div className="stat-card"><span>Прибыль в час</span><br/><b>+{passiveIncome}</b></div>
-        <div className="stat-card"><span>Баланс</span><br/><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
+        <div className="stat-card"><span>Доход/час</span><b>+{passiveIncome}</b></div>
+        <div className="stat-card"><span>Баланс</span><b>💰 {Math.floor(balance).toLocaleString()}</b></div>
       </div>
 
       <main className="content">
         {tab === 'home' && (
           <div className="game-screen">
-            <div className="hamster-main" onClick={handleTap}>
-              <div className="hamster-face">🐹</div>
-              {clicks.map(c => <div key={c.id} className="tap-pop" style={{ left: c.x, top: c.y }}>+1</div>)}
-            </div>
-            <div className="energy-wrap">
-              <span>⚡ {energy} / 1000</span>
-              <div className="energy-bg"><div className="energy-fill" style={{width: `${energy/10}%`}}></div></div>
-            </div>
+             <div className="hamster-main" onClick={(e) => setBalance(b => b + 1)}>
+                <div className="hamster-face">🐹</div>
+             </div>
           </div>
         )}
 
         {tab === 'trade' && (
           <div className="trade-screen">
-            <h2>Трейдинг (Майнинг) 📈</h2>
-            <div className="trade-card" onClick={() => balance >= 500 && (setBalance(b => b - 500), setPassiveIncome(p => p + 100))}>
-              <h3>Бот-трейдер v1</h3>
-              <p>Доход: +100 / час</p>
-              <button disabled={balance < 500}>{balance < 500 ? 'Нужно 500' : 'Купить за 500'}</button>
+            <div className="chart-box">
+              <div className="chart-header">BTC / USDT <span>LIVE</span></div>
+              <ResponsiveContainer width="100%" height={150}>
+                <LineChart data={chartData}>
+                  <YAxis hide domain={['auto', 'auto']} />
+                  <Line type="monotone" dataKey="price" stroke="#00ff88" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        )}
 
-        {tab === 'top' && (
-          <div className="top-screen">
-            <h2>Лидеры 🏆</h2>
-            {leaderboard.map((user, i) => (
-              <div className="top-item" key={i}>
-                <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i+1} {user.username}</span>
-                <b>{user.balance.toLocaleString()}</b>
+            <div className="order-book">
+              <h4>Стакан ордеров</h4>
+              {orders.map(o => (
+                <div key={o.id} className={`order-row ${o.type}`}>
+                  <span>{o.amount} BTC</span>
+                  <b>{o.price}</b>
+                </div>
+              ))}
+            </div>
+
+            <div className="trade-actions">
+              <div className="trade-item" onClick={() => balance >= 1000 && (setBalance(b => b - 1000), setPassiveIncome(p => p + 250))}>
+                <span>Бот-скальпер v2</span>
+                <button disabled={balance < 1000}>{balance < 1000 ? '1000' : 'КУПИТЬ'}</button>
               </div>
-            ))}
+            </div>
           </div>
         )}
       </main>
 
       <nav className="menu">
         <button onClick={() => setTab('home')} className={tab === 'home' ? 'active' : ''}>🏠 Игра</button>
-        <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>📈 Трейдинг</button>
-        <button onClick={() => setTab('top')} className={tab === 'top' ? 'active' : ''}>🏆 Топ</button>
+        <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>📈 Биржа</button>
       </nav>
     </div>
   );
 }
 
 export default App;
-
