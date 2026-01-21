@@ -164,3 +164,46 @@ body { margin:0; background: var(--dark); color: white; font-family: 'Segoe UI',
   border-left: 4px solid var(--neon);
   background: rgba(0, 204, 255, 0.05);
 }
+/* Дневник трейдера */
+.diary-section {
+  flex: 1.5;
+  background: #050508;
+  border-top: 1px solid #1a1a1a;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+
+.logs-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.log-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  padding: 4px 2px;
+  border-bottom: 1px solid #111;
+  font-family: monospace;
+}
+
+.log-time { color: #555; width: 30px; }
+.log-coin { color: #aaa; flex: 1; margin-left: 5px; }
+.log-pnl { font-weight: bold; }
+.log-pnl.red { color: #ff0055; }
+.log-pnl.grn { color: #39ff14; }
+
+.empty-txt {
+  font-size: 9px;
+  color: #333;
+  text-align: center;
+  display: block;
+  margin-top: 10px;
+}
+
+/* Скроллбар для дневника */
+.logs-list::-webkit-scrollbar { width: 2px; }
+.logs-list::-webkit-scrollbar-thumb { background: #222; }
