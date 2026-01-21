@@ -1,54 +1,50 @@
-:root { --win: #39ff14; --loss: #ff0055; --neon: #00f2ff; }
-body { background: #000; color: #fff; font-family: sans-serif; margin: 0; }
+:root { --win: #39ff14; --loss: #ff0055; --neon: #00f2ff; --bg: #000; }
+body { background: var(--bg); color: #fff; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; }
 
-/* Анимация полоски сигнала 120 сек */
-.n-sig-bar {
-  height: 2px; background: var(--loss); width: 100%;
-  animation: shrink 120s linear forwards;
-}
+.app-neon { height: 100vh; display: flex; flex-direction: column; }
+
+/* Таймер сигнала */
+.n-sig-bar { height: 3px; background: var(--loss); width: 100%; animation: shrink 120s linear forwards; }
 @keyframes shrink { from { width: 100%; } to { width: 0%; } }
 
-/* Цены */
-.n-price { font-family: monospace; transition: 0.3s; margin-left: 10px; }
-.n-price.up { color: var(--win); }
-.n-price.down { color: var(--loss); }
+/* Живые цены */
+.n-price { font-family: monospace; font-size: 13px; margin-left: 10px; transition: 0.3s; }
+.n-price.up { color: var(--win); text-shadow: 0 0 5px var(--win); }
+.n-price.down { color: var(--loss); text-shadow: 0 0 5px var(--loss); }
 
-/* Тосты */
-.n-toast {
-  position: fixed; top: 10px; left: 10%; right: 10%; padding: 15px; 
-  text-align: center; font-weight: bold; z-index: 100; border-radius: 5px;
-  animation: slideIn 0.3s ease;
-}
-.n-toast.win { background: var(--win); color: #000; }
-.n-toast.loss { background: var(--loss); color: #fff; }
-.n-toast.info { background: var(--neon); color: #000; }
+/* Интерфейс */
+.n-header { padding: 20px; display: flex; justify-content: space-between; background: #0a0a0a; border-bottom: 1px solid #1a1a1a; }
+.n-money { color: var(--win); font-size: 24px; font-weight: bold; }
 
-@keyframes slideIn { from { transform: translateY(-100%); } to { transform: translateY(0); } }
-
-/* UI элементы */
-.n-header { padding: 15px; display: flex; justify-content: space-between; background: #0a0a0a; }
-.n-money { font-size: 22px; color: var(--win); font-weight: bold; }
-.n-sig-card { background: #0f0f0f; margin: 10px; border: 1px solid #222; overflow: hidden; }
-.n-sig-info { padding: 12px; font-size: 13px; }
-.n-blink { color: var(--loss); animation: blink 1s infinite; margin-right: 5px; }
+.n-signal-box { background: #0f0f0f; margin: 10px; border: 1px solid #222; position: relative; }
+.n-sig-body { padding: 15px; font-size: 14px; }
+.n-perc { color: var(--win); font-weight: bold; float: right; }
 
 .n-dex-grid { display: grid; gap: 10px; padding: 15px; }
-.n-dex-btn { background: #0a0a0a; padding: 20px; border-left: 4px solid var(--c); border: 1px solid #1a1a1a; position: relative; cursor: pointer; }
-.n-active-dot { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; background: var(--loss); border-radius: 50%; }
+.n-dex-card { background: #0a0a0a; padding: 25px; border: 1px solid #1a1a1a; border-left: 4px solid var(--c); cursor: pointer; display: flex; justify-content: space-between; }
+.n-active-dot { width: 8px; height: 8px; background: var(--loss); border-radius: 50%; animation: blink 1s infinite; }
 
-.n-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #111; }
-.n-btn { border: none; padding: 8px 15px; font-weight: bold; cursor: pointer; }
+.n-term-head { padding: 10px; background: #050505; display: flex; gap: 10px; align-items: center; }
+.n-inputs { display: flex; gap: 10px; flex: 1; }
+.n-inputs input { background: #000; border: 1px solid #333; color: var(--neon); padding: 5px; width: 60px; }
+.n-lev-box { flex: 1; display: flex; flex-direction: column; }
+
+.n-pair-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #111; }
+.n-btn { border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; min-width: 80px; }
 .n-btn.buy { background: var(--win); color: #000; }
 .n-btn.close { background: #333; color: #fff; }
 
-.n-sphere { width: 150px; height: 150px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 50px auto; box-shadow: 0 0 20px var(--neon); cursor: pointer; }
-.n-pending-info { text-align: center; color: var(--neon); font-size: 12px; margin-top: 10px; }
+.n-sphere { width: 140px; height: 140px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); margin: 60px auto; box-shadow: 0 0 30px var(--neon); cursor: pointer; }
+.n-waiting-badge { text-align: center; color: var(--neon); font-weight: bold; font-size: 12px; }
 
-.n-nav { position: fixed; bottom: 30px; width: 100%; display: flex; background: #000; height: 60px; }
-.n-nav button { flex: 1; background: none; border: none; color: #444; font-weight: bold; }
-.n-nav button.active { color: var(--neon); }
+.n-nav { height: 70px; display: flex; background: #0a0a0a; border-top: 1px solid #111; }
+.n-nav button { flex: 1; background: none; border: none; color: #444; font-weight: bold; font-size: 12px; }
+.n-nav button.active { color: var(--neon); border-top: 2px solid var(--neon); }
 
-.n-footer-link { position: fixed; bottom: 0; width: 100%; text-align: center; padding: 5px; background: #050505; }
-.n-footer-link a { color: #222; text-decoration: none; font-size: 9px; }
+.n-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 30px; border-radius: 4px; z-index: 1000; font-weight: bold; animation: slideDown 0.4s; }
+.n-toast.info { background: var(--neon); color: #000; }
+.n-toast.win { background: var(--win); color: #000; }
+.n-toast.loss { background: var(--loss); color: #fff; }
 
+@keyframes slideDown { from { top: -100px; } to { top: 20px; } }
 @keyframes blink { 50% { opacity: 0; } }
