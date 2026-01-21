@@ -43,3 +43,30 @@ body { margin:0; background: var(--dark); color: white; font-family: 'Segoe UI',
 .page-mining { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .tap-circle { width: 160px; height: 160px; border: 4px solid var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; color: var(--green); box-shadow: 0 0 20px var(--green); cursor: pointer; }
 .tap-circle:active { transform: scale(0.95); }
+/* Добавь это к существующим стилям */
+
+.page-achievements { padding: 15px; overflow-y: auto; flex: 1; padding-bottom: 80px; }
+.ach-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+
+.ach-card { 
+  display: flex; align-items: center; padding: 15px; 
+  border-radius: 12px; background: #0d0d14; border: 1px solid #1a1a2e;
+  transition: 0.3s;
+}
+
+.ach-card.unlocked { 
+  border-color: var(--green); 
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.2); 
+}
+
+.ach-card.locked { opacity: 0.5; filter: grayscale(0.8); }
+
+.ach-icon { font-size: 30px; margin-right: 15px; }
+.ach-info b { display: block; color: var(--neon); font-size: 16px; margin-bottom: 4px; }
+.ach-info p { margin: 0; font-size: 11px; color: #888; }
+
+/* Фикс для навигации (4 кнопки теперь) */
+.bottom-nav button { font-size: 9px; }
+
+/* Анимация при наведении на трофей */
+.ach-card.unlocked:hover { transform: scale(1.02); background: #11111d; }
