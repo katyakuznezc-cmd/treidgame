@@ -1,38 +1,35 @@
-.app-container {
-  background-color: #000 !important;
-  border: 5px solid #00ff00 !important; /* ЯРКАЯ ЗЕЛЕНАЯ РАМКА */
-  height: 100vh;
-  color: white;
-}
+:root { --bg: #010409; --card: #0d1117; --accent: #238636; --text: #e6edf3; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+.app { display: flex; flex-direction: column; height: 100vh; max-width: 500px; margin: 0 auto; }
 
-.chart-box {
-  width: 100%;
-  height: 300px;
-  background: #111;
-  border: 2px solid red; /* КРАСНАЯ РАМКА ДЛЯ ГРАФИКА */
-}
-.web3-header { padding: 30px 20px; text-align: center; background: #0d1117; border-bottom: 2px solid #21262d; }
-.status-dot { width: 8px; height: 8px; background: #238636; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 10px #238636; }
-.web3-header span { color: #8b949e; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.header { padding: 20px; text-align: center; border-bottom: 1px solid #30363d; }
+.logo { font-weight: 900; letter-spacing: 2px; color: #58a6ff; margin-bottom: 10px; }
+.balance-display h2 { margin: 0; font-size: 32px; color: #fff; }
 
-.bottom-nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #161b22; border-top: 1px solid #30363d; z-index: 100; }
-.bottom-nav button { flex: 1; padding: 20px; background: none; border: none; color: #8b949e; font-weight: bold; }
-.bottom-nav button.active { color: #58a6ff; background: rgba(88, 166, 255, 0.1); }
+.main-content { flex: 1; padding: 20px; overflow-y: auto; padding-bottom: 100px; }
 
-.signal-card { background: #0d1117; margin: 15px; padding: 20px; border-radius: 15px; border: 1px solid #30363d; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
-.signal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.pair-info { font-weight: 800; font-size: 18px; color: #f08c00; }
-.timer { background: #21262d; padding: 5px 12px; border-radius: 20px; font-family: monospace; }
-.timer.urgent { color: #ff7b72; border: 1px solid #ff7b72; animation: blink 0.6s infinite; }
+/* Mining Tab */
+.mining-tab { text-align: center; margin-top: 40px; }
+.tap-area { width: 180px; height: 180px; background: radial-gradient(#238636, #010409); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 4px solid #30363d; box-shadow: 0 0 20px rgba(35, 134, 54, 0.3); }
+.dollar-icon { font-size: 80px; color: #fff; font-weight: bold; user-select: none; }
+.tap-area:active { transform: scale(0.95); }
 
-.route-container { display: flex; justify-content: space-between; align-items: center; margin: 25px 0; }
-.node { display: flex; flex-direction: column; align-items: center; }
-.node-label { font-size: 10px; color: #8b949e; }
-.node-name { font-weight: bold; font-size: 16px; margin: 4px 0; }
-.node-price { font-family: monospace; color: #8b949e; }
-.node-price.profit { color: #3fb950; }
+/* Kross-DEX Tab */
+.signal-box { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid #30363d; margin-bottom: 20px; position: relative; }
+.signal-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+.live-tag { background: #f85149; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+.route { display: flex; justify-content: space-around; align-items: center; margin: 20px 0; }
+.node { text-align: center; font-weight: bold; }
+.profit-est { text-align: center; font-weight: bold; border-top: 1px solid #30363d; padding-top: 15px; }
+.profit-est span { color: #3fb950; }
 
-.swap-action-btn { width: 100%; background: #238636; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; font-size: 16px; }
-.swap-action-btn:disabled { background: #21262d; color: #484f58; }
+.trade-btn { width: 100%; padding: 15px; background: #238636; border: none; border-radius: 10px; color: white; font-weight: bold; margin-top: 15px; cursor: pointer; }
 
-@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+.dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dex-card { background: var(--card); padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
+.dex-card h4 { margin: 0; font-size: 14px; }
+
+/* Navigation */
+.navbar { position: fixed; bottom: 0; width: 100%; max-width: 500px; display: flex; background: #161b22; border-top: 1px solid #30363d; }
+.navbar button { flex: 1; padding: 20px; background: none; border: none; color: #8b949e; font-weight: bold; transition: 0.3s; }
+.navbar button.active { color: #58a6ff; background: rgba(88, 166, 255, 0.1); }
