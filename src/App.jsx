@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
@@ -9,225 +10,146 @@ const EXCHANGES = [
   { id: 'pancakeswap', name: 'PancakeSwap', color: '#d1884f' }
 ];
 
-const COIN_LIST = ['TON', 'ETH', 'SOL', 'BNB', 'ARB'];
+const COINS = ['TON', 'ETH', 'SOL', 'BNB', 'ARB'];
 
-function App() {
+export default function App() {
   const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('k_bal')) || 100);
-  const [activeTab, setActiveTab] = useState('mining'); 
+  const [xp, setXp] = useState(() => parseInt(localStorage.getItem('k_xp')) || 0);
+  const [lang, setLang] = useState('RU');
+  const [tab, setTab] = useState('mining');
   const [selectedDex, setSelectedDex] = useState(null);
   const [signal, setSignal] = useState(null);
   const [inventory, setInventory] = useState({});
-  const [tapAnims, setTapAnims] = useState([]);
-  const [prices, setPrices] = useState({});
-  const [sound, setSound] = useState(true);
+  const [isPending, setIsPending] = useState(false);
+  const [statusText, setStatusText] = useState('');
 
-  const tapSound = useRef(new Audio('https://www.soundjay.com/buttons/sounds/button-37a.mp3'));
-
-  useEffect(() => { localStorage.setItem('k_bal', balance); }, [balance]);
-
-  // Имитация живых цен
+  // Сохранение данных
   useEffect(() => {
-    const interval = setInterval(() => {
-      const newPrices = {};
-      COIN_LIST.forEach(c => {
-        newPrices[c] = (Math.random() * 100 + 5).toFixed(2);
-      });
-      setPrices(newPrices);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    localStorage.setItem('k_bal', balance);
+    localStorage.setItem('k_xp', xp);
+  }, [balance, xp]);
 
   // Генератор сигналов
   useEffect(() => {
-    const generate = () => {
-      const b = EXCHANGES[Math.floor(Math.random()*4)];
-      let s = EXCHANGES[Math.floor(Math.random()*4)];
-      while(b.id === s.id) s = EXCHANGES[Math.floor(Math.random()*4)];
-      setSignal({ coin: COIN_LIST[Math.floor(Math.random()*5)], buy: b.id, sell: s.id, profit: (Math.random()*4 + 1.5).toFixed(2) });
+    const gen = () => {
+      const b = EXCHANGES[Math.floor(Math.random() * 4)];
+      let s = EXCHANGES[Math.floor(Math.random() * 4)];
+      while(b.id === s.id) s = EXCHANGES[Math.floor(Math.random() * 4)];
+      setSignal({ coin: COINS[Math.floor(Math.random() * 5)], buy: b.id, sell: s.id, profit: (Math.random() * 3 + 1.5).toFixed(2) });
     };
-    generate();
-    setInterval(generate, 20000);
+    gen();
+    const timer = setInterval(gen, 20000);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleTap = (e) => {
-    setBalance(b => b + 0.01);
-    if(sound) { tapSound.current.currentTime = 0; tapSound.current.play().catch(()=>{}); }
-    const id = Date.now();
-    setTapAnims([...tapAnims, { id, x: e.clientX, y: e.clientY }]);
-    setTimeout(() => setTapAnims(prev => prev.filter(a => a.id !== id)), 700);
-  };
-
   const trade = (coin, type) => {
-    if (type === 'buy') {
-      if (balance >= 50) {
+    if (isPending) return;
+    if (type === 'buy' && balance < 50) return alert("Low balance! Need $50");
+    if (type === 'sell' && !inventory[coin]) return alert("No coins to sell!");
+
+    setIsPending(true);
+    setStatusText(type === 'buy' ? 'CONNECTING TO NODES...' : 'VERIFYING SWAP...');
+
+    setTimeout(() => {
+      if (type === 'buy') {
         setBalance(b => b - 50);
         setInventory(prev => ({ ...prev, [coin]: (prev[coin] || 0) + 1 }));
-      }
-    } else {
-      if (inventory[coin] > 0) {
-        let price = 50;
-        if (signal && selectedDex === signal.sell && coin === signal.coin) {
-          price = 50 * (1 + parseFloat(signal.profit)/100);
-          document.body.classList.add('profit-flash');
-          setTimeout(() => document.body.classList.remove('profit-flash'), 500);
-        } else { price = 50 * 0.95; }
-        setBalance(b => b + price);
+        setStatusText('SUCCESSFULLY BOUGHT!');
+      } else {
+        let isProfitable = signal && selectedDex === signal.sell && coin === signal.coin;
+        let final = isProfitable ? 50 * (1 + parseFloat(signal.profit)/100) : 50 * 0.95;
+        setBalance(b => b + final);
         setInventory(prev => ({ ...prev, [coin]: prev[coin] - 1 }));
+        if(isProfitable) setXp(x => x + 20);
+        setStatusText(isProfitable ? `PROFIT: +$${(final-50).toFixed(2)}` : 'COMMISSION TAKEN -5%');
       }
-    }
+      setTimeout(() => { setIsPending(false); setStatusText(''); }, 1200);
+    }, 2500);
   };
 
   return (
-    <div className="app-wrapper">
-      <header className="header">
-        <div className="logo-text">Kross-DEX</div>
-        <div className="balance-box">
-          <small>AVAILABLE</small><br/>
-          <b>${balance.toFixed(2)}</b>
+    <div className="app-container">
+      <header className="main-header">
+        <div className="user-info">
+          <span className="lvl">LVL {Math.floor(xp/100) + 1}</span>
+          <div className="xp-bar"><div className="xp-fill" style={{width: `${xp % 100}%`}}></div></div>
+        </div>
+        <div className="wallet-info">
+          <small>MAINNET BALANCE</small>
+          <div className="balance-val">${balance.toFixed(2)}</div>
         </div>
       </header>
 
-      <main className="main-viewport">
-        {activeTab === 'mining' && (
-          <div className="mining-zone">
-            <div className="tap-circle" onClick={handleTap}>
-              <span className="dollar-main">$</span>
-              {tapAnims.map(a => <span key={a.id} className="tap-particle" style={{left: a.x, top: a.y}}>+$0.01</span>)}
-            </div>
-            <p className="hint">Tap to mine liquidity</p>
+      <main className="viewport">
+        {tab === 'mining' && (
+          <div className="mining-page">
+            <div className="coin-glow" onClick={() => setBalance(b => b + 0.01)}>$</div>
+            <p>TAP TO GENERATE LIQUIDITY</p>
           </div>
         )}
 
-        {activeTab === 'kross' && (
-          <div className="kross-view">
+        {tab === 'trade' && (
+          <div className="trade-page">
             {signal && (
-              <div className="signal-alert">
-                <div className="live-dot"></div>
-                <span>HINT: Buy <b>{signal.coin}</b> @ {signal.buy} ➔ Sell @ {signal.sell} <b className="grn">+{signal.profit}%</b></span>
+              <div className="signal-box">
+                <div className="pulse-red"></div>
+                <span>BUY <b>{signal.coin}</b>: {signal.buy.toUpperCase()} ➔ SELL: {signal.sell.toUpperCase()} (+{signal.profit}%)</span>
               </div>
             )}
 
             {!selectedDex ? (
-              <div className="dex-grid-list">
+              <div className="dex-list">
                 {EXCHANGES.map(dex => (
-                  <div key={dex.id} className="dex-card-item" onClick={() => setSelectedDex(dex.id)}>
-                    <div className="dex-info">
-                      <div className="dex-icon-mini" style={{background: dex.color}}></div>
-                      <b>{dex.name}</b>
-                    </div>
-                    <span className="dex-status">LIVE</span>
-                  </div>
+                  <button key={dex.id} className="dex-btn" onClick={() => setSelectedDex(dex.id)} style={{borderLeft: `4px solid ${dex.color}`}}>
+                    {dex.name.toUpperCase()} <small>ONLINE</small>
+                  </button>
                 ))}
               </div>
             ) : (
-              <div className="terminal">
-                <div className="terminal-header">
-                  <button className="btn-back" onClick={() => setSelectedDex(null)}>← TERMINALS</button>
-                  <div className="dex-title" style={{color: EXCHANGES.find(d=>d.id===selectedDex).color}}>{selectedDex}</div>
+              <div className="terminal-view">
+                <button className="back-link" onClick={() => setSelectedDex(null)}>← ALL MARKETS</button>
+                <div className="terminal-box">
+                   {COINS.map(c => (
+                     <div key={c} className="pair-row">
+                       <div className="pair-name"><b>{c}</b>/USDT</div>
+                       <div className="pair-actions">
+                         <button className="buy-sm" onClick={() => trade(c, 'buy')}>BUY</button>
+                         <button className="sell-sm" onClick={() => trade(c, 'sell')} disabled={!inventory[c]}>SELL({inventory[c]||0})</button>
+                       </div>
+                     </div>
+                   ))}
                 </div>
-                <div className="market-table">
-                  {COIN_LIST.map(c => (
-                    <div key={c} className="market-row">
-                      <div className="coin-info">
-                        <b>{c}/USDT</b>
-                        <small className="price-tag">${prices[c] || '0.00'}</small>
-                      </div>
-                      <div className="btns">
-                        <button className="btn-buy" onClick={() => trade(c, 'buy')}>BUY</button>
-                        <button className="btn-sell" onClick={() => trade(c, 'sell')} disabled={!inventory[c]}>SELL ({inventory[c]||0})</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                {isPending && (
+                  <div className="tx-modal">
+                    <div className="blockchain-loader"></div>
+                    <div className="status-msg">{statusText}</div>
+                  </div>
+                )}
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'settings' && (
-          <div className="settings-view">
-            <h2 className="title">Settings</h2>
-            <div className="s-card">
-              <div className="s-row">
-                <span>Sound Effects</span>
-                <button className={`toggle ${sound?'on':''}`} onClick={()=>setSound(!sound)}>{sound?'ON':'OFF'}</button>
-              </div>
-              <div className="s-row">
-                <span>Language</span>
-                <div className="lang-group">
-                  <button className="active">RU</button><button>EN</button>
-                </div>
-              </div>
+        {tab === 'settings' && (
+          <div className="settings-page">
+            <h2>SETTINGS</h2>
+            <div className="set-card">
+              <div className="set-item"><span>LANGUAGE</span> <div className="lang-sw"><button onClick={()=>setLang('RU')} className={lang==='RU'?'active':''}>RU</button><button onClick={()=>setLang('EN')} className={lang==='EN'?'active':''}>EN</button></div></div>
+              <div className="set-item"><span>SOUND</span> <button className="tgl-btn">ON</button></div>
             </div>
-            <div className="creators-box">
-               <p>Powered by</p>
-               <a href="https://t.me/kriptoalians" target="_blank">@kriptoalians</a>
+            <div className="footer-link">
+              <p>Join our community</p>
+              <a href="https://t.me/kriptoalians" target="_blank">@kriptoalians</a>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="bottom-nav">
-        <button className={`nav-item ${activeTab==='mining'?'active':''}`} onClick={()=>{setActiveTab('mining'); setSelectedDex(null)}}>MINING</button>
-        <button className={`nav-item ${activeTab==='kross'?'active':''}`} onClick={()=>setActiveTab('kross')}>MARKETS</button>
-        <button className={`nav-item ${activeTab==='settings'?'active':''}`} onClick={()=>setActiveTab('settings')}>SETTINGS</button>
+      <nav className="bottom-bar">
+        <button className={tab==='mining'?'active':''} onClick={()=>{setTab('mining'); setSelectedDex(null)}}>MINING</button>
+        <button className={tab==='trade'?'active':''} onClick={()=>setTab('trade')}>ARBITRAGE</button>
+        <button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}>SETTINGS</button>
       </nav>
     </div>
   );
 }
-// Добавь эти состояния в основной компонент App
-const [isPending, setIsPending] = useState(false); // Состояние ожидания транзакции
-const [txStatus, setTxStatus] = useState(''); // Текст статуса
-
-const trade = (coin, type) => {
-  if (isPending) return; // Нельзя спамить кнопки во время транзакции
-
-  if (type === 'buy' && balance < 50) {
-    alert("Not enough funds!");
-    return;
-  }
-  if (type === 'sell' && (inventory[coin] || 0) <= 0) {
-    alert("No coins to sell!");
-    return;
-  }
-
-  setIsPending(true);
-  setTxStatus(type === 'buy' ? 'Purchasing...' : 'Selling...');
-
-  // Имитация работы блокчейна (2.5 секунды)
-  setTimeout(() => {
-    if (type === 'buy') {
-      setBalance(b => b - 50);
-      setInventory(prev => ({ ...prev, [coin]: (prev[coin] || 0) + 1 }));
-    } else {
-      let price = 50;
-      // Проверка сигнала
-      if (signal && selectedDex === signal.sell && coin === signal.coin) {
-        price = 50 * (1 + parseFloat(signal.profit) / 100);
-        setTxStatus('PROFIT! +$' + (price - 50).toFixed(2));
-      } else {
-        price = 50 * 0.94; // Убыток при продаже без сигнала
-        setTxStatus('Sold with commission');
-      }
-      setBalance(b => b + price);
-      setInventory(prev => ({ ...prev, [coin]: prev[coin] - 1 }));
-    }
-    
-    // Оставляем сообщение о результате на секунду и закрываем лоадер
-    setTimeout(() => {
-      setIsPending(false);
-      setTxStatus('');
-    }, 1000);
-  }, 2500);
-};
-
-// Вставь этот блок в рендер внутри терминала биржи
-{isPending && (
-  <div className="tx-overlay">
-    <div className="tx-modal">
-      <div className="loader-line"></div>
-      <p>{txStatus}</p>
-    </div>
-  </div>
-)}
-export default App;
