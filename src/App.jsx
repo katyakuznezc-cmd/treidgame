@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
-// ... (Константы EXCHANGES и ALL_COINS остаются прежними)
+// ... (EXCHANGES и ALL_COINS остаются прежними)
 
 export default function App() {
   const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('k_bal')) || 100);
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('k_xp')) || 0);
-  const [activePositions, setActivePositions] = useState({}); // Храним сделки
+  const [activePositions, setActivePositions] = useState({});
+  const [tradeLogs, setTradeLogs] = useState(() => JSON.parse(localStorage.getItem('k_logs') || '[]')); // Дневник
   const [tab, setTab] = useState('trade');
-  // ... (остальные стейты из прошлых шагов: signals, livePrices, и т.д.)
+  // ... (остальные стейты: signal, livePrices, etc.)
 
-  // ОСНОВНАЯ ЛОГИКА ТАЙМЕРА И ВЫПЛАТ
+  useEffect(() => {
+    localStorage.setItem('k_logs', JSON.stringify(tradeLogs));
+  }, [tradeLogs]);
+
+  // ЛОГИКА ТАЙМЕРА И ДНЕВНИКА
   useEffect(() => {
     const timer = setInterval(() => {
       const now = Date.now();
@@ -20,18 +25,29 @@ export default function App() {
 
         Object.keys(next).forEach(id => {
           const pos = next[id];
-          const elapsed = (now - pos.startTime) / 1000;
-          
-          // Если 120 секунд прошло
-          if (elapsed >= 120) {
+          if ((now - pos.startTime) / 1000 >= 120) {
             if (pos.status === 'closed') {
-              // Если игрок успел закрыть — начисляем зафиксированный профит
+              // Начисляем деньги
               setBalance(b => b + pos.finalAmount);
-              if (pos.isWin) setXp(x => x + 50);
+              // Добавляем запись в дневник
+              const pnl = pos.finalAmount - pos.margin;
+              const logEntry = {
+                id: Date.now(),
+                coin: id,
+                pnl: pnl.toFixed(2),
+                isWin: pnl > 0,
+                time: new Date().toLocaleTimeString().slice(0, 5)
+              };
+              setTradeLogs(prevLogs => [logEntry, ...prevLogs].slice(0, 10));
             } else {
-              // Если не успел нажать CLOSE — ЛИКВИДАЦИЯ (0)
-              setIsShaking(true);
-              setTimeout(() => setIsShaking(false), 500);
+              // Ликвидация в дневник
+              setTradeLogs(prevLogs => [{
+                id: Date.now(),
+                coin: id,
+                pnl: `-${pos.margin}`,
+                isWin: false,
+                time: 'LIQ'
+              }, ...prevLogs].slice(0, 10));
             }
             delete next[id];
             changed = true;
@@ -43,40 +59,31 @@ export default function App() {
     return () => clearInterval(timer);
   }, [signal]);
 
-  const openPos = (coinId) => {
-    const amt = parseFloat(tradeAmount);
-    if (!amt || amt > balance) return;
-    
-    setBalance(b => b - amt);
-    setActivePositions(prev => ({
-      ...prev,
-      [coinId]: {
-        margin: amt,
-        lev: leverage,
-        startTime: Date.now(),
-        status: 'open', // открыта
-        finalAmount: 0,
-        isWin: false,
-        predictedPnl: 0
-      }
-    }));
-    setTradeAmount('');
-  };
-
   const closePos = (coinId) => {
     const pos = activePositions[coinId];
     if (!pos || pos.status === 'closed') return;
 
-    // Рассчитываем результат в момент нажатия, но НЕ отдаем деньги
-    const isWin = signal && coinId === signal.coin && Date.now() < signal.expires;
-    const pnlPercent = isWin ? (parseFloat(signal.profit) / 100) : -0.25;
+    // НОВАЯ СТАТИСТИКА: 1 из 5 сделок по сигналу — минусовая (80% успеха)
+    const isSignalMatch = signal && coinId === signal.coin && Date.now() < signal.expires;
+    const randomFactor = Math.random(); // от 0 до 1
+    
+    let isWin = false;
+    if (isSignalMatch) {
+      // Если по сигналу: выигрыш только если случайное число > 0.2 (80% шанс)
+      isWin = randomFactor > 0.2;
+    } else {
+      // Если без сигнала: шанс на удачу всего 15%
+      isWin = randomFactor > 0.85;
+    }
+
+    const pnlPercent = isWin ? (parseFloat(signal?.profit || 5) / 100) : -0.30;
     const resultAmount = pos.margin + (pos.margin * pos.lev * pnlPercent);
 
     setActivePositions(prev => ({
       ...prev,
       [coinId]: { 
         ...pos, 
-        status: 'closed', // зафиксирована
+        status: 'closed',
         finalAmount: Math.max(0, resultAmount),
         isWin: isWin
       }
@@ -84,54 +91,42 @@ export default function App() {
   };
 
   return (
-    <div className={`app-container ${isShaking ? 'shake-anim' : ''}`}>
+    <div className="app-container">
       {/* ... Header ... */}
-
       <main className="content">
         {tab === 'trade' && (
           <div className="dex-terminal">
-            {/* ... Terminal Top ... */}
+            {/* ... Terminal Top (Input & Leverage) ... */}
             
             <div className="term-body">
               <div className="coin-side">
-                {ALL_COINS.map(c => {
-                  const pos = activePositions[c.id];
-                  const timeLeft = pos ? Math.max(0, 120 - Math.floor((Date.now() - pos.startTime)/1000)) : null;
-                  
-                  return (
-                    <div key={c.id} className={`coin-item ${pos ? 'active-pos' : ''}`}>
-                      <div className="c-info">
-                        <b>{c.id}</b>
-                        {pos ? (
-                          <div className="pos-details">
-                            <span className="timer-txt">⏳ {timeLeft}s</span>
-                            {pos.status === 'closed' ? (
-                              <span className="status-fixed">ФИКСАЦИЯ: ${(pos.finalAmount - pos.margin).toFixed(2)}</span>
-                            ) : (
-                              <span className="status-live">В РАБОТЕ...</span>
-                            )}
-                          </div>
-                        ) : (
-                          <small>${livePrices[c.id] || c.base}</small>
-                        )}
-                      </div>
-
-                      {pos ? (
-                        <button 
-                          className={`btn-state ${pos.status}`} 
-                          onClick={() => closePos(c.id)}
-                          disabled={pos.status === 'closed'}
-                        >
-                          {pos.status === 'closed' ? 'ЖДЕМ...' : 'CLOSE'}
-                        </button>
-                      ) : (
-                        <button className="btn-buy" onClick={() => openPos(c.id)}>OPEN</button>
-                      )}
-                    </div>
-                  );
-                })}
+                {/* Список монет с таймерами (как в прошлом коде) */}
               </div>
-              {/* ... Orderbook Side ... */}
+              
+              <div className="orderbook-side">
+                {/* Стакан ордеров сверху */}
+                <div className="ob-section">
+                   <small className="ob-title">ORDER BOOK</small>
+                   {/* ... logic ... */}
+                </div>
+
+                {/* ДНЕВНИК ТРЕЙДЕРА СНИЗУ */}
+                <div className="diary-section">
+                  <small className="ob-title">ДНЕВНИК СДЕЛОК</small>
+                  <div className="logs-list">
+                    {tradeLogs.length === 0 && <span className="empty-txt">Нет записей</span>}
+                    {tradeLogs.map(log => (
+                      <div key={log.id} className="log-row">
+                        <span className="log-time">{log.time}</span>
+                        <span className="log-coin">{log.coin}</span>
+                        <span className={`log-pnl ${log.isWin ? 'grn' : 'red'}`}>
+                          {log.isWin ? '+' : ''}{log.pnl}$
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
