@@ -1,12 +1,5 @@
 
 
-Чтобы оживить приложение, мы внедрим систему RPG-прогрессии. Теперь новые монеты (как Bitcoin или Solana) будут скрыты за уровнями. Я также исправил логику звука и мультиязычности, чтобы всё переключалось мгновенно.
-
-1. Обновленный src/App.jsx
-Замените весь код. Я добавил объект translations, массив ALL_COINS с требованиями по уровням и исправленный обработчик звука.
-
-JavaScript
-
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
@@ -17,7 +10,6 @@ const EXCHANGES = [
   { id: 'pancakeswap', name: 'PancakeSwap', color: '#d1884f' }
 ];
 
-// Список монет с уровнем доступа
 const ALL_COINS = [
   { id: 'TON', lvl: 1 },
   { id: 'ARB', lvl: 1 },
@@ -31,7 +23,7 @@ const translations = {
   RU: {
     mining: 'Майнинг', arbitrage: 'Арбитраж', settings: 'Настройки',
     balance: 'БАЛАНС', lvl: 'УРОВЕНЬ', xp: 'ОПЫТ',
-    tap: 'НАЖИМАЙ ДЛЯ ЛИКВИДНОСТИ', buy: 'КУПИТЬ', sell: 'ПРОДАТЬ',
+    tap: 'НАЖИМАЙ НА ДОЛЛАР!', buy: 'КУПИТЬ', sell: 'ПРОДАТЬ',
     back: '← ВСЕ РЫНКИ', sound: 'ЗВУК', lang: 'ЯЗЫК',
     join: 'Присоединяйтесь к нам', pendingBuy: 'ПОДКЛЮЧЕНИЕ К УЗЛАМ...',
     pendingSell: 'ПРОВЕРКА СДЕЛКИ...', success: 'УСПЕШНО!',
@@ -40,7 +32,7 @@ const translations = {
   EN: {
     mining: 'Mining', arbitrage: 'Arbitrage', settings: 'Settings',
     balance: 'BALANCE', lvl: 'LEVEL', xp: 'XP',
-    tap: 'TAP TO GENERATE LIQUIDITY', buy: 'BUY', sell: 'SELL',
+    tap: 'TAP THE DOLLAR!', buy: 'BUY', sell: 'SELL',
     back: '← ALL MARKETS', sound: 'SOUND', lang: 'LANGUAGE',
     join: 'Join our community', pendingBuy: 'CONNECTING TO NODES...',
     pendingSell: 'VERIFYING SWAP...', success: 'SUCCESS!',
@@ -49,7 +41,7 @@ const translations = {
   UK: {
     mining: 'Майнінг', arbitrage: 'Арбітраж', settings: 'Налаштування',
     balance: 'БАЛАНС', lvl: 'РІВЕНЬ', xp: 'ДОСВІД',
-    tap: 'ТИСНИ ДЛЯ ЛІКВІДНОСТІ', buy: 'КУПИТИ', sell: 'ПРОДАТИ',
+    tap: 'ТИСНИ НА ДОЛАР!', buy: 'КУПИТИ', sell: 'ПРОДАТЬ',
     back: '← ВСІ РИНКИ', sound: 'ЗВУК', lang: 'МОВА',
     join: 'Приєднуйтесь до нас', pendingBuy: 'ПІДКЛЮЧЕННЯ ДО ВУЗЛІВ...',
     pendingSell: 'ПЕРЕВІРКА УГОДИ...', success: 'УСПІШНО!',
@@ -90,7 +82,7 @@ export default function App() {
       setSignal({ coin: coin.id, buy: b.id, sell: s.id, profit: (Math.random() * 3 + 2).toFixed(2) });
     };
     gen();
-    const timer = setInterval(gen, 25000);
+    const timer = setInterval(gen, 20000);
     return () => clearInterval(timer);
   }, [currentLvl]);
 
@@ -120,7 +112,7 @@ export default function App() {
         setBalance(b => b + prize);
         setInventory(prev => ({ ...prev, [coinId]: prev[coinId] - 1 }));
         if (isWin) {
-          setXp(x => x + 25); // Даем 25 опыта за сделку
+          setXp(x => x + 25);
           setStatusText(`${t.profit} +$${(prize-50).toFixed(2)}`);
         } else {
           setStatusText(t.loss);
@@ -198,7 +190,7 @@ export default function App() {
 
         {tab === 'settings' && (
           <div className="settings-page">
-            <h2>{t.settings}</h2>
+            <h2 className="neon-text">{t.settings}</h2>
             <div className="option-box">
               <div className="option">
                 <span>{t.sound}</span>
