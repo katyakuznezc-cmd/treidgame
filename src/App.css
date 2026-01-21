@@ -11,3 +11,28 @@
   background: #111;
   border: 2px solid red; /* КРАСНАЯ РАМКА ДЛЯ ГРАФИКА */
 }
+.web3-header { padding: 30px 20px; text-align: center; background: #0d1117; border-bottom: 2px solid #21262d; }
+.status-dot { width: 8px; height: 8px; background: #238636; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 10px #238636; }
+.web3-header span { color: #8b949e; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+.bottom-nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #161b22; border-top: 1px solid #30363d; z-index: 100; }
+.bottom-nav button { flex: 1; padding: 20px; background: none; border: none; color: #8b949e; font-weight: bold; }
+.bottom-nav button.active { color: #58a6ff; background: rgba(88, 166, 255, 0.1); }
+
+.signal-card { background: #0d1117; margin: 15px; padding: 20px; border-radius: 15px; border: 1px solid #30363d; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+.signal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.pair-info { font-weight: 800; font-size: 18px; color: #f08c00; }
+.timer { background: #21262d; padding: 5px 12px; border-radius: 20px; font-family: monospace; }
+.timer.urgent { color: #ff7b72; border: 1px solid #ff7b72; animation: blink 0.6s infinite; }
+
+.route-container { display: flex; justify-content: space-between; align-items: center; margin: 25px 0; }
+.node { display: flex; flex-direction: column; align-items: center; }
+.node-label { font-size: 10px; color: #8b949e; }
+.node-name { font-weight: bold; font-size: 16px; margin: 4px 0; }
+.node-price { font-family: monospace; color: #8b949e; }
+.node-price.profit { color: #3fb950; }
+
+.swap-action-btn { width: 100%; background: #238636; color: white; border: none; padding: 18px; border-radius: 12px; font-weight: bold; font-size: 16px; }
+.swap-action-btn:disabled { background: #21262d; color: #484f58; }
+
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
