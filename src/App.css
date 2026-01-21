@@ -57,3 +57,24 @@ body { background: #080808; color: #e0e0e0; font-family: 'Roboto Mono', monospac
 .n-toast.loss { background: var(--loss); color: #fff; }
 
 @keyframes blink { 50% { opacity: 0.2; } }
+/* Добавь это к существующим стилям */
+
+.n-terminal-layout { display: flex; height: 100%; }
+.n-term-sidebar { width: 100px; border-right: 1px solid #222; background: #0a0a0a; display: flex; flex-direction: column; }
+.n-term-main { flex: 1; overflow-y: auto; }
+
+/* ORDERBOOK */
+.n-orderbook { font-size: 9px; font-family: monospace; display: flex; flex-direction: column; height: 100%; }
+.n-ob-header { display: flex; justify-content: space-between; padding: 5px; color: #444; }
+.n-ob-row { display: flex; justify-content: space-between; padding: 2px 5px; }
+.n-ob-row.ask { color: var(--loss); background: rgba(255, 51, 102, 0.05); }
+.n-ob-row.bid { color: var(--win); background: rgba(0, 255, 136, 0.05); }
+.n-ob-mid { text-align: center; padding: 8px 0; color: #fff; font-weight: bold; border-top: 1px solid #222; border-bottom: 1px solid #222; }
+
+/* Прочие улучшения */
+.n-back-btn { background: #111; border: none; color: #666; padding: 10px; font-size: 9px; cursor: pointer; }
+.n-liq { font-size: 8px; color: var(--loss); }
+.n-pending { font-size: 10px; color: #666; animation: blink 1s infinite; }
+.n-f-line { font-size: 10px; padding: 2px 10px; border-left: 2px solid #222; margin-bottom: 2px; }
+.n-f-line.buy { color: var(--win); }
+.n-f-line.sell { color: var(--loss); }
