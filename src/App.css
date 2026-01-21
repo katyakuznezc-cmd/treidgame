@@ -1,111 +1,76 @@
-/* ПРИНУДИТЕЛЬНЫЙ СБРОС СТИЛЕЙ */
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
 :root {
-  --bg: #010409;
-  --card: #0d1117;
+  --bg: #05070a;
+  --card: #0f1218;
   --neon-blue: #00ccff;
   --neon-green: #39ff14;
-  --neon-red: #ff4500;
-  --text: #e6edf3;
-  --border: #30363d;
+  --neon-red: #ff3e3e;
+  --text: #ffffff;
+  --border: #1f2630;
 }
 
-body, html {
-  margin: 0; padding: 0;
-  background-color: var(--bg) !important;
-  color: var(--text);
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  overflow-x: hidden;
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; }
+
+.app-wrapper { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
+
+.header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+.logo-text { color: var(--neon-blue); font-weight: 900; letter-spacing: 1px; }
+.balance-box b { font-size: 24px; color: var(--neon-green); text-shadow: 0 0 10px rgba(57, 255, 20, 0.3); }
+
+/* Mining */
+.mining-zone { height: 65vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.tap-circle { 
+  width: 180px; height: 180px; border: 4px solid var(--neon-green); border-radius: 50%; 
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.15), inset 0 0 20px rgba(57, 255, 20, 0.1);
+  transition: 0.1s;
 }
+.tap-circle:active { transform: scale(0.95); }
+.dollar-main { font-size: 80px; font-weight: 900; color: var(--neon-green); }
 
-.app-wrapper {
-  background-color: var(--bg);
-  min-height: 100vh;
-  max-width: 500px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-}
+/* Kross View */
+.signal-alert { background: #111b27; border: 1px solid var(--neon-blue); padding: 12px; border-radius: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.live-dot { width: 8px; height: 8px; background: #ff3e3e; border-radius: 50%; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.grn { color: var(--neon-green); }
 
-/* ШАПКА */
-.header {
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-}
+.dex-card-item { background: var(--card); padding: 20px; border-radius: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); transition: 0.2s; cursor: pointer; }
+.dex-card-item:hover { border-color: var(--neon-blue); }
+.dex-icon-mini { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; display: inline-block; }
+.dex-status { font-size: 10px; color: var(--neon-green); border: 1px solid var(--neon-green); padding: 2px 6px; border-radius: 4px; }
 
-.logo-text { color: var(--neon-blue); font-weight: bold; font-size: 22px; text-shadow: 0 0 10px rgba(0, 204, 255, 0.4); }
-.balance-box { text-align: right; }
-.balance-box b { color: var(--neon-green); font-size: 20px; }
+/* Terminal */
+.terminal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.btn-back { background: none; border: 1px solid var(--border); color: #8b949e; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+.dex-title { font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
 
-/* КОНТЕНТ */
-.main-viewport { flex: 1; padding: 15px; padding-bottom: 90px; }
+.market-row { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); }
+.price-tag { display: block; color: #8b949e; font-family: monospace; }
 
-/* МАЙНИНГ */
-.mining-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
-.tap-circle {
-  width: 160px; height: 160px;
-  border: 4px solid var(--neon-green);
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 60px; color: var(--neon-green);
-  box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
-  cursor: pointer; position: relative;
-}
+.btn-buy { background: none; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-right: 8px; }
+.btn-sell { background: var(--neon-red); border: none; color: white; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.btn-sell:disabled { background: #1a1d23; color: #4b5563; border: 1px solid #2d333b; }
 
-/* КРОСС-DEX (СПИСОК БИРЖ) */
-.dex-grid-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
-.dex-card-item {
-  background: var(--card);
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  cursor: pointer;
-}
-.dex-card-item:active { transform: scale(0.98); }
+/* Settings */
+.settings-view { padding-top: 20px; }
+.s-card { background: var(--card); padding: 20px; border-radius: 16px; border: 1px solid var(--border); }
+.s-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--border); }
+.toggle { background: #1a1d23; border: 1px solid var(--border); color: #8b949e; padding: 6px 15px; border-radius: 20px; cursor: pointer; }
+.toggle.on { background: var(--neon-green); color: #000; font-weight: bold; }
+.lang-group button { background: none; border: 1px solid var(--border); color: #8b949e; padding: 5px 12px; margin-left: 5px; border-radius: 6px; }
+.lang-group button.active { border-color: var(--neon-blue); color: var(--neon-blue); }
 
-/* ТЕРМИНАЛ БИРЖИ */
-.terminal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
-.btn-back { background: var(--border); border: none; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+.creators-box { margin-top: 40px; text-align: center; }
+.creators-box a { color: var(--neon-blue); text-decoration: none; font-weight: bold; font-size: 18px; }
 
-.market-table { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-.market-row {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 15px; border-bottom: 1px solid var(--border);
-}
-.market-row:last-child { border-bottom: none; }
+/* Nav */
+.bottom-nav { position: fixed; bottom: 0; width: 100%; max-width: 500px; display: flex; background: #0c0e12; border-top: 1px solid var(--border); padding: 10px 0; }
+.nav-item { flex: 1; background: none; border: none; color: #4b5563; font-weight: bold; font-size: 11px; cursor: pointer; }
+.nav-item.active { color: var(--neon-blue); }
 
-.btn-buy { background: var(--neon-green); border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-right: 5px; }
-.btn-sell { background: var(--neon-red); border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; }
-.btn-sell:disabled { opacity: 0.3; cursor: not-allowed; }
+/* Flash animation */
+.profit-flash { animation: flash-green 0.5s ease; }
+@keyframes flash-green { 0% { background: #05070a; } 50% { background: #0b2d14; } 100% { background: #05070a; } }
 
-/* СИГНАЛ */
-.signal-alert {
-  background: rgba(0, 204, 255, 0.1);
-  border: 1px solid var(--neon-blue);
-  padding: 12px; border-radius: 10px;
-  margin-bottom: 20px; font-size: 14px;
-  line-height: 1.4;
-}
-
-/* НАВИГАЦИЯ */
-.bottom-nav {
-  position: fixed; bottom: 0; width: 100%; max-width: 500px;
-  display: flex; background: #161b22; border-top: 1px solid var(--border);
-}
-.nav-item {
-  flex: 1; padding: 18px; background: none; border: none;
-  color: #8b949e; font-weight: bold; cursor: pointer;
-}
-.nav-item.active { color: var(--neon-blue); background: rgba(0, 204, 255, 0.05); }
-
-/* АНИМАЦИЯ ТАПА */
-.tap-particle {
-  position: fixed; color: var(--neon-green); font-weight: bold;
-  pointer-events: none; animation: moveUp 0.8s ease-out forwards;
-}
-@keyframes moveUp { 0% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(-80px); } }
+.tap-particle { position: fixed; color: var(--neon-green); font-weight: bold; pointer-events: none; animation: moveUp 0.7s forwards; }
+@keyframes moveUp { 100% { transform: translateY(-100px); opacity: 0; } }
