@@ -16,14 +16,14 @@ const COINS = [
 const STRINGS = {
   ru: {
     mining: "МАЙНИНГ", trade: "БИРЖИ", awards: "ТРОФЕИ", opts: "ОПЦИИ",
-    bal: "БАЛАНС", lang: "ЯЗЫК", sound: "ЗВУК", liquid: "ЛИКВИДАЦИЯ:",
-    buy: "КУПИТЬ", close: "ПРОДАТЬ", history: "ЛОГИ",
+    bal: "БАЛАНС", lang: "ЯЗЫК", sound: "ЗВУК", liquid: "ЛИКВ.:",
+    buy: "КУПИТЬ", close: "ПРОДАТЬ",
     locked: "НУЖЕН LVL", settings: "НАСТРОЙКИ", creators: "СОЗДАТЕЛИ"
   },
   en: {
     mining: "MINING", trade: "DEX", awards: "AWARDS", opts: "OPTS",
-    bal: "BALANCE", lang: "LANG", sound: "SOUND", liquid: "LIQ IN:",
-    buy: "BUY", close: "SELL", history: "LOGS",
+    bal: "BALANCE", lang: "LANG", sound: "SOUND", liquid: "LIQ:",
+    buy: "BUY", close: "SELL",
     locked: "REQ LVL", settings: "SETTINGS", creators: "CREATORS"
   }
 };
@@ -42,7 +42,7 @@ export default function App() {
   const [tapAnims, setTapAnims] = useState([]);
 
   const t = STRINGS[lang];
-  const lvl = Math.floor(Math.sqrt(xp / 100)) + 1;
+  const lvl = Math.floor(Math.sqrt(xp / 150)) + 1; // Усложненная формула уровня
   const maxLev = lvl >= 10 ? 100 : lvl >= 5 ? 50 : 10;
 
   const sndAlert = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
@@ -55,129 +55,108 @@ export default function App() {
     localStorage.setItem('k_snd', JSON.stringify(soundOn));
   }, [balance, xp, lang, soundOn]);
 
+  // Глобальный сигнал (меняется каждые 30 сек)
   useEffect(() => {
     const triggerSignal = () => {
       const coin = COINS[Math.floor(Math.random() * COINS.length)];
       const dex = EXCHANGES[Math.floor(Math.random() * EXCHANGES.length)];
-      setSignal({ coin: coin.id, dexId: dex.id, dexName: dex.name, bonus: (Math.random() * 8 + 5).toFixed(1) });
+      setSignal({ coin: coin.id, dexId: dex.id, dexName: dex.name, bonus: (Math.random() * 7 + 3).toFixed(1) });
       if (soundOn) sndAlert.current.play().catch(() => {});
     };
     triggerSignal();
-    const itv = setInterval(triggerSignal, 35000);
+    const itv = setInterval(triggerSignal, 30000);
     return () => clearInterval(itv);
   }, [soundOn]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setActivePositions(prev => {
-        const next = { ...prev };
-        let changed = false;
-        Object.keys(next).forEach(id => {
-          if (120 - Math.floor((Date.now() - next[id].start) / 1000) <= 0) {
-            delete next[id];
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const handleTap = (e) => {
-    setBalance(b => b + 0.1);
-    setXp(x => x + 1);
+    setBalance(b => b + 0.05);
+    setXp(x => x + 0.5); // Мало опыта за клик
     if (soundOn) { sndTap.current.currentTime = 0; sndTap.current.play().catch(()=>{}); }
     const id = Date.now();
     setTapAnims(p => [...p, { id, x: e.clientX, y: e.clientY }]);
     setTimeout(() => setTapAnims(p => p.filter(a => a.id !== id)), 800);
   };
 
-  const openTrade = (coinId) => {
-    const amt = parseFloat(tradeAmount);
-    if (amt > balance) return;
-    setBalance(b => b - amt);
-    setActivePositions(p => ({ ...p, [coinId]: { amt, lev: leverage, start: Date.now(), dex: selectedDex } }));
-  };
-
   const closeTrade = (coinId) => {
     const p = activePositions[coinId];
     const isWin = signal && signal.coin === coinId && signal.dexId === selectedDex;
-    const pnl = isWin ? (Math.random() * 10 + 5) : -(Math.random() * 20 + 10);
+    const pnl = isWin ? (Math.random() * 8 + 4) : -(Math.random() * 15 + 10);
     const result = p.amt + (p.amt * (p.lev * pnl) / 100);
     setBalance(b => b + result);
-    setXp(x => x + 100); // Опыт за торговлю!
+    setXp(x => x + 15); // Усложненный набор опыта
     setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
   };
 
   return (
-    <div className="neon-app">
-      {tapAnims.map(a => <div key={a.id} className="pop-money" style={{left:a.x, top:a.y}}>$</div>)}
+    <div className="app-container">
+      {tapAnims.map(a => <div key={a.id} className="tap-pop" style={{left:a.x, top:a.y}}>$</div>)}
 
-      <header className="neon-header">
-        <div className="n-user">
-          <div className="n-lvl">LVL {lvl}</div>
-          <div className="n-xp"><div className="n-xp-f" style={{width: `${xp%100}%`}}></div></div>
+      <header className="app-header">
+        <div className="header-user">
+          <div className="user-lvl">LEVEL {lvl}</div>
+          <div className="user-xp"><div className="xp-fill" style={{width: `${(xp % 150) / 1.5}%`}}></div></div>
         </div>
-        <div className="n-bal">
+        <div className="user-bal">
           <small>{t.bal}</small>
-          <div>${balance.toFixed(2)}</div>
+          <div className="bal-amt">${balance.toFixed(2)}</div>
         </div>
       </header>
 
-      <main className="neon-main">
+      <main className="app-viewport">
         {tab === 'mining' && (
-          <div className="n-mining" onClick={handleTap}>
-            <div className="n-sphere">$</div>
+          <div className="view-mining" onClick={handleTap}>
+            <div className="mining-btn">$</div>
           </div>
         )}
 
         {tab === 'trade' && (
-          <div className="n-trade">
+          <div className="view-trade">
+            {/* СИГНАЛ ВСЕГДА СВЕРХУ В ТАБЕ ТОРГОВЛИ */}
+            {signal && (
+              <div className="global-signal">
+                <div className="sig-blink"></div>
+                <div className="sig-txt">
+                  BUY <b>{signal.coin}</b> → SELL ON <b>{signal.dexName}</b> <span className="sig-perc">+{signal.bonus}%</span>
+                </div>
+              </div>
+            )}
+
             {!selectedDex ? (
-              <div className="n-dex-list">
+              <div className="dex-selection">
                 {EXCHANGES.map(d => (
-                  <div key={d.id} className="n-dex-card" onClick={() => setSelectedDex(d.id)} style={{'--c': d.color}}>
-                    <span>{d.name}</span>
-                    {Object.values(activePositions).some(p => p.dex === d.id) && <div className="n-dot"></div>}
+                  <div key={d.id} className="dex-row" onClick={() => setSelectedDex(d.id)} style={{'--clr': d.color}}>
+                    <span className="dex-n">{d.name}</span>
+                    <div className="dex-arrow">→</div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="n-terminal">
-                <div className="n-signal-alert">
-                  <div className="sig-label">⚡ SIGNAL DETECTED</div>
-                  <div className="sig-info">
-                    BUY <b>{signal.coin}</b> → SELL ON <b>{signal.dexName}</b> <span className="sig-plus">+{signal.bonus}%</span>
-                  </div>
-                </div>
-
-                <div className="n-term-top">
-                  <button onClick={() => setSelectedDex(null)} className="n-back-btn">←</button>
-                  <div className="n-params">
+              <div className="dex-terminal">
+                <div className="term-head">
+                  <button onClick={() => setSelectedDex(null)} className="back-btn">←</button>
+                  <div className="term-controls">
                     <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} />
-                    <div className="n-lev">
+                    <div className="lev-box">
                       <span>x{leverage}</span>
                       <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(parseInt(e.target.value))} />
                     </div>
                   </div>
                 </div>
-
-                <div className="n-pair-list">
+                <div className="pair-scroll">
                   {COINS.map(c => {
                     const p = activePositions[c.id];
                     const locked = c.lvl > lvl;
                     return (
-                      <div key={c.id} className={`n-row ${p ? 'active' : ''}`}>
-                        <div className="n-row-info">
+                      <div key={c.id} className={`pair-row ${p ? 'active' : ''}`}>
+                        <div className="p-data">
                           <b>{c.id}/USDT</b>
-                          {p && <span className="n-liq">{t.liquid} {120 - Math.floor((Date.now()-p.start)/1000)}s</span>}
+                          {p && <span className="p-timer">{t.liquid} {120 - Math.floor((Date.now()-p.start)/1000)}s</span>}
                         </div>
                         {!locked ? (
-                          <button className={`n-btn ${p ? 'sell' : 'buy'}`} onClick={() => p ? closeTrade(c.id) : openTrade(c.id)}>
+                          <button className={`p-btn ${p ? 'sell' : 'buy'}`} onClick={() => p ? closeTrade(c.id) : (balance >= tradeAmount && setActivePositions({...activePositions, [c.id]: {amt: parseFloat(tradeAmount), lev: leverage, start: Date.now(), dex: selectedDex}}))}>
                             {p ? t.close : t.buy}
                           </button>
-                        ) : <span className="n-lock">{t.locked} {c.lvl}</span>}
+                        ) : <div className="p-lock">{t.locked} {c.lvl}</div>}
                       </div>
                     );
                   })}
@@ -188,32 +167,32 @@ export default function App() {
         )}
 
         {tab === 'awards' && (
-          <div className="n-awards">
-            <h2 className="n-title">{t.awards}</h2>
-            <div className="n-ach"><span>TOTAL XP</span> <b>{xp}</b></div>
-            <div className="n-ach"><span>MAX LEV</span> <b>x{maxLev}</b></div>
+          <div className="view-awards">
+            <h2 className="v-title">{t.awards}</h2>
+            <div className="v-card"><span>PROGRESS</span> <b>{xp} XP</b></div>
+            <div className="v-card"><span>TRADER CLASS</span> <b>{lvl}</b></div>
           </div>
         )}
 
         {tab === 'settings' && (
-          <div className="n-settings">
-            <h2 className="n-title">{t.settings}</h2>
-            <div className="n-set-row">
+          <div className="view-settings">
+            <h2 className="v-title">{t.settings}</h2>
+            <div className="set-item">
               <span>{t.lang}</span>
               <button onClick={() => setLang(lang === 'ru' ? 'en' : 'ru')}>{lang.toUpperCase()}</button>
             </div>
-            <div className="n-set-row">
+            <div className="set-item">
               <span>{t.sound}</span>
               <button onClick={() => setSoundOn(!soundOn)}>{soundOn ? 'ON' : 'OFF'}</button>
             </div>
-            <div className="n-creators">
+            <div className="set-tg">
               <a href="https://t.me/kriptoalians" target="_blank" rel="noreferrer">@kriptoalians</a>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="n-nav">
+      <nav className="app-nav">
         <button onClick={() => setTab('mining')} className={tab === 'mining' ? 'active' : ''}>{t.mining}</button>
         <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>{t.trade}</button>
         <button onClick={() => setTab('awards')} className={tab === 'awards' ? 'active' : ''}>{t.awards}</button>
