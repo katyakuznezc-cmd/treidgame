@@ -473,3 +473,33 @@ body {
   text-shadow: 0 0 8px rgba(0, 204, 255, 0.6);
   font-weight: bold;
 }
+/* В дополнение к предыдущим стилям: */
+.lang-btns { display: flex; gap: 5px; }
+.lang-btns button { 
+  background: #21262d; 
+  border: none; 
+  color: #8b949e; 
+  padding: 5px 10px; 
+  border-radius: 5px; 
+  cursor: pointer;
+  font-size: 12px;
+}
+.lang-btns button.active { 
+  background: #00ccff; 
+  color: #000; 
+  font-weight: bold; 
+  box-shadow: 0 0 10px rgba(0, 204, 255, 0.5);
+}
+
+.f-text {
+  position: fixed;
+  color: #39ff14;
+  font-weight: bold;
+  pointer-events: none;
+  animation: f-up 0.8s forwards;
+  z-index: 99;
+}
+@keyframes f-up { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+
+.red { color: #f85149; animation: blink 0.5s infinite; }
+@keyframes blink { 50% { opacity: 0.5; } }
