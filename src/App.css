@@ -1,58 +1,44 @@
-:root { --bg: #050508; --neon-blue: #00ccff; --neon-green: #39ff14; --neon-red: #ff0055; }
+:root { --bg: #030305; --neon-blue: #00ccff; --neon-green: #39ff14; --neon-red: #ff0055; }
 body { margin:0; background: var(--bg); color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }
 
-.app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: #000; position: relative; }
+.app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: #000; transition: transform 0.1s; }
 
-/* HEADER & LVL */
-.main-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #08080c; z-index: 10; }
-.neon-border-bottom { border-bottom: 2px solid var(--neon-blue); box-shadow: 0 4px 15px rgba(0,204,255,0.3); }
-.bal-amt { font-size: 24px; font-weight: bold; color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
-
-/* BIG NEON COIN */
-.mining-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
-.coin-wrapper { margin-bottom: 30px; }
-.main-coin {
-  width: 180px; height: 180px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; user-select: none; transition: transform 0.1s;
-  background: radial-gradient(circle, #1a1a2e 0%, #000 100%);
-}
-.neon-circle-big {
-  border: 5px solid var(--neon-green);
-  box-shadow: 0 0 25px var(--neon-green), inset 0 0 20px var(--neon-green);
-  animation: coin-pulse 2s infinite ease-in-out;
-}
-.main-coin:active { transform: scale(0.92); }
-.coin-symbol { font-size: 80px; color: var(--neon-green); text-shadow: 0 0 15px var(--neon-green); font-weight: bold; }
-
-@keyframes coin-pulse {
-  0% { box-shadow: 0 0 20px var(--neon-green), inset 0 0 15px var(--neon-green); }
-  50% { box-shadow: 0 0 40px var(--neon-green), inset 0 0 30px var(--neon-green); }
-  100% { box-shadow: 0 0 20px var(--neon-green), inset 0 0 15px var(--neon-green); }
+/* SHAKE ANIMATION */
+.shake-anim { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; transform: translate3d(0, 0, 0); backface-visibility: hidden; }
+@keyframes shake {
+  10%, 90% { transform: translate3d(-2px, 0, 0); }
+  20%, 80% { transform: translate3d(4px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+  40%, 60% { transform: translate3d(6px, 0, 0); }
 }
 
-/* TERMINAL & INPUTS */
-.terminal-controls { margin: 10px; padding: 15px; background: #0d0d14; border-radius: 12px; }
-.trade-inputs { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; }
-.trade-inputs input[type="number"] {
-  background: #000; border: 1px solid var(--neon-blue); color: var(--neon-green);
-  padding: 12px; border-radius: 8px; font-size: 16px; outline: none;
-}
-.lev-control { display: flex; align-items: center; gap: 15px; color: var(--neon-blue); font-weight: bold; }
-.lev-control input { flex: 1; accent-color: var(--neon-blue); }
+/* NEON HEADER */
+.main-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #08080c; border-bottom: 2px solid var(--neon-blue); box-shadow: 0 0 15px rgba(0,204,255,0.4); }
+.xp-track { width: 100px; height: 4px; background: #1a1a1a; border-radius: 2px; margin-top: 5px; position: relative; }
+.xp-bar { height: 100%; background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); transition: width 0.5s ease-out; }
 
-/* FLOATING DOLLAR */
-.tap-dollar {
-  position: fixed; color: var(--neon-green); pointer-events: none; z-index: 1000;
-  font-weight: bold; font-size: 32px; text-shadow: 0 0 10px var(--neon-green);
-  animation: floatUp 0.8s ease-out forwards;
-}
-@keyframes floatUp {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(-150px) scale(1.5); opacity: 0; }
-}
+/* COIN BUTTON */
+.mining-page { height: 70%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.main-coin { width: 190px; height: 190px; border-radius: 50%; border: 6px solid var(--neon-green); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 30px var(--neon-green), inset 0 0 20px var(--neon-green); transition: 0.1s; }
+.main-coin:active { transform: scale(0.9); box-shadow: 0 0 50px var(--neon-green); }
+.coin-symbol { font-size: 90px; color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); }
 
-/* FOOTER NAV */
-.nav-bar { display: flex; background: #08080c; padding: 12px 0; border-top: 2px solid var(--neon-blue); }
-.nav-bar button { flex: 1; background: none; border: none; color: #444; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
-.nav-bar button.active { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
+/* TRADING GRID */
+.coin-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #111; }
+.coin-row.locked { background: rgba(255,0,0,0.05); filter: grayscale(1); opacity: 0.5; }
+.buy-b { background: none; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+.sell-b { background: none; border: 1px solid var(--neon-red); color: var(--neon-red); padding: 5px 10px; border-radius: 4px; font-weight: bold; }
+
+/* INPUTS */
+.trade-inputs input { background: #000; border: 1px solid var(--neon-blue); color: var(--neon-green); padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; outline: none; }
+.lev-control { margin-top: 10px; color: var(--neon-blue); font-size: 12px; }
+.lev-control input { margin-top: 5px; accent-color: var(--neon-blue); }
+
+/* SIGNALS */
+.signal-card { margin: 10px; padding: 15px; background: #0a0a14; position: relative; overflow: hidden; border-radius: 8px; }
+.signal-timer { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--neon-blue); animation: timer 120s linear forwards; }
+@keyframes timer { from { width: 100%; } to { width: 0%; } }
+
+.nav-bar { display: flex; background: #08080c; border-top: 2px solid var(--neon-blue); padding: 15px 0; }
+.nav-bar button { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; letter-spacing: 1px; }
+.nav-bar button.active { color: var(--neon-blue); text-shadow: 0 0 8px var(--neon-blue); }
