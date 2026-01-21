@@ -15,18 +15,21 @@ const ALL_COINS = [
   { id: 'BNB', lvl: 8, base: 580 }, { id: 'BTC', lvl: 10, base: 67000 }
 ];
 
+// Список достижений с возрастающими наградами
 const ACHIEVEMENTS = [
-  { id: 'first_k', title: 'Первый косарь', desc: 'Собери $1,000 на балансе', goal: 1000, type: 'balance' },
-  { id: 'tapper_100', title: 'Кликер-про', desc: 'Сделай 100 тапов', goal: 100, type: 'taps' },
-  { id: 'whale', title: 'КИТ', desc: 'Достигни баланса $100,000', goal: 100000, type: 'balance' },
-  { id: 'lvl_5', title: 'Эксперт', desc: 'Прокачайся до 5 уровня', goal: 5, type: 'level' },
-  { id: 'millionaire', title: 'Миллионер', desc: 'Баланс $1,000,000', goal: 1000000, type: 'balance' }
+  { id: 'first_k', title: 'Первый косарь', desc: 'Баланс $1,000', goal: 1000, type: 'balance', reward: 100 },
+  { id: 'tapper_100', title: 'Кликер-про', desc: '100 тапов', goal: 100, type: 'taps', reward: 250 },
+  { id: 'lvl_5', title: 'Эксперт', desc: 'Достигни 5 уровня', goal: 5, type: 'level', reward: 1000 },
+  { id: 'whale', title: 'КИТ', desc: 'Баланс $100,000', goal: 100000, type: 'balance', reward: 5000 },
+  { id: 'millionaire', title: 'Миллионер', desc: 'Баланс $1,000,000', goal: 1000000, type: 'balance', reward: 50000 }
 ];
 
 export default function App() {
   const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('k_bal')) || 100);
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('k_xp')) || 0);
   const [taps, setTaps] = useState(() => parseInt(localStorage.getItem('k_taps')) || 0);
+  const [claimed, setClaimed] = useState(() => JSON.parse(localStorage.getItem('k_claimed') || '[]'));
+  
   const [lang, setLang] = useState(() => localStorage.getItem('k_lang') || 'RU');
   const [soundOn, setSoundOn] = useState(() => JSON.parse(localStorage.getItem('k_snd') ?? 'true'));
   const [tab, setTab] = useState('mining');
@@ -45,14 +48,35 @@ export default function App() {
   const currentLvl = Math.floor(Math.sqrt(xp / 50)) + 1;
   const progress = ((xp % 100) / 100) * 100;
 
+  // Сохранение данных
   useEffect(() => {
     localStorage.setItem('k_bal', balance);
     localStorage.setItem('k_xp', xp);
     localStorage.setItem('k_taps', taps);
+    localStorage.setItem('k_claimed', JSON.stringify(claimed));
     localStorage.setItem('k_lang', lang);
     localStorage.setItem('k_snd', soundOn);
-  }, [balance, xp, taps, lang, soundOn]);
+  }, [balance, xp, taps, claimed, lang, soundOn]);
 
+  // Проверка достижений в реальном времени
+  useEffect(() => {
+    ACHIEVEMENTS.forEach(ach => {
+      if (!claimed.includes(ach.id)) {
+        let isDone = false;
+        if (ach.type === 'balance' && balance >= ach.goal) isDone = true;
+        if (ach.type === 'taps' && taps >= ach.goal) isDone = true;
+        if (ach.type === 'level' && currentLvl >= ach.goal) isDone = true;
+
+        if (isDone) {
+          setClaimed(prev => [...prev, ach.id]);
+          setBalance(b => b + ach.reward);
+          // Можно добавить уведомление, если захочешь
+        }
+      }
+    });
+  }, [balance, taps, currentLvl, claimed]);
+
+  // Живые цены и стакан
   useEffect(() => {
     const interval = setInterval(() => {
       const newPrices = {};
@@ -86,13 +110,6 @@ export default function App() {
     const touch = e.touches ? e.touches[0] : e;
     setTapAnims([...tapAnims, { id, x: touch.clientX, y: touch.clientY }]);
     setTimeout(() => setTapAnims(prev => prev.filter(a => a.id !== id)), 800);
-  };
-
-  const checkAchieved = (ach) => {
-    if (ach.type === 'balance') return balance >= ach.goal;
-    if (ach.type === 'taps') return taps >= ach.goal;
-    if (ach.type === 'level') return currentLvl >= ach.goal;
-    return false;
   };
 
   const openPos = (coinId) => {
@@ -133,7 +150,7 @@ export default function App() {
         {tab === 'mining' && (
           <div className="page-mining">
             <div className="tap-circle" onClick={handleTap}>$</div>
-            <p className="neon-text">ТАПАЙ МОНЕТУ</p>
+            <p className="neon-text">ТАПАЙ И ЗАРАБАТЫВАЙ</p>
           </div>
         )}
 
@@ -176,16 +193,17 @@ export default function App() {
 
         {tab === 'achievements' && (
           <div className="page-achievements">
-            <h2 className="neon-text">🏆 ДОСТИЖЕНИЯ</h2>
+            <h2 className="neon-text">🏆 ТРОФЕИ</h2>
             <div className="ach-grid">
               {ACHIEVEMENTS.map(ach => {
-                const done = checkAchieved(ach);
+                const isClaimed = claimed.includes(ach.id);
                 return (
-                  <div key={ach.id} className={`ach-card ${done ? 'unlocked' : 'locked'}`}>
-                    <div className="ach-icon">{done ? '🌟' : '🔒'}</div>
+                  <div key={ach.id} className={`ach-card ${isClaimed ? 'unlocked' : 'locked'}`}>
+                    <div className="ach-icon">{isClaimed ? '✅' : '💎'}</div>
                     <div className="ach-info">
                       <b>{ach.title}</b>
                       <p>{ach.desc}</p>
+                      <span className="ach-reward">+{ach.reward}$ Reward</span>
                     </div>
                   </div>
                 );
@@ -196,12 +214,14 @@ export default function App() {
 
         {tab === 'settings' && (
           <div className="page-settings">
-            <h3 className="neon-text-blue">НАСТРОЙКИ</h3>
+            <h3 className="neon-text-blue">ОПЦИИ</h3>
             <div className="set-card">
-               <div className="set-row"><span>ЗВУК</span><button onClick={()=>setSoundOn(!soundOn)}>{soundOn?'ВКЛ':'ВЫКЛ'}</button></div>
+               <div className="set-row"><span>ЗВУК</span><button onClick={()=>setSoundOn(!soundOn)}>{soundOn?'ON':'OFF'}</button></div>
                <div className="set-row"><span>ЯЗЫК</span><button onClick={()=>setLang(lang==='RU'?'EN':'RU')}>{lang}</button></div>
             </div>
-            <a href="https://t.me/kriptoalians" target="_blank" className="tg-link">@KRIPTOALIANS</a>
+            <div className="footer-links">
+               <a href="https://t.me/kriptoalians" target="_blank" className="tg-link">@KRIPTOALIANS</a>
+            </div>
           </div>
         )}
       </main>
