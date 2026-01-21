@@ -1,9 +1,8 @@
 
 
 import React, { useState, useEffect, useRef } from 'react';
-import './App.css'; // Подключаем стили
+import './App.css';
 
-// --- Константы для DEX и Токенов ---
 const DEX_PLATFORMS = [
   { id: '1inch', name: '1inch', color: '#2f8af5' },
   { id: 'Uniswap', name: 'Uniswap v3', color: '#ff007a' },
@@ -11,253 +10,205 @@ const DEX_PLATFORMS = [
   { id: 'PancakeSwap', name: 'PancakeSwap', color: '#d1884f' }
 ];
 
-const TOKENS = [
-  { name: 'TON', basePrice: 5.2 },
-  { name: 'ETH', basePrice: 3400 },
-  { name: 'SOL', basePrice: 145 },
-  { name: 'BNB', basePrice: 580 },
-  { name: 'ARB', basePrice: 0.95 }
-];
+const TOKENS = ['TON', 'ETH', 'SOL', 'BNB', 'ARB'];
 
-// --- Основной Компонент Приложения ---
+const translations = {
+  ru: {
+    mining: 'Майнинг',
+    trade: 'Кросс-DEX',
+    settings: 'Настройки',
+    balanceLabel: 'Баланс USD',
+    miningText: 'Нажимай на доллар, чтобы заработать!',
+    liveSignal: 'ЖИВОЙ СИГНАЛ',
+    buy: 'КУПИТЬ на',
+    sell: 'ПРОДАТЬ на',
+    profit: 'Прибыль',
+    volume: 'Объем',
+    confirm: 'ПОДТВЕРДИТЬ KROSS-SWAP',
+    searching: 'Сканирование пулов...',
+    sound: 'Звук кликов',
+    lang: 'Язык',
+    creators: 'Создатели проекта:',
+    processing: 'Обработка транзакции...',
+    success: 'Сделка успешна!',
+    fail: 'Ошибка проскальзывания!'
+  },
+  uk: {
+    mining: 'Майнінг',
+    trade: 'Крос-DEX',
+    settings: 'Налаштування',
+    balanceLabel: 'Баланс USD',
+    miningText: 'Тисни на долар, щоб заробити!',
+    liveSignal: 'ЖИВИЙ СИГНАЛ',
+    buy: 'КУПИТИ на',
+    sell: 'ПРОДАТИ на',
+    profit: 'Прибуток',
+    volume: 'Обсяг',
+    confirm: 'ПІДТВЕРДИТИ KROSS-SWAP',
+    searching: 'Сканування пулів...',
+    sound: 'Звук кліків',
+    lang: 'Мова',
+    creators: 'Творці проєкту:',
+    processing: 'Обробка транзакції...',
+    success: 'Угода успішна!',
+    fail: 'Помилка проковзування!'
+  },
+  en: {
+    mining: 'Mining',
+    trade: 'Kross-DEX',
+    settings: 'Settings',
+    balanceLabel: 'Balance USD',
+    miningText: 'Tap the dollar to earn!',
+    liveSignal: 'LIVE SIGNAL',
+    buy: 'BUY on',
+    sell: 'SELL on',
+    profit: 'Profit',
+    volume: 'Volume',
+    confirm: 'CONFIRM KROSS-SWAP',
+    searching: 'Scanning pools...',
+    sound: 'Click sounds',
+    lang: 'Language',
+    creators: 'Project creators:',
+    processing: 'Processing trade...',
+    success: 'Trade success!',
+    fail: 'Slippage error!'
+  }
+};
+
 function App() {
-  // --- Состояния ---
-  const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('kross_dex_balance')) || 100);
-  const [activeTab, setActiveTab] = useState('mining');
-  const [currentSignal, setCurrentSignal] = useState(null);
-  const [isProcessingTrade, setIsProcessingTrade] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(() => JSON.parse(localStorage.getItem('kross_dex_sound')) ?? true);
-  const [floatingClicks, setFloatingClicks] = useState([]); // Для анимации вылетающих долларов
+  const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('k_bal')) || 100);
+  const [lang, setLang] = useState(() => localStorage.getItem('k_lang') || 'ru');
+  const [tab, setTab] = useState('mining');
+  const [sound, setSound] = useState(() => JSON.parse(localStorage.getItem('k_snd')) ?? true);
+  const [signal, setSignal] = useState(null);
+  const [clicks, setClicks] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // Референс для звука клика
-  const clickAudioRef = useRef(new Audio('https://www.soundjay.com/buttons/sounds/button-37a.mp3')); // Стандартный звук клика
+  const t = translations[lang];
+  const audio = useRef(new Audio('https://www.soundjay.com/buttons/sounds/button-37a.mp3'));
 
-  // --- Эффекты ---
-
-  // Сохранение баланса и настроек звука в localStorage
   useEffect(() => {
-    localStorage.setItem('kross_dex_balance', balance.toFixed(2));
-    localStorage.setItem('kross_dex_sound', JSON.stringify(soundEnabled));
-  }, [balance, soundEnabled]);
+    localStorage.setItem('k_bal', balance);
+    localStorage.setItem('k_lang', lang);
+    localStorage.setItem('k_snd', JSON.stringify(sound));
+  }, [balance, lang, sound]);
 
-  // Генерация сигналов Kross-DEX
   useEffect(() => {
-    const generateNewSignal = () => {
-      if (isProcessingTrade) return; // Не генерируем новый сигнал, если идет сделка
-
-      const token = TOKENS[Math.floor(Math.random() * TOKENS.length)];
-      const buyDex = DEX_PLATFORMS[Math.floor(Math.random() * DEX_PLATFORMS.length)];
-      let sellDex = DEX_PLATFORMS[Math.floor(Math.random() * DEX_PLATFORMS.length)];
-      while (buyDex.id === sellDex.id) sellDex = DEX_PLATFORMS[Math.floor(Math.random() * DEX_PLATFORMS.length)];
-
-      const spreadPercentage = (Math.random() * (3.5 - 0.7) + 0.7); // Процент прибыли
-      const buyPrice = (token.basePrice * (1 - Math.random() * 0.002)).toFixed(4); // Небольшая случайная вариация цены
-      const sellPrice = (parseFloat(buyPrice) * (1 + spreadPercentage / 100)).toFixed(4);
-
-      setCurrentSignal({
-        token: token.name,
-        buyFrom: buyDex,
-        sellTo: sellDex,
-        buyPrice: parseFloat(buyPrice),
-        sellPrice: parseFloat(sellPrice),
-        spread: spreadPercentage.toFixed(2),
-        timeLeft: 15, // Время жизни сигнала
-        volume: (Math.random() * (50000 - 10000) + 10000).toFixed(0) // Случайный объем
+    if (tab !== 'kross' || loading) return;
+    const gen = () => {
+      const b = DEX_PLATFORMS[Math.floor(Math.random()*4)];
+      let s = DEX_PLATFORMS[Math.floor(Math.random()*4)];
+      while(b.id === s.id) s = DEX_PLATFORMS[Math.floor(Math.random()*4)];
+      setSignal({
+        token: TOKENS[Math.floor(Math.random()*5)],
+        buy: b, sell: s,
+        spread: (Math.random()*3 + 0.5).toFixed(2),
+        time: 15
       });
     };
+    gen();
+    const int = setInterval(gen, 15000);
+    return () => clearInterval(int);
+  }, [tab, loading]);
 
-    if (activeTab === 'kross') {
-      generateNewSignal();
-      const signalInterval = setInterval(generateNewSignal, 15000); // Новый сигнал каждые 15 секунд
-      return () => clearInterval(signalInterval);
-    }
-  }, [activeTab, isProcessingTrade]);
-
-  // Таймер обратного отсчета для сигнала
   useEffect(() => {
-    if (currentSignal && currentSignal.timeLeft > 0 && activeTab === 'kross' && !isProcessingTrade) {
-      const timer = setTimeout(() => {
-        setCurrentSignal(prev => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
-      }, 1000);
+    if (signal && signal.time > 0) {
+      const timer = setTimeout(() => setSignal({...signal, time: signal.time - 1}), 1000);
       return () => clearTimeout(timer);
-    } else if (currentSignal && currentSignal.timeLeft === 0 && activeTab === 'kross' && !isProcessingTrade) {
-      // Сигнал истек, сбрасываем его
-      setCurrentSignal(null);
     }
-  }, [currentSignal, activeTab, isProcessingTrade]);
+  }, [signal]);
 
-  // --- Обработчики событий ---
-
-  // Обработчик для клика по доллару (майнинг)
-  const handleMiningClick = (e) => {
-    setBalance(prev => prev + 0.01);
-
-    if (soundEnabled) {
-      clickAudioRef.current.currentTime = 0; // Сбрасываем звук, чтобы он играл сразу при каждом клике
-      clickAudioRef.current.play().catch(error => console.log("Sound error:", error));
-    }
-
-    // Анимация вылетающего доллара
+  const handleTap = (e) => {
+    setBalance(b => b + 0.01);
+    if(sound) { audio.current.currentTime = 0; audio.current.play().catch(()=>{}); }
     const id = Date.now();
-    const x = e.clientX;
-    const y = e.clientY;
-    setFloatingClicks(prev => [...prev, { id, x, y }]);
-    setTimeout(() => {
-      setFloatingClicks(prev => prev.filter(click => click.id !== id));
-    }, 800); // Длительность анимации
+    setClicks([...clicks, {id, x: e.clientX, y: e.clientY}]);
+    setTimeout(() => setClicks(c => c.filter(i => i.id !== id)), 800);
   };
 
-  // Обработчик для подтверждения Kross-Swap
-  const handleConfirmKrossSwap = () => {
-    if (!currentSignal || isProcessingTrade || balance < 100) {
-      alert("Недостаточно средств или сигнал истек!");
-      return;
-    }
-
-    setIsProcessingTrade(true);
-    setBalance(prev => prev - 100); // Вычитаем сумму сделки
-
+  const handleSwap = () => {
+    if (!signal || balance < 100) return;
+    setLoading(true);
+    setBalance(b => b - 100);
     setTimeout(() => {
-      // Имитация задержки блокчейна и случайного исхода
-      const successChance = currentSignal.timeLeft > 5 ? 0.9 : 0.6; // Выше шанс, если успел вовремя
-      if (Math.random() < successChance) {
-        const profit = 100 * (currentSignal.spread / 100);
-        setBalance(prev => prev + 100 + profit); // Возвращаем сумму + прибыль
-        alert(`Kross-Swap УСПЕШЕН! Вы заработали +$${profit.toFixed(2)}`);
+      const win = Math.random() > 0.2;
+      if(win) {
+        const p = 100 * (signal.spread/100);
+        setBalance(b => b + 100 + p);
+        alert(t.success);
       } else {
-        // Имитация проскальзывания или неудачи
-        setBalance(prev => prev + 100 * 0.95); // Возвращаем часть суммы, остальное - комиссия/потеря
-        alert("Kross-Swap НЕУДАЧЕН! Проскальзывание или высокая комиссия.");
+        setBalance(b => b + 95);
+        alert(t.fail);
       }
-      setIsProcessingTrade(false);
-      setCurrentSignal(null); // Сбрасываем сигнал после сделки
-    }, 3000); // 3 секунды на "обработку транзакции"
+      setLoading(false);
+      setSignal(null);
+    }, 2000);
   };
 
-  // --- Рендер Компонента ---
   return (
-    <div className="app-container">
-      {/* --- Верхний Хедер --- */}
-      <header className="header-bar">
-        <div className="app-title">Kross-DEX</div>
-        <div className="balance-info">
-          <span className="balance-label">Баланс USD:</span>
-          <span className="balance-value">${balance.toFixed(2)}</span>
+    <div className="app">
+      <header className="header">
+        <div className="logo">Kross-DEX</div>
+        <div className="bal">
+          <small>{t.balanceLabel}</small>
+          <h2>${balance.toFixed(2)}</h2>
         </div>
       </header>
 
-      {/* --- Основное Содержимое --- */}
-      <main className="main-content">
-        {/* Вкладка: Майнинг */}
-        {activeTab === 'mining' && (
-          <div className="mining-screen">
-            <div className="tap-dollar-area" onClick={handleMiningClick}>
-              <div className="dollar-glow-icon">$</div>
-              {floatingClicks.map(click => (
-                <span key={click.id} className="floating-text" style={{ left: click.x, top: click.y }}>
-                  +$0.01
-                </span>
-              ))}
+      <main className="content">
+        {tab === 'mining' && (
+          <div className="mining">
+            <div className="coin" onClick={handleTap}>
+              $ {clicks.map(c => <span key={c.id} className="f-text" style={{left: c.x, top: c.y}}>+$0.01</span>)}
             </div>
-            <p className="mining-text">Нажимай на доллар, чтобы заработать!</p>
+            <p>{t.miningText}</p>
           </div>
         )}
 
-        {/* Вкладка: Kross-DEX (Арбитраж) */}
-        {activeTab === 'kross' && (
-          <div className="kross-dex-screen">
-            {isProcessingTrade ? (
-              <div className="processing-indicator">
-                <div className="spinner"></div>
-                <p>Обработка Kross-Swap...</p>
+        {tab === 'kross' && (
+          <div className="dex">
+            {loading ? <div className="loader"><div className="spin"></div>{t.processing}</div> : 
+             signal && signal.time > 0 ? (
+              <div className="card neon">
+                <div className="c-head"><span>{t.liveSignal}</span><span className={signal.time < 5 ? 'red':''}>{signal.time}s</span></div>
+                <div className="c-route">
+                  <div><small>{t.buy}</small><br/><b style={{color: signal.buy.color}}>{signal.buy.name}</b></div>
+                  <div className="arr">➔</div>
+                  <div><small>{t.sell}</small><br/><b style={{color: signal.sell.color}}>{signal.sell.name}</b></div>
+                </div>
+                <div className="c-foot">{t.profit}: <span className="grn">+{signal.spread}%</span></div>
+                <button className="btn" onClick={handleSwap}>{t.confirm}</button>
               </div>
-            ) : currentSignal && currentSignal.timeLeft > 0 ? (
-              <div className="signal-card neon-border">
-                <div className="signal-card-header">
-                  <span className="live-tag">LIVE SIGNAL</span>
-                  <span className={`timer ${currentSignal.timeLeft < 5 ? 'urgent' : ''}`}>
-                    {currentSignal.timeLeft}s
-                  </span>
-                </div>
-                <div className="signal-route">
-                  <div className="route-node">
-                    <span className="node-label">КУПИТЬ на</span>
-                    <span className="node-dex">{currentSignal.buyFrom.name}</span>
-                    <span className="node-price">${currentSignal.buyPrice.toFixed(4)}</span>
-                  </div>
-                  <div className="route-arrow">➔</div>
-                  <div className="route-node">
-                    <span className="node-label">ПРОДАТЬ на</span>
-                    <span className="node-dex">{currentSignal.sellTo.name}</span>
-                    <span className="node-price profit">${currentSignal.sellPrice.toFixed(4)}</span>
-                  </div>
-                </div>
-                <div className="signal-details">
-                  <span>Объем: <span className="value">${currentSignal.volume}</span></span>
-                  <span>Прибыль: <span className="value profit">+{currentSignal.spread}%</span></span>
-                </div>
-                <button
-                  className="kross-swap-button"
-                  onClick={handleConfirmKrossSwap}
-                  disabled={isProcessingTrade || currentSignal.timeLeft === 0 || balance < 100}
-                >
-                  {balance < 100 ? "НЕДОСТАТОЧНО USD ($100)" : "ПОДТВЕРДИТЬ KROSS-SWAP (100 USD)"}
-                </button>
-              </div>
-            ) : (
-              <div className="no-signal">
-                <div className="spinner"></div>
-                <p>Сканирование пулов ликвидности...</p>
-              </div>
-            )}
-
-            {/* Карточки DEX платформ */}
-            <div className="dex-platforms-grid">
-              {DEX_PLATFORMS.map(dex => (
-                <div key={dex.id} className="dex-platform-card" style={{ borderColor: dex.color }}>
-                  <span className="dex-name">{dex.name}</span>
-                  <span className="dex-status" style={{ color: dex.color }}>Online</span>
-                </div>
-              ))}
-            </div>
+            ) : <div className="loader"><div className="spin"></div>{t.searching}</div>}
           </div>
         )}
 
-        {/* Вкладка: Настройки */}
-        {activeTab === 'settings' && (
-          <div className="settings-screen">
-            <h2 className="settings-title">Настройки</h2>
-            <div className="setting-item">
-              <span>Звук кликов</span>
-              <button
-                className={`toggle-button ${soundEnabled ? 'on' : 'off'}`}
-                onClick={() => setSoundEnabled(!soundEnabled)}
-              >
-                {soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}
-              </button>
+        {tab === 'settings' && (
+          <div className="settings">
+            <h2>{t.settings}</h2>
+            <div className="s-row"><span>{t.sound}</span><button className={`tgl ${sound?'on':''}`} onClick={()=>setSound(!sound)}>{sound?'ON':'OFF'}</button></div>
+            <div className="s-row">
+              <span>{t.lang}</span>
+              <div className="lang-btns">
+                {['ru','uk','en'].map(l => (
+                  <button key={l} className={lang === l ? 'active':''} onClick={()=>setLang(l)}>{l.toUpperCase()}</button>
+                ))}
+              </div>
             </div>
-            <div className="creator-info">
-              <p>Создатели проекта:</p>
-              <a href="https://t.me/kriptoalians" target="_blank" rel="noopener noreferrer">@kriptoalians</a>
+            <div className="creators">
+              <p>{t.creators}</p>
+              <a href="https://t.me/kriptoalians" target="_blank">@kriptoalians</a>
             </div>
           </div>
         )}
       </main>
 
-      {/* --- Нижняя Навигация --- */}
-      <nav className="bottom-navbar">
-        <button className={activeTab === 'mining' ? 'active' : ''} onClick={() => setActiveTab('mining')}>
-          Mining
-        </button>
-        <button className={activeTab === 'kross' ? 'active' : ''} onClick={() => setActiveTab('kross')}>
-          Kross-DEX
-        </button>
-        <button className={activeTab === 'settings' ? 'active' : ''} onClick={() => setActiveTab('settings')}>
-          Settings
-        </button>
+      <nav className="nav">
+        <button className={tab==='mining'?'active':''} onClick={()=>setTab('mining')}>{t.mining}</button>
+        <button className={tab==='kross'?'active':''} onClick={()=>setTab('kross')}>{t.trade}</button>
+        <button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}>{t.settings}</button>
       </nav>
     </div>
   );
 }
-
 export default App;
