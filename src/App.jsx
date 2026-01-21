@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const EXCHANGES = [
-  { id: '1inch', name: '1inch', color: '#2f8af5' },
+  { id: '1inch', name: '1inch', color: '#00ccff' },
   { id: 'uniswap', name: 'Uniswap v3', color: '#ff007a' },
   { id: 'sushiswap', name: 'SushiSwap', color: '#fa52a0' },
   { id: 'pancakeswap', name: 'PancakeSwap', color: '#d1884f' }
@@ -41,7 +41,7 @@ const translations = {
   UK: {
     mining: 'Майнінг', arbitrage: 'Арбітраж', settings: 'Налаштування',
     balance: 'БАЛАНС', lvl: 'РІВЕНЬ', xp: 'ДОСВІД',
-    tap: 'ТИСНИ НА ДОЛАР!', buy: 'КУПИТИ', sell: 'ПРОДАТЬ',
+    tap: 'ТИСНИ НА ДОЛАР!', buy: 'КУПИТИ', sell: 'ПРОДАТИ',
     back: '← ВСІ РИНКИ', sound: 'ЗВУК', lang: 'МОВА',
     join: 'Приєднуйтесь до нас', pendingBuy: 'ПІДКЛЮЧЕННЯ ДО ВУЗЛІВ...',
     pendingSell: 'ПЕРЕВІРКА УГОДИ...', success: 'УСПІШНО!',
@@ -60,6 +60,7 @@ export default function App() {
   const [inventory, setInventory] = useState({});
   const [isPending, setIsPending] = useState(false);
   const [statusText, setStatusText] = useState('');
+  const [tapAnims, setTapAnims] = useState([]);
 
   const tapAudio = useRef(new Audio('https://www.soundjay.com/buttons/sounds/button-37a.mp3'));
   const currentLvl = Math.floor(xp / 100) + 1;
@@ -86,12 +87,15 @@ export default function App() {
     return () => clearInterval(timer);
   }, [currentLvl]);
 
-  const handleTap = () => {
+  const handleTap = (e) => {
     setBalance(b => b + 0.01);
     if (soundOn) {
       tapAudio.current.currentTime = 0;
       tapAudio.current.play().catch(() => {});
     }
+    const id = Date.now();
+    setTapAnims([...tapAnims, { id, x: e.clientX, y: e.clientY }]);
+    setTimeout(() => setTapAnims(prev => prev.filter(a => a.id !== id)), 800);
   };
 
   const trade = (coinId, type) => {
@@ -124,6 +128,8 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {tapAnims.map(a => <div key={a.id} className="tap-dollar" style={{left: a.x, top: a.y}}>$</div>)}
+      
       <header className="main-header">
         <div className="lvl-section">
           <div className="lvl-badge">{t.lvl} {currentLvl}</div>
