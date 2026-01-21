@@ -1,41 +1,120 @@
-:root { --bg: #010409; --card: #0d1117; --neon-blue: #00ccff; --neon-green: #39ff14; --text: #e6edf3; }
-body { margin: 0; background-color: var(--bg); color: var(--text); font-family: sans-serif; }
+Это происходит потому, что когда мы усложнили логику, старые стили перестали «узнавать» элементы кода. Если кнопки стали обычными серыми прямоугольниками на белом фоне — значит, файл App.css либо не загрузился, либо в нем есть ошибка, из-за которой браузер его игнорирует.
 
-.app { max-width: 500px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
-.header { padding: 15px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
-.logo { color: var(--neon-blue); font-weight: bold; font-size: 20px; }
-.bal b { color: var(--neon-green); font-size: 20px; }
+Давайте сделаем «финальную чистую сборку». Я объединил всё: 4 биржи, переходы, поиск монет, звуки и неоновый дизайн в один монолитный код.
 
-.content { flex: 1; padding: 15px; padding-bottom: 80px; }
+Шаг 1: Очистите src/App.css полностью и вставьте это:
+Этот код принудительно убирает стандартные стили кнопок и делает всё черным.
 
-/* Сигналы */
-.signal-bar { background: rgba(0, 204, 255, 0.1); border: 1px solid var(--neon-blue); padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
-.blue { color: var(--neon-blue); font-weight: bold; }
-.orange { color: #ff9900; font-weight: bold; }
+CSS
 
-/* Список бирж */
-.dex-list h3 { font-size: 16px; color: #8b949e; margin-bottom: 15px; }
-.dex-item { background: var(--card); padding: 20px; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid; display: flex; justify-content: space-between; cursor: pointer; }
-.dex-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 10px; }
+/* ПРИНУДИТЕЛЬНЫЙ СБРОС СТИЛЕЙ */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-/* Терминал биржи */
-.back-btn { background: none; border: 1px solid #30363d; color: #8b949e; padding: 5px 10px; border-radius: 5px; margin-bottom: 15px; cursor: pointer; }
-.coin-market { background: var(--card); border-radius: 12px; padding: 10px; }
-.coin-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #30363d; }
-.coin-row:last-child { border-bottom: none; }
-.actions { display: flex; gap: 8px; }
-.actions button { border: none; padding: 8px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-.buy { background: var(--neon-green); color: #000; }
-.sell { background: #f85149; color: #fff; }
-.sell:disabled { background: #30363d; color: #8b949e; opacity: 0.5; }
+:root {
+  --bg: #010409;
+  --card: #0d1117;
+  --neon-blue: #00ccff;
+  --neon-green: #39ff14;
+  --neon-red: #ff4500;
+  --text: #e6edf3;
+  --border: #30363d;
+}
 
-/* Навигация */
-.nav { position: fixed; bottom: 0; width: 100%; max-width: 500px; display: flex; background: #161b22; border-top: 1px solid #30363d; }
-.nav button { flex: 1; padding: 15px; background: none; border: none; color: #8b949e; font-weight: bold; }
-.nav button.active { color: var(--neon-blue); background: rgba(0, 204, 255, 0.05); }
+body, html {
+  margin: 0; padding: 0;
+  background-color: var(--bg) !important;
+  color: var(--text);
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
 
-/* Майнинг */
-.mining { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
-.coin-btn { width: 140px; height: 140px; border: 4px solid var(--neon-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon-green); box-shadow: 0 0 20px rgba(57, 255, 20, 0.3); cursor: pointer; position: relative; }
-.f-text { position: fixed; color: var(--neon-green); font-weight: bold; animation: fup 0.8s forwards; pointer-events: none; }
-@keyframes fup { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+.app-wrapper {
+  background-color: var(--bg);
+  min-height: 100vh;
+  max-width: 500px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ШАПКА */
+.header {
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo-text { color: var(--neon-blue); font-weight: bold; font-size: 22px; text-shadow: 0 0 10px rgba(0, 204, 255, 0.4); }
+.balance-box { text-align: right; }
+.balance-box b { color: var(--neon-green); font-size: 20px; }
+
+/* КОНТЕНТ */
+.main-viewport { flex: 1; padding: 15px; padding-bottom: 90px; }
+
+/* МАЙНИНГ */
+.mining-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
+.tap-circle {
+  width: 160px; height: 160px;
+  border: 4px solid var(--neon-green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 60px; color: var(--neon-green);
+  box-shadow: 0 0 20px rgba(57, 255, 20, 0.3);
+  cursor: pointer; position: relative;
+}
+
+/* КРОСС-DEX (СПИСОК БИРЖ) */
+.dex-grid-list { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.dex-card-item {
+  background: var(--card);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer;
+}
+.dex-card-item:active { transform: scale(0.98); }
+
+/* ТЕРМИНАЛ БИРЖИ */
+.terminal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; }
+.btn-back { background: var(--border); border: none; color: white; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+
+.market-table { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+.market-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 15px; border-bottom: 1px solid var(--border);
+}
+.market-row:last-child { border-bottom: none; }
+
+.btn-buy { background: var(--neon-green); border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-right: 5px; }
+.btn-sell { background: var(--neon-red); border: none; padding: 8px 16px; border-radius: 6px; font-weight: bold; color: white; cursor: pointer; }
+.btn-sell:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* СИГНАЛ */
+.signal-alert {
+  background: rgba(0, 204, 255, 0.1);
+  border: 1px solid var(--neon-blue);
+  padding: 12px; border-radius: 10px;
+  margin-bottom: 20px; font-size: 14px;
+  line-height: 1.4;
+}
+
+/* НАВИГАЦИЯ */
+.bottom-nav {
+  position: fixed; bottom: 0; width: 100%; max-width: 500px;
+  display: flex; background: #161b22; border-top: 1px solid var(--border);
+}
+.nav-item {
+  flex: 1; padding: 18px; background: none; border: none;
+  color: #8b949e; font-weight: bold; cursor: pointer;
+}
+.nav-item.active { color: var(--neon-blue); background: rgba(0, 204, 255, 0.05); }
+
+/* АНИМАЦИЯ ТАПА */
+.tap-particle {
+  position: fixed; color: var(--neon-green); font-weight: bold;
+  pointer-events: none; animation: moveUp 0.8s ease-out forwards;
+}
+@keyframes moveUp { 0% { opacity:1; transform:translateY(0); } 100% { opacity:0;
