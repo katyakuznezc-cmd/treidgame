@@ -1,58 +1,36 @@
-:root { --bg: #010409; --neon: #00ffcc; --border: #21262d; }
-body { margin:0; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; }
+:root { --bg: #050508; --neon-blue: #00ccff; --neon-green: #39ff14; --neon-red: #ff0055; --border: #1a1a2e; }
+body { margin:0; background: var(--bg); color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }
 
-.app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
-.main-header { padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: radial-gradient(circle at center, #0a0a1a 0%, #050508 100%); }
 
-/* PROGRESS BAR */
-.lvl-badge { font-weight: bold; color: var(--neon); font-size: 14px; }
-.xp-track { width: 100px; height: 6px; background: #161b22; border-radius: 3px; margin-top: 4px; overflow: hidden; }
-.xp-bar { height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: 0.3s; }
-.bal-amt { font-size: 22px; font-weight: bold; color: #39ff14; }
+/* NEON EFFECTS */
+.neon-border-bottom { border-bottom: 2px solid var(--neon-blue); box-shadow: 0 5px 15px rgba(0, 204, 255, 0.2); }
+.neon-border-top { border-top: 2px solid var(--neon-blue); box-shadow: 0 -5px 15px rgba(0, 204, 255, 0.2); }
+.neon-border { border: 1px solid var(--neon-blue); box-shadow: 0 0 10px rgba(0, 204, 255, 0.3); }
+.neon-text-blue { color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); }
+.neon-text-green { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); }
 
-/* COIN GRID & LOCK */
-.coin-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border); transition: 0.3s; }
-.coin-row.locked { opacity: 0.4; background: rgba(255,255,255,0.02); }
-.c-info small { display: block; color: #ff4444; font-size: 10px; }
+/* TRADING TERMINAL */
+.terminal-top { display: flex; gap: 10px; padding: 10px; align-items: center; }
+.amount-input { background: #000; border: 1px solid var(--neon-blue); color: var(--neon-green); padding: 10px; border-radius: 8px; width: 60%; font-weight: bold; outline: none; }
+.amount-input::placeholder { color: #333; }
 
-/* TERMINAL BUTTONS */
-.buy-b { background: var(--neon); border:none; padding: 8px 12px; border-radius: 6px; font-weight: bold; margin-right: 5px; }
-.sell-b { background: #ff4444; border:none; color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold; }
-.sell-b:disabled { opacity: 0.2; }
+.neon-btn-green { background: none; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 8px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+.neon-btn-green:hover { background: var(--neon-green); color: #000; box-shadow: 0 0 15px var(--neon-green); }
+.neon-btn-red { background: none; border: 1px solid var(--neon-red); color: var(--neon-red); padding: 8px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+.neon-btn-red:hover { background: var(--neon-red); color: #000; box-shadow: 0 0 15px var(--neon-red); }
 
-/* OPTIONS & TOGGLES */
-.option-box { background: #0d1117; border-radius: 12px; border: 1px solid var(--border); padding: 10px; }
-.option { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border); }
-.tgl { background: #161b22; border: 1px solid var(--border); color: #8b949e; padding: 6px 15px; border-radius: 20px; }
-.tgl.on { background: #39ff14; color: black; font-weight: bold; }
-.lang-picks button { background: none; border: 1px solid var(--border); color: #8b949e; padding: 5px 10px; margin-left: 5px; border-radius: 6px; }
-.lang-picks button.active { border-color: var(--neon); color: var(--neon); }
+/* MINING CIRCLE */
+.neon-circle { border: 4px solid var(--neon-green); box-shadow: 0 0 20px var(--neon-green), inset 0 0 20px var(--neon-green); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-/* MINING */
-.mining-page { text-align: center; padding-top: 80px; }
-.coin-click { width: 140px; height: 140px; border: 4px solid var(--neon); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); cursor: pointer; user-select: none; }
-.coin-click:active { transform: scale(0.95); }
+/* SIGNAL TIMER */
+.signal-card { position: relative; overflow: hidden; padding: 15px; margin: 10px; border-radius: 10px; background: rgba(0, 204, 255, 0.05); }
+.signal-timer { position: absolute; bottom: 0; left: 0; height: 3px; background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); animation: shrink linear forwards; }
+@keyframes shrink { from { width: 100%; } to { width: 0%; } }
 
-/* NAV */
-.nav-bar { display: flex; background: #0d1117; border-top: 1px solid var(--border); padding: 10px 0; }
-.nav-bar button { flex: 1; background: none; border: none; color: #8b949e; font-weight: bold; font-size: 11px; }
-.nav-bar button.active { color: var(--neon); }
+.dex-item { background: #000; border: 1px solid; margin: 10px; padding: 20px; border-radius: 15px; display: flex; justify-content: space-between; font-weight: bold; cursor: pointer; }
+.dex-item:hover { box-shadow: 0 0 20px currentColor; transform: scale(1.02); }
 
-/* TX SCREEN */
-.tx-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
-.spin-loader { width: 40px; height: 40px; border: 3px solid var(--neon); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.tap-dollar {
-  position: fixed;
-  color: #00ffcc;
-  font-weight: bold;
-  font-size: 24px;
-  pointer-events: none;
-  z-index: 9999;
-  animation: floatUp 0.8s ease-out forwards;
-}
-
-@keyframes floatUp {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
-}
+.tap-dollar { position: fixed; color: var(--neon-green); font-weight: bold; font-size: 28px; pointer-events: none; z-index: 999; animation: floatUp 0.8s ease-out forwards; text-shadow: 0 0 10px var(--neon-green); }
+@keyframes floatUp { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-150px) rotate(20deg); opacity: 0; } }
