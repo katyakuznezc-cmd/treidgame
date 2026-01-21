@@ -1,7 +1,7 @@
 
 
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const DEX_LIST = [
@@ -14,60 +14,51 @@ const DEX_LIST = [
 const TOKENS = ['TON', 'ETH', 'SOL', 'BNB', 'ARB'];
 
 function App() {
-  // Стартовый баланс $100
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('kross_bal')) || 100);
   const [tab, setTab] = useState('mining');
   const [signal, setSignal] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Настройки
+  const [soundEnabled, setSoundEnabled] = useState(() => JSON.parse(localStorage.getItem('kross_sound')) ?? true);
+  const [clicks, setClicks] = useState([]); // Для анимации вылетающих долларов
+  
+  const audioRef = useRef(new Audio('https://www.soundjay.com/buttons/sounds/button-37a.mp3'));
 
-  // Сохранение баланса
   useEffect(() => {
     localStorage.setItem('kross_bal', balance);
-  }, [balance]);
+    localStorage.setItem('kross_sound', JSON.stringify(soundEnabled));
+  }, [balance, soundEnabled]);
 
-  // Генератор сигналов Kross-DEX
+  // Генератор сигналов
   useEffect(() => {
     const generateSignal = () => {
+      if (tab !== 'kross') return;
       const token = TOKENS[Math.floor(Math.random() * TOKENS.length)];
       const buyDex = DEX_LIST[Math.floor(Math.random() * DEX_LIST.length)];
       let sellDex = DEX_LIST[Math.floor(Math.random() * DEX_LIST.length)];
       while (buyDex.id === sellDex.id) sellDex = DEX_LIST[Math.floor(Math.random() * DEX_LIST.length)];
-
-      const spread = (Math.random() * (3.5 - 0.5) + 0.5).toFixed(2);
-      
-      setSignal({
-        token,
-        buyFrom: buyDex.id,
-        sellTo: sellDex.id,
-        spread: parseFloat(spread),
-        timeLeft: 15
-      });
+      setSignal({ token, buyFrom: buyDex.id, sellTo: sellDex.id, spread: (Math.random() * 3 + 0.5).toFixed(2), timeLeft: 15 });
     };
-
     generateSignal();
     const interval = setInterval(generateSignal, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tab]);
 
-  // Таймер сигнала
-  useEffect(() => {
-    if (signal && signal.timeLeft > 0) {
-      const t = setTimeout(() => setSignal({...signal, timeLeft: signal.timeLeft - 1}), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [signal]);
-
-  const handleTrade = () => {
-    if (!signal || balance < 10 || isProcessing) return;
-    setIsProcessing(true);
+  const handleTap = (e) => {
+    setBalance(prev => prev + 0.01);
     
-    // Имитация кросс-чейн перевода
-    setTimeout(() => {
-      const profit = 10 * (signal.spread / 100);
-      setBalance(prev => prev + profit);
-      setIsProcessing(false);
-      alert(`Сделка на ${signal.token} завершена! Профит: +$${profit.toFixed(2)}`);
-    }, 2000);
+    // Звук
+    if (soundEnabled) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+
+    // Анимация доллара
+    const id = Date.now();
+    const newClick = { id, x: e.clientX, y: e.clientY };
+    setClicks(prev => [...prev, newClick]);
+    setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 800);
   };
 
   return (
@@ -81,50 +72,50 @@ function App() {
       </header>
 
       <main className="main-content">
-        {tab === 'mining' ? (
+        {tab === 'mining' && (
           <div className="mining-tab">
-            <div className="tap-area" onClick={() => setBalance(b => b + 0.01)}>
+            <div className="tap-area" onClick={handleTap}>
               <div className="dollar-icon">$</div>
-            </div>
-            <p>Нажимай на доллар, чтобы заработать на комиссии!</p>
-          </div>
-        ) : (
-          <div className="kross-dex-tab">
-            {signal && signal.timeLeft > 0 ? (
-              <div className="signal-box">
-                <div className="signal-header">
-                  <span className="live-tag">LIVE SIGNAL</span>
-                  <span className="timer">{signal.timeLeft}s</span>
-                </div>
-                <div className="route">
-                  <div className="node">
-                    <small>BUY</small>
-                    <span style={{color: '#58a6ff'}}>{signal.buyFrom}</span>
-                  </div>
-                  <div className="arrow">➔</div>
-                  <div className="node">
-                    <small>SELL</small>
-                    <span style={{color: '#3fb950'}}>{signal.sellTo}</span>
-                  </div>
-                </div>
-                <div className="profit-est">
-                  Profit: <span>+{signal.spread}%</span>
-                </div>
-                <button className="trade-btn" onClick={handleTrade} disabled={isProcessing}>
-                  {isProcessing ? 'Executing Web3...' : `CONFIRM KROSS-SWAP`}
-                </button>
-              </div>
-            ) : (
-              <div className="searching">Scanning pools...</div>
-            )}
-
-            <div className="dex-grid">
-              {DEX_LIST.map(dex => (
-                <div key={dex.id} className="dex-card" style={{borderLeft: `4px solid ${dex.color}`}}>
-                  <h4>{dex.id}</h4>
-                  <small>Status: Online</small>
-                </div>
+              {clicks.map(click => (
+                <span key={click.id} className="floating-dollar" style={{ left: click.x - 20, top: click.y - 40 }}>+$0.01</span>
               ))}
+            </div>
+            <p>Нажимай на доллар!</p>
+          </div>
+        )}
+
+        {tab === 'kross' && (
+          <div className="kross-dex-tab">
+            {signal ? (
+              <div className="signal-box">
+                <div className="signal-header"><span>LIVE SIGNAL</span><span>{signal.timeLeft}s</span></div>
+                <div className="route">
+                  <div className="node"><small>BUY</small><br/>{signal.buyFrom}</div>
+                  <div className="arrow">➔</div>
+                  <div className="node"><small>SELL</small><br/>{signal.sellTo}</div>
+                </div>
+                <div className="profit-est">Profit: <span style={{color: '#3fb950'}}>+{signal.spread}%</span></div>
+                <button className="trade-btn" onClick={() => {
+                  setIsProcessing(true);
+                  setTimeout(() => { setBalance(b => b + (100 * (signal.spread/100))); setIsProcessing(false); setSignal(null); }, 2000);
+                }} disabled={isProcessing}>{isProcessing ? 'Swapping...' : 'CONFIRM SWAP'}</button>
+              </div>
+            ) : <div className="searching">Searching...</div>}
+          </div>
+        )}
+
+        {tab === 'settings' && (
+          <div className="settings-tab">
+            <h3>Настройки</h3>
+            <div className="setting-item">
+              <span>Звук клика</span>
+              <button className={`toggle ${soundEnabled ? 'on' : ''}`} onClick={() => setSoundEnabled(!soundEnabled)}>
+                {soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}
+              </button>
+            </div>
+            <div className="creator-link">
+              <p>Создатели проекта:</p>
+              <a href="https://t.me/kriptoalians" target="_blank" rel="noreferrer">@kriptoalians</a>
             </div>
           </div>
         )}
@@ -133,6 +124,7 @@ function App() {
       <nav className="navbar">
         <button className={tab === 'mining' ? 'active' : ''} onClick={() => setTab('mining')}>Mining</button>
         <button className={tab === 'kross' ? 'active' : ''} onClick={() => setTab('kross')}>Kross-DEX</button>
+        <button className={tab === 'settings' ? 'active' : ''} onClick={() => setTab('settings')}>Settings</button>
       </nav>
     </div>
   );
