@@ -1,6 +1,6 @@
 :root {
   --bg: #000;
-  --panel: #0d0d0d;
+  --panel: #0a0a0a;
   --neon: #00f2ff;
   --win: #39ff14;
   --loss: #ff0055;
@@ -12,38 +12,39 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter
 .app-container { height: 100vh; display: flex; flex-direction: column; }
 
 /* Header */
-.app-header { padding: 15px 20px; background: var(--panel); border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; }
-.bal-amt { font-size: 22px; color: var(--win); font-weight: 900; text-shadow: 0 0 10px rgba(57,255,20,0.3); }
-.user-xp { width: 60px; height: 3px; background: #222; margin-top: 4px; }
-.xp-fill { height: 100%; background: var(--neon); box-shadow: 0 0 8px var(--neon); }
+.app-header { padding: 15px 20px; background: var(--panel); border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; }
+.h-bal { font-size: 20px; color: var(--win); font-weight: bold; text-shadow: 0 0 10px rgba(57,255,20,0.2); }
+.h-xp-bar { width: 60px; height: 3px; background: #222; margin-top: 4px; }
+.h-xp-fill { height: 100%; background: var(--neon); box-shadow: 0 0 8px var(--neon); }
 
 /* Mining */
-.view-mining { flex: 1; display: flex; align-items: center; justify-content: center; }
-.mining-btn { width: 160px; height: 160px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); box-shadow: inset 0 0 20px var(--neon), 0 0 20px var(--neon); cursor: pointer; }
+.mining-view { flex: 1; display: flex; align-items: center; justify-content: center; }
+.mining-circle { width: 160px; height: 160px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); box-shadow: 0 0 20px var(--neon); cursor: pointer; }
+.mining-circle:active { transform: scale(0.95); }
 
-/* Global Signal */
-.global-signal { background: #111; border: 1px solid var(--loss); margin: 10px; padding: 15px; border-radius: 4px; display: flex; align-items: center; gap: 10px; }
-.sig-blink { width: 8px; height: 8px; background: var(--loss); border-radius: 50%; animation: blink 0.8s infinite; }
-.sig-txt { font-size: 13px; flex: 1; }
-.sig-perc { color: var(--win); font-weight: bold; margin-left: 5px; }
+/* Signal */
+.signal-box { background: #111; border: 1px solid var(--loss); margin: 10px; padding: 12px; border-radius: 4px; border-left: 5px solid var(--loss); }
+.sig-header { font-size: 10px; font-weight: bold; color: var(--loss); margin-bottom: 4px; }
+.sig-content { font-size: 13px; }
+.sig-profit { color: var(--win); font-weight: bold; margin-left: 8px; }
 
-/* DEX List */
-.dex-selection { padding: 10px; display: grid; gap: 10px; }
-.dex-row { background: var(--panel); padding: 20px; border-radius: 4px; border-left: 4px solid var(--clr); display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-.dex-arrow { color: #333; }
+/* DEX Menu */
+.dex-menu { padding: 10px; display: grid; gap: 10px; }
+.dex-button { background: var(--panel); padding: 20px; border: 1px solid #1a1a1a; border-left: 4px solid var(--c); display: flex; justify-content: space-between; cursor: pointer; }
+.dex-status { font-size: 10px; color: var(--win); opacity: 0.5; }
 
 /* Terminal */
 .dex-terminal { flex: 1; display: flex; flex-direction: column; }
-.term-head { padding: 10px; display: flex; gap: 15px; background: #050505; border-bottom: 1px solid #111; }
+.term-header { padding: 10px; display: flex; gap: 15px; background: #050505; border-bottom: 1px solid #111; }
 .back-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-.term-controls { flex: 1; display: flex; gap: 10px; }
-.term-controls input { background: #000; border: 1px solid #222; color: var(--neon); padding: 5px; width: 60px; }
-.lev-box { flex: 1; display: flex; flex-direction: column; font-size: 10px; color: #444; }
+.term-inputs { flex: 1; display: flex; gap: 10px; }
+.term-inputs input { background: #000; border: 1px solid #222; color: var(--neon); padding: 5px; width: 60px; }
+.lev-control { flex: 1; display: flex; flex-direction: column; font-size: 10px; color: #444; }
 
-.pair-scroll { padding: 5px 10px; overflow-y: auto; }
-.pair-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #0d0d0d; }
+.pair-list { padding: 10px; overflow-y: auto; }
+.pair-item { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #0d0d0d; }
 .p-timer { display: block; font-size: 9px; color: var(--loss); }
-.p-btn { border: none; padding: 8px 15px; border-radius: 2px; font-weight: bold; cursor: pointer; min-width: 85px; }
+.p-btn { border: none; padding: 8px 15px; font-weight: bold; cursor: pointer; min-width: 85px; }
 .p-btn.buy { background: var(--win); color: #000; }
 .p-btn.sell { background: var(--loss); color: #fff; }
 .p-lock { font-size: 10px; color: #333; }
@@ -53,14 +54,12 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter
 .app-nav button { flex: 1; background: none; border: none; color: #333; font-size: 10px; font-weight: bold; }
 .app-nav button.active { color: var(--neon); }
 
-/* Popups */
-.tap-pop { position: absolute; color: var(--win); font-weight: bold; pointer-events: none; animation: fly 0.8s forwards; z-index: 1000; }
-@keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
-@keyframes blink { 50% { opacity: 0; } }
+/* Extra */
+.awards-view, .settings-view { padding: 20px; }
+.award-stat, .set-row { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #111; }
+.set-row button { background: #111; border: 1px solid #333; color: #fff; padding: 5px 12px; }
+.set-link { margin-top: 40px; text-align: center; }
+.set-link a { color: var(--neon); text-decoration: none; }
 
-/* Awards & Settings */
-.view-awards, .view-settings { padding: 20px; }
-.v-card, .set-item { display: flex; justify-content: space-between; padding: 15px 0; border-bottom: 1px solid #111; }
-.set-item button { background: #111; border: 1px solid #222; color: #fff; padding: 5px 15px; }
-.set-tg { margin-top: 40px; text-align: center; }
-.set-tg a { color: var(--neon); text-decoration: none; font-size: 14px; }
+.tap-dollar { position: absolute; color: var(--win); font-weight: bold; pointer-events: none; animation: fly 0.8s forwards; z-index: 1000; }
+@keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
