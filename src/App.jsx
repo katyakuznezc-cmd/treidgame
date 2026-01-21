@@ -10,7 +10,8 @@ const EXCHANGES = [
 
 const COINS_DATA = [
   { id: 'BTC', lvl: 10, base: 95000 }, { id: 'ETH', lvl: 5, base: 2800 }, 
-  { id: 'SOL', lvl: 3, base: 145 }, { id: 'TON', lvl: 1, base: 5.4 }
+  { id: 'SOL', lvl: 3, base: 145 }, { id: 'TON', lvl: 1, base: 5.4 },
+  { id: 'ARB', lvl: 1, base: 0.9 }, { id: 'DOGE', lvl: 1, base: 0.12 }
 ];
 
 export default function App() {
@@ -18,15 +19,26 @@ export default function App() {
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('k_xp')) || 0);
   const [tab, setTab] = useState('mining');
   const [selectedDex, setSelectedDex] = useState(null);
-  const [activePositions, setActivePositions] = useState({}); // Открытые
-  const [pendingResults, setPendingResults] = useState([]); // Закрытые, но не рассчитанные
+  
+  const [activePositions, setActivePositions] = useState({}); // Открытые сейчас
+  const [waitingQueue, setWaitingQueue] = useState([]); // Закрытые, ждут конца таймера
+  
+  const [tradeAmount, setTradeAmount] = useState('10');
+  const [leverage, setLeverage] = useState(1);
   const [signal, setSignal] = useState(null);
+  const [history, setHistory] = useState([]);
   const [toast, setToast] = useState(null);
   const [prices, setPrices] = useState(COINS_DATA.reduce((acc, c) => ({ ...acc, [c.id]: c.base }), {}));
   const [priceDirs, setPriceDirs] = useState({});
 
   const lvl = Math.floor(Math.sqrt(xp / 150)) + 1;
+  const maxLev = lvl >= 10 ? 100 : lvl >= 5 ? 50 : 10;
   const sndAlert = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
+
+  useEffect(() => {
+    localStorage.setItem('k_bal', balance);
+    localStorage.setItem('k_xp', xp);
+  }, [balance, xp]);
 
   // Живые цены
   useEffect(() => {
@@ -37,7 +49,7 @@ export default function App() {
         Object.keys(next).forEach(id => {
           const oldP = parseFloat(next[id]);
           const change = 1 + (Math.random() * 0.004 - 0.002);
-          const newP = (oldP * change).toFixed(2);
+          const newP = (oldP * change).toFixed(id === 'BTC' ? 2 : 4);
           newDirs[id] = newP > oldP ? 'up' : 'down';
           next[id] = newP;
         });
@@ -48,20 +60,27 @@ export default function App() {
     return () => clearInterval(itv);
   }, []);
 
-  // Логика Сигнала и Расчета
+  // Логика Сигнала и Выплат по окончанию времени
   useEffect(() => {
-    const triggerSignal = () => {
-      // 1. Сначала рассчитываем все отложенные сделки ПРЕДЫДУЩЕГО сигнала
-      setPendingResults(prev => {
-        prev.forEach(res => {
-          setBalance(b => b + res.payout);
-          setXp(x => x + 50);
-          setToast({ msg: res.win ? `WIN: +$${res.profit}` : `LOSS: -$${Math.abs(res.profit)}`, type: res.win ? 'win' : 'loss' });
+    const processEndOfCycle = () => {
+      // 1. Рассчитываем всё, что накопилось в очереди ожидания
+      if (waitingQueue.length > 0) {
+        let totalPayout = 0;
+        const newHistory = [];
+        
+        waitingQueue.forEach(item => {
+          totalPayout += item.payout;
+          newHistory.push({ coin: item.coin, pnl: item.profit, win: item.win });
         });
-        return []; // Очищаем очередь после выплаты
-      });
 
-      // 2. Генерируем новый сигнал
+        setBalance(b => b + totalPayout);
+        setXp(x => x + (waitingQueue.length * 50));
+        setHistory(prev => [...newHistory, ...prev].slice(0, 15));
+        setToast({ msg: `CYCLE ENDED: ${waitingQueue.length} TRADES PROCESSED`, type: 'info' });
+        setWaitingQueue([]); 
+      }
+
+      // 2. Новый сигнал на 120 секунд
       const avail = COINS_DATA.filter(c => c.lvl <= lvl);
       const coin = avail[Math.floor(Math.random() * avail.length)];
       const d1 = EXCHANGES[Math.floor(Math.random() * EXCHANGES.length)];
@@ -75,34 +94,38 @@ export default function App() {
       sndAlert.current.play().catch(() => {});
     };
 
-    triggerSignal();
-    const itv = setInterval(triggerSignal, 120000); // Цикл 120 секунд
+    processEndOfCycle();
+    const itv = setInterval(processEndOfCycle, 120000); 
     return () => clearInterval(itv);
-  }, [lvl]);
+  }, [lvl, waitingQueue]);
 
   const openTrade = (coinId) => {
-    const amt = 10;
-    if (balance < amt) return;
+    const amt = parseFloat(tradeAmount);
+    if (isNaN(amt) || amt > balance || amt <= 0) return setToast({msg: "INVALID AMOUNT", type: "loss"});
+    
     setBalance(b => b - amt);
-    setActivePositions(p => ({ ...p, [coinId]: { amt, dex: selectedDex, signalId: signal?.id, coin: coinId } }));
-    setToast({ msg: "TRADE OPENED. WAIT FOR SIGNAL END.", type: "info" });
+    setActivePositions(p => ({ ...p, [coinId]: { amt, lev: leverage, dex: selectedDex, signalId: signal?.id, coin: coinId } }));
+    setToast({ msg: "TRADE OPENED", type: "info" });
   };
 
   const closeTrade = (coinId) => {
     const p = activePositions[coinId];
     
-    // Рассчитываем результат заранее, но не показываем его
+    // Результат считается сейчас, но сохранится в "очередь" до конца таймера
     const isCorrect = signal && p.signalId === signal.id && signal.sellDexId === selectedDex;
-    const isWin = isCorrect && Math.random() > 0.3; // 30% шанс проигрыша даже при верном сигнале
-    const pnlPerc = isWin ? parseFloat(signal.bonus) : -15;
-    const profit = (p.amt * (pnlPerc * 10) / 100);
+    const isWin = isCorrect && Math.random() > 0.2; // 1-2 минуса из 5 (20% шанс)
+    const pnlPerc = isWin ? parseFloat(signal.bonus) : -12;
+    const profit = (p.amt * (pnlPerc * p.lev) / 100);
 
-    // Отправляем в очередь ожидания
-    setPendingResults(prev => [...prev, { payout: p.amt + profit, profit: profit.toFixed(2), win: isWin }]);
-    
-    // Убираем из активных
+    setWaitingQueue(prev => [...prev, { 
+      coin: coinId, 
+      payout: p.amt + profit, 
+      profit: profit, 
+      win: isWin 
+    }]);
+
     setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
-    setToast({ msg: "POSITION CLOSED. PROCESSING...", type: "info" });
+    setToast({ msg: "POSITION CLOSED. WAITING FOR RESULTS...", type: "info" });
   };
 
   return (
@@ -110,40 +133,52 @@ export default function App() {
       {toast && <div className={`n-toast ${toast.type}`} onClick={() => setToast(null)}>{toast.msg}</div>}
 
       <header className="n-header">
-        <div className="n-money">${balance.toFixed(2)}</div>
-        <div className="n-lvl-pill">LVL {lvl}</div>
+        <div className="n-stats">
+          <div className="n-lvl">LVL {lvl}</div>
+          <div className="n-money">${balance.toFixed(2)}</div>
+        </div>
       </header>
 
       <main className="n-viewport">
         {tab === 'trade' && (
           <div className="n-trade-view">
             {signal && (
-              <div className="n-sig-card">
-                <div className="n-sig-info">
-                  <span className="n-blink">●</span> SIGNAL LIVE: <b>{signal.coin}</b>
-                  <div className="n-sig-dest">BUY: {signal.buyDex} → SELL: {signal.sellDexName}</div>
+              <div className="n-signal-box">
+                <div className="n-sig-header">⚡ ACTIVE SIGNAL (120S)</div>
+                <div className="n-sig-body">
+                  <b>{signal.coin}</b>: {signal.buyDex} → {signal.sellDexName} <span className="n-perc">+{signal.bonus}%</span>
                 </div>
-                <div className="n-sig-bar"></div>
+                <div className="n-sig-bar" key={signal.id}></div>
               </div>
             )}
 
             {!selectedDex ? (
               <div className="n-dex-grid">
                 {EXCHANGES.map(d => (
-                  <div key={d.id} className="n-dex-btn" onClick={() => setSelectedDex(d.id)} style={{'--c': d.color}}>
-                    {d.name} {Object.values(activePositions).some(p => p.dex === d.id) && <i className="n-active-dot"></i>}
+                  <div key={d.id} className="n-dex-card" onClick={() => setSelectedDex(d.id)} style={{'--c': d.color}}>
+                    <span>{d.name}</span>
+                    {Object.values(activePositions).some(p => p.dex === d.id) && <div className="n-active-dot"></div>}
                   </div>
                 ))}
               </div>
             ) : (
               <div className="n-terminal">
-                <button className="n-exit" onClick={() => setSelectedDex(null)}>← BACK TO MARKETS</button>
-                <div className="n-list">
+                <div className="n-term-head">
+                  <button onClick={() => setSelectedDex(null)} className="n-back">←</button>
+                  <div className="n-inputs">
+                    <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} placeholder="AMT" />
+                    <div className="n-lev-box">
+                      <small>x{leverage}</small>
+                      <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(parseInt(e.target.value))} />
+                    </div>
+                  </div>
+                </div>
+                <div className="n-pair-list">
                   {COINS_DATA.map(c => {
                     const p = activePositions[c.id];
                     return (
-                      <div key={c.id} className="n-row">
-                        <div className="n-coin-data">
+                      <div key={c.id} className="n-pair-row">
+                        <div className="n-p-info">
                           <b>{c.id}/USDT</b>
                           <span className={`n-price ${priceDirs[c.id]}`}>${prices[c.id]}</span>
                         </div>
@@ -162,9 +197,34 @@ export default function App() {
         )}
 
         {tab === 'mining' && (
-          <div className="n-mine-area">
-             <div className="n-sphere" onClick={() => {setBalance(b=>b+0.1); setXp(x=>x+1);}}>$</div>
-             {pendingResults.length > 0 && <div className="n-pending-info">PENDING TRADES: {pendingResults.length}</div>}
+          <div className="n-mine-view">
+            <div className="n-sphere" onClick={() => {setBalance(b=>b+0.1); setXp(x=>x+1);}}>$</div>
+            {waitingQueue.length > 0 && (
+              <div className="n-waiting-badge">PROCESSING TRADES: {waitingQueue.length}...</div>
+            )}
+          </div>
+        )}
+
+        {tab === 'awards' && (
+          <div className="n-awards-view">
+            <h3 className="n-title">HISTORY / TROPHIES</h3>
+            <div className="n-log-list">
+              {history.map((h, i) => (
+                <div key={i} className={`n-log-item ${h.win ? 'win' : 'loss'}`}>
+                  {h.coin} <span>{h.win ? '+' : ''}${h.pnl.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'settings' && (
+          <div className="n-settings-view">
+            <h3 className="n-title">SETTINGS</h3>
+            <div className="n-set-card">
+              <p>CREATORS: <a href="https://t.me/kriptoalians" target="_blank">@kriptoalians</a></p>
+              <p>VERSION: 2.0.4 (ARBITRAGE)</p>
+            </div>
           </div>
         )}
       </main>
@@ -172,11 +232,9 @@ export default function App() {
       <nav className="n-nav">
         <button onClick={() => setTab('mining')} className={tab === 'mining' ? 'active' : ''}>MINE</button>
         <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>TRADE</button>
+        <button onClick={() => setTab('awards')} className={tab === 'awards' ? 'active' : ''}>LOGS</button>
+        <button onClick={() => setTab('settings')} className={tab === 'settings' ? 'active' : ''}>OPTS</button>
       </nav>
-      
-      <div className="n-footer-link">
-        <a href="https://t.me/kriptoalians" target="_blank">DEVELOPED BY KRIPTOALIANS</a>
-      </div>
     </div>
   );
 }
