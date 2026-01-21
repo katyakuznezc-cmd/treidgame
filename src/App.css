@@ -1,88 +1,151 @@
-:root {
-  --bg: #010409;
-  --card: #0d1117;
-  --neon-blue: #00ccff;
-  --neon-green: #39ff14;
-  --text: #e6edf3;
+import React, { useState, useEffect, useRef } from 'react';
+import './App.css';
+
+const DEX_DATA = [
+  { id: '1inch', name: '1inch', color: '#2f8af5' },
+  { id: 'uniswap', name: 'Uniswap v3', color: '#ff007a' },
+  { id: 'sushiswap', name: 'SushiSwap', color: '#fa52a0' },
+  { id: 'pancakeswap', name: 'PancakeSwap', color: '#d1884f' }
+];
+
+const COINS = ['TON', 'ETH', 'SOL', 'BNB', 'ARB', 'BTC'];
+
+function App() {
+  const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('k_bal')) || 100);
+  const [tab, setTab] = useState('mining'); // mining, kross, settings
+  const [activeDex, setActiveDex] = useState(null); // null = список бирж, или id биржи
+  const [signal, setSignal] = useState(null);
+  const [clicks, setClicks] = useState([]);
+  const [inventory, setInventory] = useState({}); // Купленные монеты
+
+  const audio = useRef(new Audio('https://www.soundjay.com/buttons/sounds/button-37a.mp3'));
+
+  useEffect(() => {
+    localStorage.setItem('k_bal', balance);
+  }, [balance]);
+
+  // Генератор сигналов (просто текст-подсказка)
+  useEffect(() => {
+    const gen = () => {
+      const b = DEX_DATA[Math.floor(Math.random() * 4)];
+      let s = DEX_DATA[Math.floor(Math.random() * 4)];
+      while(b.id === s.id) s = DEX_DATA[Math.floor(Math.random() * 4)];
+      setSignal({
+        coin: COINS[Math.floor(Math.random() * COINS.length)],
+        buyAt: b.id,
+        sellAt: s.id,
+        profit: (Math.random() * 2 + 1).toFixed(2),
+        time: 30
+      });
+    };
+    gen();
+    const int = setInterval(gen, 30000);
+    return () => clearInterval(int);
+  }, []);
+
+  const handleTap = (e) => {
+    setBalance(b => b + 0.01);
+    const id = Date.now();
+    setClicks([...clicks, {id, x: e.clientX, y: e.clientY}]);
+    setTimeout(() => setClicks(c => c.filter(i => i.id !== id)), 800);
+  };
+
+  // Функция покупки на конкретной бирже
+  const buyCoin = (coin) => {
+    if (balance >= 50) {
+      setBalance(prev => prev - 50);
+      setInventory(prev => ({ ...prev, [coin]: (prev[coin] || 0) + 1 }));
+      alert(`Вы купили ${coin} на бирже ${activeDex}`);
+    } else {
+      alert("Недостаточно средств (нужно $50)");
+    }
+  };
+
+  // Функция продажи на конкретной бирже
+  const sellCoin = (coin) => {
+    if (inventory[coin] > 0) {
+      let finalPrice = 50;
+      // Если продаем там, где сказал сигнал — даем профит
+      if (signal && activeDex === signal.sellAt && coin === signal.coin) {
+        finalPrice = 50 * (1 + parseFloat(signal.profit) / 100);
+        alert(`Успешный арбитраж! Прибыль: +${signal.profit}%`);
+      } else {
+        finalPrice = 50 * 0.95; // Продажа в минус (комиссия), если не по сигналу
+        alert("Продажа без сигнала или не на той бирже (комиссия -5%)");
+      }
+      setBalance(prev => prev + finalPrice);
+      setInventory(prev => ({ ...prev, [coin]: prev[coin] - 1 }));
+    }
+  };
+
+  return (
+    <div className="app">
+      <header className="header">
+        <div className="logo">Kross-DEX</div>
+        <div className="bal"><span>Balance:</span> <b>${balance.toFixed(2)}</b></div>
+      </header>
+
+      <main className="content">
+        {tab === 'mining' && (
+          <div className="mining">
+            <div className="coin-btn" onClick={handleTap}>
+              $ {clicks.map(c => <span key={c.id} className="f-text" style={{left: c.x, top: c.y}}>+$0.01</span>)}
+            </div>
+            <p>Tap to earn commission!</p>
+          </div>
+        )}
+
+        {tab === 'kross' && (
+          <div className="kross-container">
+            {/* Панель сигнала (всегда видна сверху в этой вкладке) */}
+            {signal && (
+              <div className="signal-bar">
+                <div className="signal-hint">
+                  💡 SIGNAL: Buy <b>{signal.coin}</b> on <span className="blue">{signal.buyAt}</span> ➔ Sell on <span className="orange">{signal.sellAt}</span> (+{signal.profit}%)
+                </div>
+              </div>
+            )}
+
+            {!activeDex ? (
+              <div className="dex-list">
+                <h3>Select Exchange:</h3>
+                {DEX_DATA.map(dex => (
+                  <div key={dex.id} className="dex-item" style={{borderColor: dex.color}} onClick={() => setActiveDex(dex.id)}>
+                    <div className="dex-dot" style={{backgroundColor: dex.color}}></div>
+                    {dex.name} <span>➔</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="dex-terminal">
+                <button className="back-btn" onClick={() => setActiveDex(null)}>← Back to Markets</button>
+                <h2 style={{color: DEX_DATA.find(d => d.id === activeDex).color}}>{activeDex.toUpperCase()} TERMINAL</h2>
+                
+                <div className="coin-market">
+                  {COINS.map(c => (
+                    <div key={c} className="coin-row">
+                      <span>{c}/USDT</span>
+                      <div className="actions">
+                        <button className="buy" onClick={() => buyCoin(c)}>BUY</button>
+                        <button className="sell" onClick={() => sellCoin(c)} disabled={!inventory[c]}>SELL ({inventory[c] || 0})</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      <nav className="nav">
+        <button className={tab==='mining'?'active':''} onClick={()=>{setTab('mining'); setActiveDex(null)}}>Mining</button>
+        <button className={tab==='kross'?'active':''} onClick={()=>setTab('kross')}>Kross-DEX</button>
+        <button className={tab==='settings'?'active':''} onClick={()=>setTab('settings')}>Settings</button>
+      </nav>
+    </div>
+  );
 }
 
-body, html {
-  margin: 0;
-  padding: 0;
-  background-color: var(--bg) !important; /* Принудительный черный фон */
-  color: var(--text);
-  font-family: 'Inter', sans-serif;
-}
-
-.app {
-  background-color: var(--bg);
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-.header {
-  padding: 20px;
-  border-bottom: 1px solid #30363d;
-  text-align: center;
-}
-
-.logo {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--neon-blue);
-  text-shadow: 0 0 10px rgba(0, 204, 255, 0.5);
-}
-
-/* Стили кнопок навигации (белые прямоугольники на вашем скрине) */
-.nav {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  max-width: 500px;
-  display: flex;
-  background: var(--card);
-  border-top: 1px solid #30363d;
-}
-
-.nav button {
-  flex: 1;
-  padding: 15px;
-  background: none; /* Убираем белый фон */
-  border: none;
-  color: #8b949e;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.nav button.active {
-  color: var(--neon-blue);
-  background: rgba(0, 204, 255, 0.1);
-}
-
-/* Центрирование монеты $ */
-.mining {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  margin-top: 50px;
-}
-
-.coin {
-  width: 150px;
-  height: 150px;
-  border: 3px solid var(--neon-green);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 60px;
-  color: var(--neon-green);
-  box-shadow: 0 0 20px rgba(57, 255, 20, 0.4);
-  cursor: pointer;
-  user-select: none;
+export default App;
 }
