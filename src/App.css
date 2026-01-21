@@ -1,38 +1,44 @@
-:root { --bg: #0a0a0c; --neon: #00ffcc; --gold: #f3ba2f; --border: #1e1e24; }
-body { margin: 0; background: var(--bg); color: white; font-family: 'Outfit', sans-serif; overflow: hidden; }
+:root { --bg: #010409; --neon: #00ffcc; --border: #21262d; }
+body { margin:0; background: var(--bg); color: white; font-family: sans-serif; overflow: hidden; }
 
 .app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; }
+.main-header { padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
 
-/* XP BAR & HEADER */
-.main-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
-.xp-bar { width: 80px; height: 6px; background: #222; border-radius: 3px; margin-top: 5px; overflow: hidden; }
-.xp-fill { height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); }
-.balance-val { font-size: 26px; font-weight: bold; color: #00ff88; }
+/* PROGRESS BAR */
+.lvl-badge { font-weight: bold; color: var(--neon); font-size: 14px; }
+.xp-track { width: 100px; height: 6px; background: #161b22; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.xp-bar { height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: 0.3s; }
+.bal-amt { font-size: 22px; font-weight: bold; color: #39ff14; }
 
-/* TERMINAL & DEX */
-.dex-btn { 
-  width: 100%; background: #16161a; border: 1px solid var(--border); 
-  padding: 20px; color: white; margin-bottom: 10px; border-radius: 12px;
-  display: flex; justify-content: space-between; align-items: center; font-weight: bold;
-}
-.pair-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid var(--border); }
-.buy-sm { background: #00ff88; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; margin-right: 5px; }
-.sell-sm { background: #ff4444; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; color: white; }
-.sell-sm:disabled { opacity: 0.2; }
+/* COIN GRID & LOCK */
+.coin-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border); transition: 0.3s; }
+.coin-row.locked { opacity: 0.4; background: rgba(255,255,255,0.02); }
+.c-info small { display: block; color: #ff4444; font-size: 10px; }
 
-/* LOADER */
-.tx-modal { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
-.blockchain-loader { width: 40px; height: 40px; border: 3px solid var(--neon); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
+/* TERMINAL BUTTONS */
+.buy-b { background: var(--neon); border:none; padding: 8px 12px; border-radius: 6px; font-weight: bold; margin-right: 5px; }
+.sell-b { background: #ff4444; border:none; color: white; padding: 8px 12px; border-radius: 6px; font-weight: bold; }
+.sell-b:disabled { opacity: 0.2; }
+
+/* OPTIONS & TOGGLES */
+.option-box { background: #0d1117; border-radius: 12px; border: 1px solid var(--border); padding: 10px; }
+.option { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid var(--border); }
+.tgl { background: #161b22; border: 1px solid var(--border); color: #8b949e; padding: 6px 15px; border-radius: 20px; }
+.tgl.on { background: #39ff14; color: black; font-weight: bold; }
+.lang-picks button { background: none; border: 1px solid var(--border); color: #8b949e; padding: 5px 10px; margin-left: 5px; border-radius: 6px; }
+.lang-picks button.active { border-color: var(--neon); color: var(--neon); }
+
+/* MINING */
+.mining-page { text-align: center; padding-top: 80px; }
+.coin-click { width: 140px; height: 140px; border: 4px solid var(--neon); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); cursor: pointer; user-select: none; }
+.coin-click:active { transform: scale(0.95); }
 
 /* NAV */
-.bottom-bar { display: flex; background: #111; border-top: 1px solid var(--border); padding: 10px 0; }
-.bottom-bar button { flex: 1; background: none; border: none; color: #555; font-weight: bold; font-size: 11px; }
-.bottom-bar button.active { color: var(--neon); }
+.nav-bar { display: flex; background: #0d1117; border-top: 1px solid var(--border); padding: 10px 0; }
+.nav-bar button { flex: 1; background: none; border: none; color: #8b949e; font-weight: bold; font-size: 11px; }
+.nav-bar button.active { color: var(--neon); }
 
-/* MINING COIN */
-.coin-glow { 
-  width: 150px; height: 150px; border: 4px solid var(--neon); border-radius: 50%; 
-  margin: 100px auto 20px; display: flex; align-items: center; justify-content: center;
-  font-size: 60px; color: var(--neon); box-shadow: 0 0 30px rgba(0,255,204,0.2);
-}
+/* TX SCREEN */
+.tx-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+.spin-loader { width: 40px; height: 40px; border: 3px solid var(--neon); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
