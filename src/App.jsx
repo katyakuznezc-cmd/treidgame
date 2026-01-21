@@ -18,15 +18,15 @@ const ALL_COINS = [
 const translations = {
   RU: {
     mining: 'Майнинг', arbitrage: 'Биржи', settings: 'Опции',
-    balance: 'КОШЕЛЕК', lvl: 'УРОВЕНЬ', tap: 'МАЙНИНГ',
-    buy: 'BUY', sell: 'SELL', back: '← НАЗАД', amount: 'Сумма:',
-    leverage: 'Плечо:', profit: 'ПРОФИТ', loss: 'ЛИКВИДАЦИЯ'
+    balance: 'БАЛАНС', lvl: 'УРОВЕНЬ', tap: 'МАЙНИНГ',
+    buy: 'ОТКРЫТЬ', sell: 'ЗАКРЫТЬ', back: '← НАЗАД', amount: 'Сумма:',
+    leverage: 'Плечо:', profit: 'ПРОФИТ', loss: 'УБЫТОК', pos: 'В СДЕЛКЕ:'
   },
   EN: {
     mining: 'Mining', arbitrage: 'Exchanges', settings: 'Options',
-    balance: 'WALLET', lvl: 'LEVEL', tap: 'MINING',
-    buy: 'BUY', sell: 'SELL', back: '← BACK', amount: 'Amount:',
-    leverage: 'Leverage:', profit: 'PROFIT', loss: 'LOSS'
+    balance: 'BALANCE', lvl: 'LEVEL', tap: 'MINING',
+    buy: 'OPEN', sell: 'CLOSE', back: '← BACK', amount: 'Amount:',
+    leverage: 'Leverage:', profit: 'PROFIT', loss: 'LOSS', pos: 'IN TRADE:'
   }
 };
 
@@ -38,15 +38,13 @@ export default function App() {
   const [tab, setTab] = useState('mining');
   const [selectedDex, setSelectedDex] = useState(null);
   const [signal, setSignal] = useState(null);
-  const [inventory, setInventory] = useState({});
+  const [activePositions, setActivePositions] = useState({}); // Храним залог сделки
   const [isPending, setIsPending] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [tradeAmount, setTradeAmount] = useState('');
   const [leverage, setLeverage] = useState(1);
   const [tapAnims, setTapAnims] = useState([]);
   const [isShaking, setIsShaking] = useState(false);
-  
-  // Состояние для живых цен
   const [livePrices, setLivePrices] = useState({});
 
   const tapAudio = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'));
@@ -61,7 +59,6 @@ export default function App() {
     localStorage.setItem('k_snd', soundOn);
   }, [balance, xp, lang, soundOn]);
 
-  // Эффект живых цен
   useEffect(() => {
     const interval = setInterval(() => {
       const newPrices = {};
@@ -84,7 +81,7 @@ export default function App() {
       while(b.id === s.id) s = EXCHANGES[Math.floor(Math.random() * 4)];
       setSignal({ 
         coin: coin.id, buy: b.id, sell: s.id, 
-        profit: (Math.random() * 1.5 + 2.5).toFixed(2), 
+        profit: (Math.random() * 2 + 3).toFixed(2), 
         expires: Date.now() + 120000 
       });
     };
@@ -96,8 +93,6 @@ export default function App() {
   const enterFull = () => {
     const el = document.documentElement;
     if (el.requestFullscreen) el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
   };
 
   const handleTap = (e) => {
@@ -113,36 +108,55 @@ export default function App() {
     setTimeout(() => setTapAnims(prev => prev.filter(a => a.id !== id)), 800);
   };
 
-  const trade = (coinId, type) => {
+  const openPosition = (coinId) => {
     const amt = parseFloat(tradeAmount);
-    if (!amt || amt <= 0 || (type === 'buy' && amt > balance)) return;
+    if (!amt || amt <= 0) return alert("Введите сумму");
+    if (amt > balance) return alert("Недостаточно баланса");
+    if (activePositions[coinId]) return alert("Сделка уже открыта");
 
     setIsPending(true);
-    setStatusText(type === 'buy' ? 'EXECUTING...' : 'SWAPPING...');
+    setStatusText('OPENING...');
 
     setTimeout(() => {
-      if (type === 'buy') {
-        setBalance(b => b - amt);
-        setInventory(prev => ({ ...prev, [coinId]: (prev[coinId] || 0) + (amt * leverage) }));
-        setIsPending(false);
-      } else {
-        const posSize = inventory[coinId] || 0;
-        const isWin = signal && selectedDex === signal.sell && coinId === signal.coin && Date.now() < signal.expires;
-        const change = isWin ? (parseFloat(signal.profit) / 100) : -0.15;
-        const final = Math.max(0, (posSize / leverage) + (posSize * change));
-        
-        setBalance(b => b + final);
-        setInventory(prev => ({ ...prev, [coinId]: 0 }));
-        
-        if (isWin) {
-          setXp(x => x + 40);
-          setIsShaking(true);
-          setTimeout(() => setIsShaking(false), 500);
-        }
-        setIsPending(false);
-        setTradeAmount('');
+      setBalance(b => b - amt);
+      setActivePositions(prev => ({ 
+        ...prev, 
+        [coinId]: { margin: amt, lev: leverage, entryDex: selectedDex } 
+      }));
+      setIsPending(false);
+      setTradeAmount('');
+    }, 800);
+  };
+
+  const closePosition = (coinId) => {
+    const pos = activePositions[coinId];
+    if (!pos) return;
+
+    setIsPending(true);
+    setStatusText('CLOSING...');
+
+    setTimeout(() => {
+      const isWin = signal && selectedDex === signal.sell && coinId === signal.coin && Date.now() < signal.expires;
+      const pnlFactor = isWin ? (parseFloat(signal.profit) / 100) : -0.12;
+      
+      // Прибыль = (Маржа * Плечо) * % изменения
+      const pnl = (pos.margin * pos.lev) * pnlFactor;
+      const finalReturn = Math.max(0, pos.margin + pnl);
+      
+      setBalance(b => b + finalReturn);
+      setActivePositions(prev => {
+        const next = {...prev};
+        delete next[coinId];
+        return next;
+      });
+
+      if (isWin) {
+        setXp(x => x + 50);
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 500);
       }
-    }, 1000);
+      setIsPending(false);
+    }, 800);
   };
 
   return (
@@ -155,6 +169,7 @@ export default function App() {
           <div className="xp-mini"><div className="xp-fill" style={{width: `${progress}%`}}></div></div>
         </div>
         <div className="balance-box">
+          <small>{t.balance}</small>
           <div className="bal-val">${balance.toFixed(2)}</div>
         </div>
       </header>
@@ -172,7 +187,7 @@ export default function App() {
             {signal && (
               <div className="signal-box">
                 <div className="s-timer"></div>
-                <span>{signal.coin} | {signal.buy} ➔ {signal.sell} <b className="grn">+{signal.profit}%</b></span>
+                <span>{signal.coin} ➔ {signal.sell} <b className="grn">+{signal.profit}%</b></span>
               </div>
             )}
 
@@ -181,7 +196,6 @@ export default function App() {
                 {EXCHANGES.map(d => (
                   <div key={d.id} className="dex-card" onClick={() => setSelectedDex(d.id)} style={{borderColor: d.color}}>
                     <span style={{color: d.color}}>{d.name}</span>
-                    <small>ONLINE</small>
                   </div>
                 ))}
               </div>
@@ -190,7 +204,7 @@ export default function App() {
                 <div className="term-header">
                   <button onClick={() => setSelectedDex(null)} className="back-btn">{t.back}</button>
                   <div className="term-inputs">
-                    <input type="number" placeholder="Amt" value={tradeAmount} onChange={e=>setTradeAmount(e.target.value)} />
+                    <input type="number" placeholder="USD" value={tradeAmount} onChange={e=>setTradeAmount(e.target.value)} />
                     <div className="lev-row">
                       <span>x{leverage}</span>
                       <input type="range" min="1" max="100" value={leverage} onChange={e=>setLeverage(e.target.value)} />
@@ -201,16 +215,19 @@ export default function App() {
                 <div className="coin-list">
                   {ALL_COINS.map(c => {
                     const locked = c.lvl > currentLvl;
+                    const pos = activePositions[c.id];
                     return (
-                      <div key={c.id} className={`coin-item ${locked ? 'is-locked' : ''}`}>
+                      <div key={c.id} className={`coin-item ${locked ? 'is-locked' : ''} ${pos ? 'active-pos' : ''}`}>
                         <div className="c-name">
                           <b>{c.id}</b>
-                          <span className="live-price">${livePrices[c.id] || c.base}</span>
+                          {pos ? <span className="pos-info">{t.pos} ${pos.margin}</span> : <span className="live-price">${livePrices[c.id] || c.base}</span>}
                         </div>
                         {!locked ? (
                           <div className="c-actions">
-                            <button className="btn-buy" onClick={() => trade(c.id, 'buy')}>{t.buy}</button>
-                            <button className="btn-sell" onClick={() => trade(c.id, 'sell')} disabled={!inventory[c.id]}>{t.sell}</button>
+                            {!pos ? 
+                              <button className="btn-buy" onClick={() => openPosition(c.id)}>{t.buy}</button> :
+                              <button className="btn-sell" onClick={() => closePosition(c.id)}>{t.sell}</button>
+                            }
                           </div>
                         ) : <div className="lock-tag">LVL {c.lvl}</div>}
                       </div>
