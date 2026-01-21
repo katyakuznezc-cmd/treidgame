@@ -1,71 +1,67 @@
 :root {
-  --b-dark: #0b0e11;
-  --b-panel: #1e2329;
-  --ex-yellow: #fcd535;
-  --ex-green: #0ecb81;
-  --ex-red: #f6465d;
-  --text: #eaeaea;
+  --bg: #000000;
+  --panel: #0a0a0a;
+  --neon: #00f2ff;
+  --win: #39ff14;
+  --loss: #ff0055;
+  --text: #ffffff;
 }
 
-body { margin: 0; background: var(--b-dark); color: var(--text); font-family: sans-serif; overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
 
-.app-shell { height: 100vh; display: flex; flex-direction: column; }
+.neon-app { height: 100vh; display: flex; flex-direction: column; }
 
 /* Header */
-.main-header { background: var(--b-panel); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-.bal-value { font-size: 22px; color: var(--ex-green); font-weight: bold; }
-.xp-bar { width: 70px; height: 4px; background: #333; margin-top: 4px; border-radius: 2px; }
-.xp-progress { height: 100%; background: var(--ex-yellow); border-radius: 2px; }
-
-/* Views */
-.main-view { flex: 1; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+.neon-header { padding: 15px 20px; background: var(--panel); border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; align-items: center; }
+.n-bal div { font-size: 22px; color: var(--win); font-weight: bold; text-shadow: 0 0 10px var(--win); }
+.n-xp { width: 60px; height: 3px; background: #222; margin-top: 5px; }
+.n-xp-f { height: 100%; background: var(--neon); box-shadow: 0 0 8px var(--neon); }
 
 /* Mining */
-.view-mining { flex: 1; display: flex; align-items: center; justify-content: center; }
-.tap-target { width: 180px; height: 180px; background: var(--ex-yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; font-weight: bold; color: #000; cursor: pointer; transition: 0.1s; box-shadow: 0 0 30px rgba(252,213,53,0.2); }
-.tap-target:active { transform: scale(0.9); }
+.n-mining { flex: 1; display: flex; align-items: center; justify-content: center; }
+.n-sphere { width: 160px; height: 160px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); box-shadow: 0 0 20px var(--neon); cursor: pointer; }
+.n-sphere:active { transform: scale(0.9); }
 
 /* DEX List */
-.dex-list { padding: 15px; display: grid; gap: 10px; }
-.dex-item { background: var(--b-panel); padding: 15px; border-radius: 8px; display: flex; align-items: center; cursor: pointer; border-left: 4px solid var(--c); }
-.dex-logo { width: 40px; height: 40px; background: #333; border-radius: 50%; margin-right: 15px; }
-.dex-title { font-weight: bold; font-size: 16px; }
-.dex-status { font-size: 10px; color: var(--ex-green); }
-.dex-indicator { margin-left: auto; width: 10px; height: 10px; background: var(--ex-red); border-radius: 50%; animation: blink 1s infinite; }
+.n-dex-list { padding: 15px; display: grid; gap: 10px; }
+.n-dex-card { background: var(--panel); padding: 20px; border: 1px solid #1a1a1a; border-left: 4px solid var(--c); border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; }
+.n-dot { width: 10px; height: 10px; background: var(--loss); border-radius: 50%; animation: blink 1s infinite; }
 
 /* Terminal & Signal */
-.terminal { flex: 1; display: flex; flex-direction: column; }
-.terminal-signal-box { background: var(--ex-red); color: #fff; padding: 12px; font-weight: bold; text-align: center; box-shadow: 0 4px 15px rgba(246,70,93,0.3); }
-.sig-header { font-size: 10px; opacity: 0.8; margin-bottom: 2px; }
-.sig-profit { margin-left: 10px; background: #fff; color: var(--ex-red); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.n-terminal { flex: 1; display: flex; flex-direction: column; }
+.n-signal-alert { background: var(--loss); color: #fff; padding: 12px; text-align: center; }
+.sig-label { font-size: 10px; font-weight: bold; margin-bottom: 2px; }
+.sig-info { font-size: 13px; }
+.sig-plus { background: #fff; color: var(--loss); padding: 1px 5px; border-radius: 3px; margin-left: 5px; font-weight: bold; }
 
-.terminal-top { background: #161a1e; padding: 10px; display: flex; gap: 15px; align-items: center; }
-.btn-exit { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-.trade-params { flex: 1; display: flex; gap: 10px; }
-.trade-params input { background: #000; border: 1px solid #444; color: #fff; padding: 8px; width: 80px; border-radius: 4px; }
-.lev-slider { flex: 1; display: flex; flex-direction: column; font-size: 10px; color: #848e9c; }
+.n-term-top { padding: 10px; display: flex; gap: 15px; background: #050505; border-bottom: 1px solid #111; }
+.n-back-btn { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
+.n-params { flex: 1; display: flex; gap: 10px; }
+.n-params input { background: #000; border: 1px solid #222; color: var(--neon); padding: 5px; width: 60px; }
+.n-lev { flex: 1; display: flex; flex-direction: column; font-size: 10px; color: #555; }
 
-.pair-list { padding: 10px; overflow-y: auto; }
-.pair-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #1e2329; }
-.pair-card.active { background: rgba(246,70,93,0.05); }
-.pair-name { font-weight: bold; }
-.pair-liq { display: block; font-size: 10px; color: var(--ex-red); }
-.pair-btn { border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; min-width: 90px; }
-.pair-btn.buy { background: var(--ex-green); color: #fff; }
-.pair-btn.close { background: var(--ex-red); color: #fff; }
+.n-pair-list { padding: 10px; overflow-y: auto; }
+.n-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #0a0a0a; }
+.n-row.active { background: rgba(255, 0, 85, 0.05); }
+.n-liq { display: block; font-size: 10px; color: var(--loss); }
+.n-btn { border: none; padding: 8px 15px; border-radius: 3px; font-weight: bold; cursor: pointer; min-width: 85px; }
+.n-btn.buy { background: var(--win); color: #000; }
+.n-btn.sell { background: var(--loss); color: #fff; }
+.n-lock { font-size: 10px; color: #333; }
 
 /* Nav */
-.bottom-nav { height: 75px; background: var(--b-panel); display: flex; border-top: 1px solid #333; padding-bottom: 15px; }
-.bottom-nav button { flex: 1; background: none; border: none; color: #848e9c; font-size: 11px; font-weight: bold; cursor: pointer; }
-.bottom-nav button.active { color: var(--ex-yellow); }
+.n-nav { height: 70px; background: var(--panel); display: flex; border-top: 1px solid #1a1a1a; padding-bottom: 10px; }
+.n-nav button { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; }
+.n-nav button.active { color: var(--neon); text-shadow: 0 0 5px var(--neon); }
 
-/* Settings */
-.view-settings, .view-awards { padding: 20px; }
-.set-row, .award-row { display: flex; justify-content: space-between; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #222; }
-.set-row button { background: #333; border: none; color: #fff; padding: 5px 15px; border-radius: 4px; }
-.creator-link { margin-top: 40px; text-align: center; }
-.creator-link a { color: var(--ex-yellow); text-decoration: none; font-weight: bold; }
+/* Others */
+.n-settings, .n-awards { padding: 20px; }
+.n-ach, .n-set-row { display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid #111; }
+.n-set-row button { background: #111; border: 1px solid #333; color: #fff; padding: 5px 10px; border-radius: 3px; }
+.n-creators { margin-top: 30px; text-align: center; }
+.n-creators a { color: var(--neon); text-decoration: none; }
 
-@keyframes blink { 50% { opacity: 0; } }
-.tap-dollar { position: absolute; color: var(--ex-green); font-weight: bold; pointer-events: none; animation: fly 0.8s forwards; z-index: 1000; }
+.pop-money { position: absolute; color: var(--win); font-weight: bold; pointer-events: none; animation: fly 0.8s forwards; z-index: 100; }
+
 @keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+@keyframes blink { 50% { opacity: 0; } }
