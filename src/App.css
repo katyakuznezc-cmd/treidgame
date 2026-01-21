@@ -1,86 +1,54 @@
-:root {
-  --bg: #000; --panel: #0d0d0d; --neon: #00f2ff;
-  --win: #39ff14; --loss: #ff0055; --text: #fff;
+:root { --win: #39ff14; --loss: #ff0055; --neon: #00f2ff; }
+body { background: #000; color: #fff; font-family: sans-serif; margin: 0; }
+
+/* Анимация полоски сигнала 120 сек */
+.n-sig-bar {
+  height: 2px; background: var(--loss); width: 100%;
+  animation: shrink 120s linear forwards;
 }
-body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; overflow: hidden; }
-
-.app-neon { height: 100vh; display: flex; flex-direction: column; position: relative; }
-
-/* Toasts */
-.n-toast {
-  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-  padding: 12px 25px; border-radius: 4px; font-weight: bold; z-index: 1000;
-  animation: slideIn 0.4s ease-out; border: 1px solid rgba(255,255,255,0.2);
-}
-.n-toast.info { background: var(--neon); color: #000; }
-.n-toast.win { background: var(--win); color: #000; }
-.n-toast.loss { background: var(--loss); color: #fff; }
-
-@keyframes slideIn { from { top: -60px; } to { top: 20px; } }
-
-/* Header */
-.n-header { padding: 15px 20px; background: var(--panel); border-bottom: 1px solid #1a1a1a; display: flex; justify-content: space-between; }
-.n-money { font-size: 22px; color: var(--win); font-weight: 900; text-shadow: 0 0 10px var(--win); }
-.n-xp-w { width: 60px; height: 3px; background: #222; margin-top: 5px; }
-.n-xp-f { height: 100%; background: var(--neon); box-shadow: 0 0 8px var(--neon); }
-
-/* Mining - СФЕРА ВЕРНУЛАСЬ */
-.n-mining-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.n-sphere { 
-  width: 170px; height: 170px; border: 2px solid var(--neon); border-radius: 50%; 
-  display: flex; align-items: center; justify-content: center; font-size: 70px; 
-  color: var(--neon); box-shadow: 0 0 30px var(--neon), inset 0 0 20px var(--neon);
-  cursor: pointer; transition: 0.1s; margin-bottom: 40px;
-}
-.n-sphere:active { transform: scale(0.9); }
-
-.n-live-feed { width: 90%; background: #050505; padding: 10px; border: 1px solid #111; height: 140px; }
-.n-feed-title { font-size: 10px; color: #444; margin-bottom: 8px; }
-.n-feed-item { font-size: 12px; margin-bottom: 5px; border-left: 2px solid #222; padding-left: 8px; }
-.n-feed-item.buy { color: var(--win); }
-.n-feed-item.sell { color: var(--loss); }
-
-/* Trade & Signals */
-.n-signal-box { background: #0a0a0a; border: 1px solid var(--loss); margin: 10px; padding: 15px; border-left: 5px solid var(--loss); position: relative; }
-.n-sig-progress { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--loss); animation: shrink 30s linear forwards; }
 @keyframes shrink { from { width: 100%; } to { width: 0%; } }
 
-.n-tag { padding: 2px 6px; font-size: 10px; border-radius: 2px; margin-right: 5px; font-weight: bold; }
-.n-tag.buy { background: var(--win); color: #000; }
-.n-tag.sell { background: var(--loss); color: #fff; }
+/* Цены */
+.n-price { font-family: monospace; transition: 0.3s; margin-left: 10px; }
+.n-price.up { color: var(--win); }
+.n-price.down { color: var(--loss); }
 
-.n-dex-grid { padding: 10px; display: grid; gap: 10px; }
-.n-dex-card { background: var(--panel); padding: 20px; border-left: 4px solid var(--c); display: flex; justify-content: space-between; cursor: pointer; border: 1px solid #1a1a1a; }
-.n-dot { width: 8px; height: 8px; background: var(--loss); border-radius: 50%; animation: blink 1s infinite; margin-right: 10px; }
+/* Тосты */
+.n-toast {
+  position: fixed; top: 10px; left: 10%; right: 10%; padding: 15px; 
+  text-align: center; font-weight: bold; z-index: 100; border-radius: 5px;
+  animation: slideIn 0.3s ease;
+}
+.n-toast.win { background: var(--win); color: #000; }
+.n-toast.loss { background: var(--loss); color: #fff; }
+.n-toast.info { background: var(--neon); color: #000; }
 
-.n-terminal { flex: 1; display: flex; flex-direction: column; }
-.n-term-head { padding: 15px; background: #050505; border-bottom: 1px solid #111; display: flex; justify-content: space-between; }
-.n-back-btn { background: none; border: 1px solid #333; color: #fff; padding: 5px 10px; cursor: pointer; }
+@keyframes slideIn { from { transform: translateY(-100%); } to { transform: translateY(0); } }
 
-.n-pair-row { display: flex; justify-content: space-between; padding: 18px; border-bottom: 1px solid #0d0d0d; }
-.n-p-btn { border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; min-width: 90px; }
-.n-p-btn.buy { background: var(--win); color: #000; }
-.n-p-btn.close { background: var(--loss); color: #fff; }
+/* UI элементы */
+.n-header { padding: 15px; display: flex; justify-content: space-between; background: #0a0a0a; }
+.n-money { font-size: 22px; color: var(--win); font-weight: bold; }
+.n-sig-card { background: #0f0f0f; margin: 10px; border: 1px solid #222; overflow: hidden; }
+.n-sig-info { padding: 12px; font-size: 13px; }
+.n-blink { color: var(--loss); animation: blink 1s infinite; margin-right: 5px; }
 
-/* Nav */
-.n-nav { height: 75px; background: var(--panel); display: flex; border-top: 1px solid #1a1a1a; padding-bottom: 15px; }
-.n-nav button { flex: 1; background: none; border: none; color: #333; font-size: 11px; font-weight: bold; }
-.n-nav button.active { color: var(--neon); text-shadow: 0 0 10px var(--neon); }
+.n-dex-grid { display: grid; gap: 10px; padding: 15px; }
+.n-dex-btn { background: #0a0a0a; padding: 20px; border-left: 4px solid var(--c); border: 1px solid #1a1a1a; position: relative; cursor: pointer; }
+.n-active-dot { position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; background: var(--loss); border-radius: 50%; }
 
-.tap-dollar { position: absolute; color: var(--win); font-weight: bold; pointer-events: none; animation: fly 0.8s forwards; font-size: 24px; z-index: 1000; }
-@keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
+.n-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #111; }
+.n-btn { border: none; padding: 8px 15px; font-weight: bold; cursor: pointer; }
+.n-btn.buy { background: var(--win); color: #000; }
+.n-btn.close { background: #333; color: #fff; }
+
+.n-sphere { width: 150px; height: 150px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 50px auto; box-shadow: 0 0 20px var(--neon); cursor: pointer; }
+.n-pending-info { text-align: center; color: var(--neon); font-size: 12px; margin-top: 10px; }
+
+.n-nav { position: fixed; bottom: 30px; width: 100%; display: flex; background: #000; height: 60px; }
+.n-nav button { flex: 1; background: none; border: none; color: #444; font-weight: bold; }
+.n-nav button.active { color: var(--neon); }
+
+.n-footer-link { position: fixed; bottom: 0; width: 100%; text-align: center; padding: 5px; background: #050505; }
+.n-footer-link a { color: #222; text-decoration: none; font-size: 9px; }
+
 @keyframes blink { 50% { opacity: 0; } }
-/* Добавь это в файл App.css к предыдущим стилям */
-.n-p-name { display: flex; flex-direction: column; }
-.n-p-price { 
-  font-size: 13px; 
-  color: var(--neon); 
-  font-family: 'Courier New', monospace; 
-  margin-top: 2px;
-  animation: priceUpdate 1s infinite alternate;
-}
-
-@keyframes priceUpdate {
-  from { opacity: 0.8; }
-  to { opacity: 1; text-shadow: 0 0 5px var(--neon); }
-}
