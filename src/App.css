@@ -33,3 +33,29 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple
 .navbar { position: fixed; bottom: 0; width: 100%; max-width: 500px; display: flex; background: #161b22; border-top: 1px solid #30363d; }
 .navbar button { flex: 1; padding: 20px; background: none; border: none; color: #8b949e; font-weight: bold; transition: 0.3s; }
 .navbar button.active { color: #58a6ff; background: rgba(88, 166, 255, 0.1); }
+/* ... (предыдущие стили остаются, добавьте/замените эти) ... */
+
+.floating-dollar {
+  position: fixed;
+  color: #3fb950;
+  font-weight: bold;
+  font-size: 24px;
+  pointer-events: none;
+  animation: floatUp 0.8s ease-out forwards;
+  z-index: 1000;
+}
+
+@keyframes floatUp {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-100px); opacity: 0; }
+}
+
+.settings-tab { padding: 20px; background: #0d1117; border-radius: 16px; border: 1px solid #30363d; }
+.setting-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+.toggle { padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; background: #21262d; color: #8b949e; }
+.toggle.on { background: #238636; color: white; }
+
+.creator-link { margin-top: 50px; text-align: center; border-top: 1px solid #30363d; padding-top: 20px; }
+.creator-link a { color: #58a6ff; text-decoration: none; font-size: 18px; font-weight: bold; }
+
+.searching { text-align: center; margin-top: 40px; color: #8b949e; }
