@@ -1,49 +1,58 @@
-:root { --bg: #050508; --neon-blue: #00ccff; --neon-green: #39ff14; --neon-red: #ff0055; --border: #1a1a2e; }
-body { margin:0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+:root { --bg: #050508; --neon-blue: #00ccff; --neon-green: #39ff14; --neon-red: #ff0055; }
+body { margin:0; background: var(--bg); color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }
 
-.app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: #000; }
-.main-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #08080c; }
+.app-container { max-width: 450px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; background: #000; position: relative; }
 
-/* NEON STYLE */
-.neon-border-bottom { border-bottom: 1px solid var(--neon-blue); box-shadow: 0 4px 10px rgba(0,204,255,0.2); }
-.neon-border-top { border-top: 1px solid var(--neon-blue); box-shadow: 0 -4px 10px rgba(0,204,255,0.2); }
-.neon-border { border: 1px solid var(--neon-blue); border-radius: 10px; }
-.neon-text-blue { color: var(--neon-blue); text-shadow: 0 0 5px var(--neon-blue); }
-.neon-text-green { color: var(--neon-green); text-shadow: 0 0 5px var(--neon-green); }
+/* HEADER & LVL */
+.main-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #08080c; z-index: 10; }
+.neon-border-bottom { border-bottom: 2px solid var(--neon-blue); box-shadow: 0 4px 15px rgba(0,204,255,0.3); }
+.bal-amt { font-size: 24px; font-weight: bold; color: var(--neon-green); text-shadow: 0 0 10px var(--neon-green); }
 
-/* PROGRESS BAR */
-.xp-track { width: 80px; height: 4px; background: #222; border-radius: 2px; margin-top: 5px; }
-.xp-bar { height: 100%; background: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); transition: 0.3s; }
+/* BIG NEON COIN */
+.mining-page { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+.coin-wrapper { margin-bottom: 30px; }
+.main-coin {
+  width: 180px; height: 180px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; user-select: none; transition: transform 0.1s;
+  background: radial-gradient(circle, #1a1a2e 0%, #000 100%);
+}
+.neon-circle-big {
+  border: 5px solid var(--neon-green);
+  box-shadow: 0 0 25px var(--neon-green), inset 0 0 20px var(--neon-green);
+  animation: coin-pulse 2s infinite ease-in-out;
+}
+.main-coin:active { transform: scale(0.92); }
+.coin-symbol { font-size: 80px; color: var(--neon-green); text-shadow: 0 0 15px var(--neon-green); font-weight: bold; }
 
-/* TERMINAL CONTROLS */
-.terminal-controls { margin: 10px; padding: 10px; background: #0d0d14; }
-.input-group { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.input-group input[type="number"] { background: #000; border: 1px solid #333; color: var(--neon-green); padding: 8px; border-radius: 5px; outline: none; }
-.lev-box { display: flex; align-items: center; gap: 10px; color: var(--neon-blue); font-size: 12px; }
-.lev-box input { flex: 1; accent-color: var(--neon-blue); }
+@keyframes coin-pulse {
+  0% { box-shadow: 0 0 20px var(--neon-green), inset 0 0 15px var(--neon-green); }
+  50% { box-shadow: 0 0 40px var(--neon-green), inset 0 0 30px var(--neon-green); }
+  100% { box-shadow: 0 0 20px var(--neon-green), inset 0 0 15px var(--neon-green); }
+}
 
-.coin-row { display: flex; justify-content: space-between; padding: 12px 15px; border-bottom: 1px solid #111; }
-.coin-row.locked { opacity: 0.3; }
-.neon-btn-green { background: none; border: 1px solid var(--neon-green); color: var(--neon-green); border-radius: 4px; padding: 5px 10px; font-weight: bold; }
-.neon-btn-red { background: none; border: 1px solid var(--neon-red); color: var(--neon-red); border-radius: 4px; padding: 5px 10px; font-weight: bold; }
+/* TERMINAL & INPUTS */
+.terminal-controls { margin: 10px; padding: 15px; background: #0d0d14; border-radius: 12px; }
+.trade-inputs { display: flex; flex-direction: column; gap: 15px; margin-top: 15px; }
+.trade-inputs input[type="number"] {
+  background: #000; border: 1px solid var(--neon-blue); color: var(--neon-green);
+  padding: 12px; border-radius: 8px; font-size: 16px; outline: none;
+}
+.lev-control { display: flex; align-items: center; gap: 15px; color: var(--neon-blue); font-weight: bold; }
+.lev-control input { flex: 1; accent-color: var(--neon-blue); }
 
-/* MINING */
-.mining-page { text-align: center; margin-top: 50px; }
-.coin-click { width: 150px; height: 150px; border-radius: 50%; border: 4px solid var(--neon-green); margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon-green); box-shadow: 0 0 20px var(--neon-green); cursor: pointer; }
+/* FLOATING DOLLAR */
+.tap-dollar {
+  position: fixed; color: var(--neon-green); pointer-events: none; z-index: 1000;
+  font-weight: bold; font-size: 32px; text-shadow: 0 0 10px var(--neon-green);
+  animation: floatUp 0.8s ease-out forwards;
+}
+@keyframes floatUp {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-150px) scale(1.5); opacity: 0; }
+}
 
-/* SIGNALS */
-.signal-card { margin: 10px; padding: 15px; position: relative; overflow: hidden; background: #0a1118; }
-.signal-timer { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--neon-blue); animation: timer 120s linear forwards; }
-@keyframes timer { from { width: 100%; } to { width: 0%; } }
-
-/* NAV */
-.nav-bar { display: flex; background: #08080c; padding: 10px 0; }
-.nav-bar button { flex: 1; background: none; border: none; color: #555; font-size: 10px; font-weight: bold; }
-.nav-bar button.active { color: var(--neon-blue); }
-
-.tx-screen { position: absolute; inset: 0; background: rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; border-radius: 10px; }
-.spin-loader { width: 30px; height: 30px; border: 2px solid var(--neon-blue); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.tap-dollar { position: fixed; color: var(--neon-green); pointer-events: none; animation: up 0.8s forwards; font-weight: bold; }
-@keyframes up { to { transform: translateY(-100px); opacity: 0; } }
+/* FOOTER NAV */
+.nav-bar { display: flex; background: #08080c; padding: 12px 0; border-top: 2px solid var(--neon-blue); }
+.nav-bar button { flex: 1; background: none; border: none; color: #444; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+.nav-bar button.active { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
