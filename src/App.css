@@ -1,112 +1,70 @@
 :root { --win: #00ff88; --loss: #ff3366; --neon: #00d9ff; --panel: #121214; }
-body { background: #080808; color: #e0e0e0; font-family: 'Roboto Mono', monospace; margin: 0; }
+body { background: #080808; color: #e0e0e0; font-family: 'Roboto Mono', monospace; margin: 0; overflow: hidden; }
 
-.app-neon { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+.app-neon { height: 100vh; display: flex; flex-direction: column; }
 
 /* Header */
-.n-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; background: var(--panel); }
-.n-brand { font-size: 12px; letter-spacing: 2px; color: #444; display: flex; align-items: center; gap: 8px; }
-.n-live-dot { width: 6px; height: 6px; background: var(--win); border-radius: 50%; box-shadow: 0 0 8px var(--win); animation: blink 1s infinite; }
-.n-money { color: var(--win); font-size: 24px; font-weight: 900; }
+.n-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: var(--panel); border-bottom: 1px solid #222; }
+.n-user-info { display: flex; flex-direction: column; gap: 4px; }
+.n-uid { font-size: 8px; color: #555; }
+.n-lvl-pill { font-size: 10px; background: #222; padding: 2px 8px; border-radius: 4px; color: var(--neon); border: 1px solid #333; }
+.n-money { color: var(--win); font-size: 22px; font-weight: bold; }
 
 /* Signal */
-.n-signal-widget { background: #1a1a1d; margin: 10px; border-radius: 8px; border: 1px solid #333; overflow: hidden; }
-.n-sig-header { font-size: 10px; padding: 5px 10px; background: #222; color: #888; }
-.n-sig-content { padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-.n-sig-route { font-size: 14px; color: #fff; }
-.n-sig-coin { color: var(--neon); font-weight: bold; }
+.n-signal-widget { background: #1a1a1d; margin: 10px; border-radius: 4px; border: 1px solid #333; overflow: hidden; }
+.n-sig-content { padding: 10px; font-size: 12px; }
+.n-win-text { color: var(--win); font-weight: bold; }
+.n-sig-timer { height: 2px; background: var(--loss); width: 100%; animation: shrink 45s linear forwards; }
+@keyframes shrink { from { width: 100%; } to { width: 0%; } }
 
-/* DEX & Terminal */
-.n-dex-list { display: grid; gap: 10px; padding: 15px; }
-.n-dex-card { background: var(--panel); padding: 25px; border-radius: 12px; border: 1px solid #222; border-left: 5px solid var(--c); cursor: pointer; display: flex; justify-content: space-between; }
-.n-alert-dot { width: 10px; height: 10px; background: var(--loss); border-radius: 50%; animation: blink 0.5s infinite; }
+/* Layout */
+.n-terminal-layout { display: flex; flex: 1; overflow: hidden; }
+.n-term-sidebar { width: 90px; border-right: 1px solid #222; background: #0a0a0a; font-size: 8px; }
+.n-term-main { flex: 1; display: flex; flex-direction: column; }
 
-.n-term-bar { padding: 10px; background: #000; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
-.n-input-box { display: flex; flex-direction: column; gap: 2px; }
-.n-input-box small { font-size: 8px; color: #666; }
-.n-input-box input { background: #1a1a1d; border: 1px solid #333; color: var(--win); padding: 4px; border-radius: 4px; width: 70px; }
+/* Orderbook */
+.n-orderbook { display: flex; flex-direction: column; height: 100%; }
+.n-ob-row { display: flex; justify-content: space-between; padding: 2px 5px; opacity: 0.7; }
+.n-ob-row.ask { color: var(--loss); }
+.n-ob-row.bid { color: var(--win); }
+.n-ob-mid { padding: 8px 0; text-align: center; font-weight: bold; border: 1px solid #222; margin: 4px 0; }
 
-.n-pair-row { display: flex; justify-content: space-between; padding: 18px; border-bottom: 1px solid #1a1a1d; transition: 0.3s; }
+/* Controls */
+.n-term-header { padding: 10px; background: #000; border-bottom: 1px solid #222; display: flex; justify-content: space-between; }
+.n-back-btn { background: #222; border: none; color: #fff; font-size: 10px; padding: 5px 10px; border-radius: 4px; }
+.n-trade-controls { display: flex; gap: 10px; }
+.n-input-group { display: flex; flex-direction: column; gap: 2px; }
+.n-input-group small { font-size: 8px; color: #666; }
+.n-input-group input { background: #1a1a1d; border: 1px solid #333; color: var(--win); font-size: 12px; padding: 2px; width: 60px; }
+
+/* List */
+.n-pair-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #1a1a1d; align-items: center; }
 .n-pair-row.active { background: rgba(255, 51, 102, 0.05); }
 .n-price.up { color: var(--win); }
 .n-price.down { color: var(--loss); }
-.n-liq-timer { font-size: 10px; color: var(--loss); margin-top: 4px; }
+.n-liq-timer { font-size: 9px; color: var(--loss); }
 
-.n-p-btn { border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; }
-.n-p-btn.buy { background: var(--win); color: #000; }
-.n-p-btn.close { background: var(--loss); color: #fff; }
-.n-pending-btn { font-size: 12px; color: #666; animation: blink 1s infinite; }
+/* Buttons !!! */
+.n-p-btn { border: none; padding: 10px 18px; border-radius: 4px; font-weight: bold; cursor: pointer; min-width: 80px; transition: 0.2s; }
+.n-p-btn.buy { background: var(--win); color: #000; box-shadow: 0 0 10px rgba(0, 255, 136, 0.3); }
+.n-p-btn.close { background: var(--loss); color: #fff; box-shadow: 0 0 10px rgba(255, 51, 102, 0.3); }
+.n-pending-status { font-size: 10px; color: #555; animation: pulse 1s infinite; }
+.n-lock-status { font-size: 10px; color: #333; }
 
-/* Mining & Feed */
-.n-mining-view { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 40px; }
-.n-sphere { width: 150px; height: 150px; border: 1px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); box-shadow: 0 0 40px rgba(0, 217, 255, 0.2); cursor: pointer; }
-.n-live-traffic { width: 90%; margin-top: 50px; background: #0a0a0a; border: 1px solid #1a1a1a; padding: 10px; height: 150px; border-radius: 8px; }
-.n-feed-line { font-size: 11px; font-family: monospace; margin-bottom: 4px; border-left: 2px solid #222; padding-left: 8px; }
-.n-feed-line.buy { color: var(--win); opacity: 0.8; }
-.n-feed-line.sell { color: var(--loss); opacity: 0.8; }
+/* Mining */
+.n-mining-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.n-sphere { width: 160px; height: 160px; border: 1px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 60px; color: var(--neon); box-shadow: 0 0 30px rgba(0, 217, 255, 0.2); cursor: pointer; }
+.n-traffic-box { margin-top: 40px; width: 80%; height: 100px; background: #0a0a0a; padding: 10px; border-radius: 8px; border: 1px solid #1a1a1a; font-size: 10px; }
 
 /* Nav */
 .n-nav { height: 75px; background: var(--panel); display: flex; border-top: 1px solid #222; }
-.n-nav button { flex: 1; background: none; border: none; color: #555; font-size: 10px; font-weight: bold; text-transform: uppercase; }
-.n-nav button.active { color: var(--neon); border-bottom: 2px solid var(--neon); }
+.n-nav button { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; }
+.n-nav button.active { color: var(--neon); border-top: 2px solid var(--neon); }
 
-/* Toasts */
-.n-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; font-size: 13px; font-weight: bold; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); }
-.n-toast.info { background: var(--neon); color: #000; }
+/* Toast */
+.n-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 8px; z-index: 9999; font-weight: bold; }
 .n-toast.win { background: var(--win); color: #000; }
 .n-toast.loss { background: var(--loss); color: #fff; }
+.n-toast.info { background: var(--neon); color: #000; }
 
-@keyframes blink { 50% { opacity: 0.2; } }
-/* Добавь это к существующим стилям */
-
-.n-terminal-layout { display: flex; height: 100%; }
-.n-term-sidebar { width: 100px; border-right: 1px solid #222; background: #0a0a0a; display: flex; flex-direction: column; }
-.n-term-main { flex: 1; overflow-y: auto; }
-
-/* ORDERBOOK */
-.n-orderbook { font-size: 9px; font-family: monospace; display: flex; flex-direction: column; height: 100%; }
-.n-ob-header { display: flex; justify-content: space-between; padding: 5px; color: #444; }
-.n-ob-row { display: flex; justify-content: space-between; padding: 2px 5px; }
-.n-ob-row.ask { color: var(--loss); background: rgba(255, 51, 102, 0.05); }
-.n-ob-row.bid { color: var(--win); background: rgba(0, 255, 136, 0.05); }
-.n-ob-mid { text-align: center; padding: 8px 0; color: #fff; font-weight: bold; border-top: 1px solid #222; border-bottom: 1px solid #222; }
-
-/* Прочие улучшения */
-.n-back-btn { background: #111; border: none; color: #666; padding: 10px; font-size: 9px; cursor: pointer; }
-.n-liq { font-size: 8px; color: var(--loss); }
-.n-pending { font-size: 10px; color: #666; animation: blink 1s infinite; }
-.n-f-line { font-size: 10px; padding: 2px 10px; border-left: 2px solid #222; margin-bottom: 2px; }
-.n-f-line.buy { color: var(--win); }
-.n-f-line.sell { color: var(--loss); }
-/* Сохраняем весь предыдущий дизайн и добавляем фиксы */
-.n-user-info { display: flex; flex-direction: column; gap: 2px; }
-.n-uid { font-size: 9px; color: #444; font-family: monospace; }
-.n-lvl-pill { font-size: 10px; background: #222; padding: 2px 6px; border-radius: 10px; color: var(--neon); }
-
-/* Звуковая кнопка */
-.n-s-row button { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 5px 15px; cursor: pointer; }
-.n-s-row button.on { border-color: var(--win); color: var(--win); box-shadow: 0 0 5px var(--win); }
-
-/* Ожидание */
-.n-pen-st { font-size: 10px; color: #555; animation: blink 1s infinite; }
-@keyframes blink { 50% { opacity: 0.3; } }
-
-/* Ликвидация */
-.n-liq { font-size: 8px; color: var(--loss); margin-top: 4px; }
-
-/* Терминал */
-.n-terminal { display: flex; height: 100%; }
-.n-term-side { width: 80px; border-right: 1px solid #1a1a1a; font-size: 8px; }
-.n-term-body { flex: 1; padding: 10px; overflow-y: auto; }
-.n-trade-inputs { display: flex; gap: 10px; margin: 15px 0; }
-.n-trade-inputs input { background: #000; border: 1px solid #333; color: var(--win); width: 60px; padding: 5px; }
-
-/* Стакан */
-.n-ob-mid { padding: 10px 0; text-align: center; color: #fff; border-top: 1px solid #111; border-bottom: 1px solid #111; font-weight: bold; }
-.n-ob-row { display: flex; justify-content: space-between; padding: 2px 5px; }
-.n-ob-row.ask { color: var(--loss); }
-.n-ob-row.bid { color: var(--win); }
-
-/* Кнопки BUY/CLOSE */
-.b-btn { background: var(--win); border: none; padding: 8px; font-weight: bold; width: 70px; }
-.c-btn { background: var(--loss); border: none; padding: 8px; font-weight: bold; width: 70px; color: #fff; }
+@keyframes pulse { 50% { opacity: 0.3; } }
