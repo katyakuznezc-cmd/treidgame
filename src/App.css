@@ -70,3 +70,17 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter
 .tap-dollar { position: absolute; color: var(--win); font-weight: bold; pointer-events: none; animation: fly 0.8s forwards; font-size: 24px; z-index: 1000; }
 @keyframes fly { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
 @keyframes blink { 50% { opacity: 0; } }
+/* Добавь это в файл App.css к предыдущим стилям */
+.n-p-name { display: flex; flex-direction: column; }
+.n-p-price { 
+  font-size: 13px; 
+  color: var(--neon); 
+  font-family: 'Courier New', monospace; 
+  margin-top: 2px;
+  animation: priceUpdate 1s infinite alternate;
+}
+
+@keyframes priceUpdate {
+  from { opacity: 0.8; }
+  to { opacity: 1; text-shadow: 0 0 5px var(--neon); }
+}
