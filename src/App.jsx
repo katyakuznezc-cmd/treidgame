@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
@@ -10,10 +8,13 @@ const EXCHANGES = [
   { id: 'pancakeswap', name: 'PancakeSwap', color: '#d1884f' }
 ];
 
+// Уровни стали длиннее, монет больше
 const ALL_COINS = [
   { id: 'TON', lvl: 1 }, { id: 'ARB', lvl: 1 },
-  { id: 'ETH', lvl: 2 }, { id: 'SOL', lvl: 3 },
-  { id: 'BNB', lvl: 4 }, { id: 'BTC', lvl: 5 }
+  { id: 'DOGE', lvl: 2 }, { id: 'MATIC', lvl: 3 },
+  { id: 'ETH', lvl: 4 }, { id: 'SOL', lvl: 5 },
+  { id: 'DOT', lvl: 6 }, { id: 'AVAX', lvl: 7 },
+  { id: 'BNB', lvl: 8 }, { id: 'BTC', lvl: 10 }
 ];
 
 const translations = {
@@ -23,7 +24,6 @@ const translations = {
     tap: 'ЖМИ НА МОНЕТУ!', buy: 'КУПИТЬ', sell: 'ПРОДАТЬ',
     back: '← НАЗАД', sound: 'ЗВУК', lang: 'ЯЗЫК',
     amount: 'Сумма:', leverage: 'Плечо:', 
-    pendingBuy: 'ОТКРЫТИЕ...', pendingSell: 'ЗАКРЫТИЕ...',
     profit: 'ПРИБЫЛЬ', loss: 'ЛИКВИДАЦИЯ', unlock: 'Нужен уровень'
   },
   EN: {
@@ -32,7 +32,6 @@ const translations = {
     tap: 'TAP THE COIN!', buy: 'BUY', sell: 'SELL',
     back: '← BACK', sound: 'SOUND', lang: 'LANGUAGE',
     amount: 'Amount:', leverage: 'Leverage:',
-    pendingBuy: 'OPENING...', pendingSell: 'CLOSING...',
     profit: 'PROFIT', loss: 'LIQUIDATED', unlock: 'Level required'
   }
 };
@@ -51,11 +50,16 @@ export default function App() {
   const [tradeAmount, setTradeAmount] = useState('');
   const [leverage, setLeverage] = useState(1);
   const [tapAnims, setTapAnims] = useState([]);
+  const [isShaking, setIsShaking] = useState(false);
 
-  // Звук клика (используем стабильную ссылку)
   const tapAudio = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'));
   
-  const currentLvl = Math.floor(xp / 100) + 1;
+  // Прогрессия: Уровень = корень из XP/100 (каждый уровень требует всё больше опыта)
+  const currentLvl = Math.floor(Math.sqrt(xp / 50)) + 1;
+  const nextLvlXp = Math.pow(currentLvl, 2) * 50;
+  const prevLvlXp = Math.pow(currentLvl - 1, 2) * 50;
+  const progress = ((xp - prevLvlXp) / (nextLvlXp - prevLvlXp)) * 100;
+
   const t = translations[lang] || translations.EN;
 
   useEffect(() => {
@@ -74,7 +78,7 @@ export default function App() {
       while(b.id === s.id) s = EXCHANGES[Math.floor(Math.random() * 4)];
       setSignal({ 
         coin: coin.id, buy: b.id, sell: s.id, 
-        profit: (Math.random() * 2 + 2).toFixed(2), 
+        profit: (Math.random() * 1.5 + 1.2).toFixed(2), 
         expires: Date.now() + 120000 
       });
     };
@@ -83,16 +87,19 @@ export default function App() {
     return () => clearInterval(timer);
   }, [currentLvl]);
 
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  };
+
   const handleTap = (e) => {
-    setBalance(b => b + 0.10);
-    
-    // Воспроизведение звука
+    toggleFullScreen();
+    setBalance(b => b + 0.05);
     if (soundOn) {
       tapAudio.current.currentTime = 0;
-      tapAudio.current.play().catch(err => console.log("Sound block:", err));
+      tapAudio.current.play().catch(() => {});
     }
-
-    // Анимация доллара
     const id = Date.now();
     const x = e.clientX || (e.touches && e.touches[0].clientX);
     const y = e.clientY || (e.touches && e.touches[0].clientY);
@@ -102,51 +109,50 @@ export default function App() {
 
   const trade = (coinId, type) => {
     const amt = parseFloat(tradeAmount);
-    if (!amt || amt <= 0 || (type === 'buy' && amt > balance)) return alert("Check amount!");
+    if (!amt || amt <= 0 || (type === 'buy' && amt > balance)) return alert("Check wallet!");
     if (isPending) return;
 
     setIsPending(true);
-    setStatusText(type === 'buy' ? t.pendingBuy : t.pendingSell);
+    setStatusText(type === 'buy' ? 'OPENING...' : 'CLOSING...');
 
     setTimeout(() => {
       if (type === 'buy') {
         setBalance(b => b - amt);
-        const positionSize = amt * leverage;
-        setInventory(prev => ({ ...prev, [coinId]: (prev[coinId] || 0) + positionSize }));
+        setInventory(prev => ({ ...prev, [coinId]: (prev[coinId] || 0) + (amt * leverage) }));
+        setIsPending(false);
       } else {
         const posSize = inventory[coinId] || 0;
-        if (posSize <= 0) { setIsPending(false); return; }
-        
         const isWin = signal && selectedDex === signal.sell && coinId === signal.coin && Date.now() < signal.expires;
-        const changePercent = isWin ? (parseFloat(signal.profit) / 100) : -0.08;
-        const result = (posSize / leverage) + (posSize * changePercent);
+        const change = isWin ? (parseFloat(signal.profit) / 100) : -0.10;
+        const result = (posSize / leverage) + (posSize * change);
+        const final = Math.max(0, result);
         
-        const finalPayout = Math.max(0, result);
-        setBalance(b => b + finalPayout);
+        setBalance(b => b + final);
         setInventory(prev => ({ ...prev, [coinId]: 0 }));
         
         if (isWin) {
-          setXp(x => x + 50);
-          setStatusText(`${t.profit} +$${(finalPayout - (posSize/leverage)).toFixed(2)}`);
+          setXp(x => x + 40); // Опыт дается фиксированно, но уровни растут медленнее
+          setIsShaking(true);
+          setTimeout(() => setIsShaking(false), 500);
+          setStatusText(`${t.profit} +$${(final - (posSize/leverage)).toFixed(2)}`);
         } else {
-          setStatusText(finalPayout === 0 ? t.loss : 'FEE PAID');
+          setStatusText(t.loss);
         }
+        setTimeout(() => { setIsPending(false); setStatusText(''); setTradeAmount(''); }, 1200);
       }
-      setTimeout(() => { setIsPending(false); setStatusText(''); setTradeAmount(''); }, 1200);
     }, 1500);
   };
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isShaking ? 'shake-anim' : ''}`}>
       {tapAnims.map(a => <div key={a.id} className="tap-dollar" style={{left: a.x, top: a.y}}>$</div>)}
       
       <header className="main-header neon-border-bottom">
         <div className="lvl-section">
-          <div className="lvl-badge">{t.lvl} {currentLvl}</div>
-          <div className="xp-track"><div className="xp-bar" style={{width: `${xp % 100}%`}}></div></div>
+          <div className="lvl-badge">LVL {currentLvl}</div>
+          <div className="xp-track"><div className="xp-bar" style={{width: `${progress}%`}}></div></div>
         </div>
         <div className="bal-section">
-          <small className="neon-text-blue">{t.balance}</small>
           <div className="bal-amt">${balance.toFixed(2)}</div>
         </div>
       </header>
@@ -154,10 +160,8 @@ export default function App() {
       <main className="viewport">
         {tab === 'mining' && (
           <div className="mining-page">
-            <div className="coin-wrapper">
-              <div className="main-coin neon-circle-big" onClick={handleTap}>
-                <span className="coin-symbol">$</span>
-              </div>
+            <div className="main-coin neon-circle-big" onClick={handleTap}>
+              <span className="coin-symbol">$</span>
             </div>
             <h2 className="neon-text-green">{t.tap}</h2>
           </div>
@@ -175,8 +179,8 @@ export default function App() {
             {!selectedDex ? (
               <div className="dex-menu">
                 {EXCHANGES.map(dex => (
-                  <button key={dex.id} className="dex-item neon-hover" onClick={() => setSelectedDex(dex.id)} style={{borderColor: dex.color}}>
-                    <span style={{color: dex.color}}>{dex.name}</span> <small>LIVE</small>
+                  <button key={dex.id} className="dex-item" onClick={() => setSelectedDex(dex.id)} style={{borderColor: dex.color}}>
+                    <span style={{color: dex.color}}>{dex.name}</span>
                   </button>
                 ))}
               </div>
@@ -187,12 +191,11 @@ export default function App() {
                   <div className="trade-inputs">
                     <input type="number" placeholder={t.amount} value={tradeAmount} onChange={(e)=>setTradeAmount(e.target.value)} />
                     <div className="lev-control">
-                      <span>x{leverage}</span>
+                      <span>x{leverage} Leverage</span>
                       <input type="range" min="1" max="100" value={leverage} onChange={(e)=>setLeverage(e.target.value)} />
                     </div>
                   </div>
                 </div>
-                
                 <div className="coin-grid">
                   {ALL_COINS.map(c => {
                     const locked = c.lvl > currentLvl;
@@ -200,19 +203,19 @@ export default function App() {
                       <div key={c.id} className={`coin-row ${locked ? 'locked' : ''}`}>
                         <div className="c-info">
                           <b>{c.id}</b>
-                          {locked ? <small>LVL {c.lvl}</small> : <small>${inventory[c.id]?.toFixed(0) || 0}</small>}
+                          {locked ? <small>LOCKED LVL {c.lvl}</small> : <small>${inventory[c.id]?.toFixed(0) || 0}</small>}
                         </div>
                         {!locked && (
                           <div className="c-btns">
-                            <button className="buy-b neon-btn-green" onClick={() => trade(c.id, 'buy')}>{t.buy}</button>
-                            <button className="sell-b neon-btn-red" onClick={() => trade(c.id, 'sell')}>{t.sell}</button>
+                            <button className="buy-b" onClick={() => trade(c.id, 'buy')}>{t.buy}</button>
+                            <button className="sell-b" onClick={() => trade(c.id, 'sell')}>{t.sell}</button>
                           </div>
                         )}
                       </div>
                     );
                   })}
                 </div>
-                {isPending && <div className="tx-screen"><div className="spin-loader"></div><p className="neon-text-blue">{statusText}</p></div>}
+                {isPending && <div className="tx-screen blur-bg"><div className="spin-loader"></div><p>{statusText}</p></div>}
               </div>
             )}
           </div>
@@ -229,7 +232,7 @@ export default function App() {
               </div></div>
             </div>
             <div className="creators">
-               <a href="https://t.me/kriptoalians" target="_blank" className="neon-text-green">@KRIPTOALIANS</a>
+              <a href="https://t.me/kriptoalians" target="_blank" className="neon-text-green">@KRIPTOALIANS</a>
             </div>
           </div>
         )}
