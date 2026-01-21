@@ -78,3 +78,35 @@ body { background: #080808; color: #e0e0e0; font-family: 'Roboto Mono', monospac
 .n-f-line { font-size: 10px; padding: 2px 10px; border-left: 2px solid #222; margin-bottom: 2px; }
 .n-f-line.buy { color: var(--win); }
 .n-f-line.sell { color: var(--loss); }
+/* Сохраняем весь предыдущий дизайн и добавляем фиксы */
+.n-user-info { display: flex; flex-direction: column; gap: 2px; }
+.n-uid { font-size: 9px; color: #444; font-family: monospace; }
+.n-lvl-pill { font-size: 10px; background: #222; padding: 2px 6px; border-radius: 10px; color: var(--neon); }
+
+/* Звуковая кнопка */
+.n-s-row button { background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 5px 15px; cursor: pointer; }
+.n-s-row button.on { border-color: var(--win); color: var(--win); box-shadow: 0 0 5px var(--win); }
+
+/* Ожидание */
+.n-pen-st { font-size: 10px; color: #555; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* Ликвидация */
+.n-liq { font-size: 8px; color: var(--loss); margin-top: 4px; }
+
+/* Терминал */
+.n-terminal { display: flex; height: 100%; }
+.n-term-side { width: 80px; border-right: 1px solid #1a1a1a; font-size: 8px; }
+.n-term-body { flex: 1; padding: 10px; overflow-y: auto; }
+.n-trade-inputs { display: flex; gap: 10px; margin: 15px 0; }
+.n-trade-inputs input { background: #000; border: 1px solid #333; color: var(--win); width: 60px; padding: 5px; }
+
+/* Стакан */
+.n-ob-mid { padding: 10px 0; text-align: center; color: #fff; border-top: 1px solid #111; border-bottom: 1px solid #111; font-weight: bold; }
+.n-ob-row { display: flex; justify-content: space-between; padding: 2px 5px; }
+.n-ob-row.ask { color: var(--loss); }
+.n-ob-row.bid { color: var(--win); }
+
+/* Кнопки BUY/CLOSE */
+.b-btn { background: var(--win); border: none; padding: 8px; font-weight: bold; width: 70px; }
+.c-btn { background: var(--loss); border: none; padding: 8px; font-weight: bold; width: 70px; color: #fff; }
