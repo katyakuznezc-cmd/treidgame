@@ -119,3 +119,48 @@ body { margin:0; background: var(--dark); color: white; font-family: 'Segoe UI',
 /* Кнопки */
 .btn-buy { color: #39ff14; border: 1px solid #39ff14; }
 .btn-sell { color: #ff0055; border: 1px solid #ff0055; background: rgba(255,0,85,0.1); }
+/* Детали позиции */
+.pos-details {
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+}
+
+.timer-txt {
+  color: var(--neon);
+  font-weight: bold;
+}
+
+.status-fixed {
+  color: #ffaa00;
+  font-style: italic;
+  animation: pulse 1s infinite;
+}
+
+.status-live {
+  color: #39ff14;
+}
+
+/* Состояния кнопок */
+.btn-state.open {
+  border: 1px solid #ff0055;
+  color: #ff0055;
+}
+
+.btn-state.closed {
+  border: 1px solid #555;
+  color: #555;
+  background: rgba(255, 255, 255, 0.05);
+  cursor: not-allowed;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.active-pos {
+  border-left: 4px solid var(--neon);
+  background: rgba(0, 204, 255, 0.05);
+}
