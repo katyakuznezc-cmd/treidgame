@@ -74,3 +74,63 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Inter
 
 .tap-particle { position: fixed; color: var(--neon-green); font-weight: bold; pointer-events: none; animation: moveUp 0.7s forwards; }
 @keyframes moveUp { 100% { transform: translateY(-100px); opacity: 0; } }
+/* Модальное окно транзакции */
+.tx-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(1, 4, 9, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  border-radius: 12px;
+}
+
+.tx-modal {
+  text-align: center;
+  color: var(--neon-blue);
+  font-weight: bold;
+}
+
+.loader-line {
+  width: 200px;
+  height: 4px;
+  background: #1f2630;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.loader-line::after {
+  content: '';
+  position: absolute;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: var(--neon-blue);
+  box-shadow: 0 0 10px var(--neon-blue);
+  animation: loadingBar 2.5s linear infinite;
+}
+
+@keyframes loadingBar {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Эффект свечения для кнопок, когда они доступны */
+.btn-buy:not(:disabled):hover {
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-sell:not(:disabled) {
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0px rgba(255, 62, 62, 0); }
+  50% { box-shadow: 0 0 10px rgba(255, 62, 62, 0.3); }
+  100% { box-shadow: 0 0 0px rgba(255, 62, 62, 0); }
+}
