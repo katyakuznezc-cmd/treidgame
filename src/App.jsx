@@ -8,9 +8,10 @@ const EXCHANGES = [
   { id: 'pancakeswap', name: 'PANCAKE', color: '#d1884f' }
 ];
 
-const COINS = [
-  { id: 'BTC', lvl: 10 }, { id: 'ETH', lvl: 5 }, { id: 'SOL', lvl: 3 },
-  { id: 'TON', lvl: 1 }, { id: 'ARB', lvl: 1 }, { id: 'DOGE', lvl: 1 }
+const COINS_DATA = [
+  { id: 'BTC', lvl: 10, base: 95000 }, { id: 'ETH', lvl: 5, base: 2800 }, 
+  { id: 'SOL', lvl: 3, base: 145 }, { id: 'TON', lvl: 1, base: 5.4 }, 
+  { id: 'ARB', lvl: 1, base: 0.9 }, { id: 'DOGE', lvl: 1, base: 0.12 }
 ];
 
 export default function App() {
@@ -19,14 +20,23 @@ export default function App() {
   const [tab, setTab] = useState('mining');
   const [selectedDex, setSelectedDex] = useState(null);
   const [activePositions, setActivePositions] = useState({});
+  const [tradeAmount, setTradeAmount] = useState('10');
+  const [leverage, setLeverage] = useState(1);
   const [signal, setSignal] = useState(null);
   const [history, setHistory] = useState([]);
   const [liveFeed, setLiveFeed] = useState([]);
   const [toast, setToast] = useState(null);
   const [tradeCount, setTradeCount] = useState(0);
   const [tapAnims, setTapAnims] = useState([]);
+  
+  // Состояние для живых цен
+  const [prices, setPrices] = useState(
+    COINS_DATA.reduce((acc, c) => ({ ...acc, [c.id]: c.base }), {})
+  );
 
   const lvl = Math.floor(Math.sqrt(xp / 150)) + 1;
+  const maxLev = lvl >= 10 ? 100 : lvl >= 5 ? 50 : 10;
+
   const sndAlert = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
   const sndTap = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'));
 
@@ -35,7 +45,21 @@ export default function App() {
     localStorage.setItem('k_xp', xp);
   }, [balance, xp]);
 
-  // Уведомления
+  // ДВИЖОК ЖИВЫХ ЦЕН
+  useEffect(() => {
+    const itv = setInterval(() => {
+      setPrices(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => {
+          const change = 1 + (Math.random() * 0.004 - 0.002); // Колебание +/- 0.2%
+          next[id] = (next[id] * change).toFixed(id === 'DOGE' || id === 'ARB' ? 4 : 2);
+        });
+        return { ...next };
+      });
+    }, 1000);
+    return () => clearInterval(itv);
+  }, []);
+
   const showToast = (msg, type) => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2500);
@@ -44,7 +68,7 @@ export default function App() {
   // Живая лента трафика
   useEffect(() => {
     const itv = setInterval(() => {
-      const coin = COINS[Math.floor(Math.random() * COINS.length)].id;
+      const coin = COINS_DATA[Math.floor(Math.random() * COINS_DATA.length)].id;
       const type = Math.random() > 0.5 ? 'BUY' : 'SELL';
       const amt = (Math.random() * 500).toFixed(2);
       setLiveFeed(prev => [{ id: Date.now(), text: `${type} ${coin} $${amt}`, type }, ...prev.slice(0, 4)]);
@@ -55,7 +79,7 @@ export default function App() {
   // Арбитражный Сигнал
   useEffect(() => {
     const triggerSignal = () => {
-      const avail = COINS.filter(c => c.lvl <= lvl);
+      const avail = COINS_DATA.filter(c => c.lvl <= lvl);
       const coin = avail[Math.floor(Math.random() * avail.length)];
       const d1 = EXCHANGES[Math.floor(Math.random() * EXCHANGES.length)];
       let d2 = EXCHANGES[Math.floor(Math.random() * EXCHANGES.length)];
@@ -83,10 +107,17 @@ export default function App() {
   };
 
   const openTrade = (coinId) => {
-    if (10 > balance) return;
-    setBalance(b => b - 10);
-    setActivePositions(p => ({ ...p, [coinId]: { amt: 10, start: Date.now(), dex: selectedDex, signalId: signal?.id } }));
-    showToast(`OPENED ${coinId} POSITION`, 'info');
+    const amt = parseFloat(tradeAmount);
+    if (isNaN(amt) || amt > balance || amt <= 0) {
+      showToast("INVALID AMOUNT", "loss");
+      return;
+    }
+    setBalance(b => b - amt);
+    setActivePositions(p => ({ 
+      ...p, 
+      [coinId]: { amt, lev: leverage, entryPrice: prices[coinId], start: Date.now(), dex: selectedDex, signalId: signal?.id } 
+    }));
+    showToast(`OPENED ${coinId} x${leverage}`, 'info');
   };
 
   const closeTrade = (coinId) => {
@@ -95,11 +126,10 @@ export default function App() {
     setTradeCount(currentTradeNum >= 5 ? 0 : currentTradeNum);
 
     const isCorrect = signal && p.signalId === signal.id && signal.sellDexId === selectedDex;
-    // Логика: 3-я и 5-я сделка всегда минус (1-2 минуса из 5)
     const isWin = isCorrect && currentTradeNum !== 3 && currentTradeNum !== 5;
     
-    const pnlPerc = isWin ? parseFloat(signal.bonus) : -(Math.random() * 15 + 10);
-    const profit = (p.amt * (pnlPerc * 10) / 100); // Скрытое плечо x10
+    const pnlPerc = isWin ? parseFloat(signal.bonus) : -(Math.random() * 10 + 5);
+    const profit = (p.amt * (pnlPerc * p.lev) / 100);
 
     setBalance(b => b + p.amt + profit);
     setXp(x => x + 50);
@@ -120,7 +150,7 @@ export default function App() {
           <div className="n-xp-w"><div className="n-xp-f" style={{width: `${(xp % 150)/1.5}%`}}></div></div>
         </div>
         <div className="n-balance">
-          <small>BALANCE</small>
+          <small>ACCOUNT BALANCE</small>
           <div className="n-money">${balance.toFixed(2)}</div>
         </div>
       </header>
@@ -155,11 +185,11 @@ export default function App() {
               <div className="n-dex-grid">
                 {EXCHANGES.map(d => (
                   <div key={d.id} className="n-dex-card" onClick={() => setSelectedDex(d.id)} style={{'--c': d.color}}>
-                    <span className="n-dex-n">{d.name}</span>
-                    <div className="n-dex-meta">
-                      {Object.values(activePositions).some(p => p.dex === d.id) && <div className="n-dot"></div>}
-                      <span>MARKET ACTIVE</span>
+                    <div className="n-dex-info">
+                        <span className="n-dex-n">{d.name}</span>
+                        <small>MARKET DEPTH: ${(Math.random()*20).toFixed(1)}M</small>
                     </div>
+                    {Object.values(activePositions).some(p => p.dex === d.id) && <div className="n-dot"></div>}
                   </div>
                 ))}
               </div>
@@ -167,15 +197,28 @@ export default function App() {
               <div className="n-terminal">
                 <div className="n-term-head">
                   <button onClick={() => setSelectedDex(null)} className="n-back-btn">← EXIT</button>
-                  <span className="n-term-name">{selectedDex.toUpperCase()} TERMINAL</span>
+                  <div className="n-term-inputs">
+                      <div className="n-input-group">
+                          <small>AMOUNT</small>
+                          <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} />
+                      </div>
+                      <div className="n-input-group">
+                          <small>LEVERAGE x{leverage}</small>
+                          <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(parseInt(e.target.value))} />
+                      </div>
+                  </div>
                 </div>
                 <div className="n-pair-list">
-                  {COINS.map(c => {
+                  {COINS_DATA.map(c => {
                     const p = activePositions[c.id];
+                    const currentPrice = prices[c.id];
                     return (
                       <div key={c.id} className={`n-pair-row ${p ? 'active' : ''}`}>
                         <div className="n-p-info">
-                          <b>{c.id}/USDT</b>
+                          <div className="n-p-name">
+                            <b>{c.id}/USDT</b>
+                            <span className="n-p-price">${currentPrice}</span>
+                          </div>
                           {p && <span className="n-p-timer">LIQ IN: {120 - Math.floor((Date.now()-p.start)/1000)}s</span>}
                         </div>
                         {c.lvl <= lvl ? (
@@ -209,7 +252,7 @@ export default function App() {
           <div className="n-settings-view">
              <h2 className="n-title">OPTIONS</h2>
              <div className="n-set-row"><span>CREATORS</span> <a href="https://t.me/kriptoalians" target="_blank">@kriptoalians</a></div>
-             <div className="n-set-row"><span>SOUND</span> <button>ON</button></div>
+             <div className="n-set-row"><span>SOUNDS</span> <button>ON</button></div>
           </div>
         )}
       </main>
