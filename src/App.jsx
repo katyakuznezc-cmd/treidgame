@@ -70,7 +70,7 @@ export default function App() {
         setIsGreedMode(true);
         setTimeout(() => setIsGreedMode(false), 20000);
       }
-    }, 45000);
+    }, 50000);
     return () => clearInterval(itv);
   }, [isGreedMode]);
 
@@ -130,101 +130,108 @@ export default function App() {
   };
 
   return (
-    <div className="app">
-      {tapAnims.map(a => <div key={a.id} className="tap-anim" style={{left:a.x, top:a.y}}>$</div>)}
+    <div className="app-shell">
+      {tapAnims.map(a => <div key={a.id} className="floating-dollar" style={{left:a.x, top:a.y}}>$</div>)}
 
-      <header className="header">
-        <div className="stats">
-          <small>LVL {currentLvl}</small>
-          <div className="xp-bar"><div className="xp-fill" style={{width: (xp%100)+'%'}} /></div>
+      <div className="top-bar">
+        <div className="user-stats">
+          <span className="lvl-badge">LVL {currentLvl}</span>
+          <div className="xp-container"><div className="xp-progress" style={{width: (xp%100)+'%'}} /></div>
         </div>
-        <div className="balance">${balance.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
-      </header>
+        <div className="main-balance">${balance.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+      </div>
 
-      <main className="main">
+      <div className="view-port">
         {tab === 'mining' && (
-          <div className="page-mining">
-            <div className="coin-btn" onClick={handleTap}>$</div>
-            <p className="neon-text">ТАПАЙ МОНЕТУ</p>
+          <div className="mining-screen">
+            <div className="core-button" onClick={handleTap}>
+              <div className="inner-glow"></div>
+              <span>$</span>
+            </div>
           </div>
         )}
 
         {tab === 'trade' && (
-          <div className={`page-trade ${isGreedMode ? 'greed-bg' : ''}`}>
+          <div className={`trade-screen ${isGreedMode ? 'greed-pulse' : ''}`}>
             {showTutorial && (
-              <div className="tut-overlay">
-                <div className="tut-card">
-                  <h3>{["СИГНАЛЫ","ТОЧКИ","ВРЕМЯ"][tutStep]}</h3>
-                  <p>{["Читай сигнал внизу — там ключ к прибыли!","Красная точка мигает там, где открыта сделка.","У тебя всего 2 минуты, чтобы закрыть позицию!"][tutStep]}</p>
-                  <button onClick={() => tutStep < 2 ? setTutStep(s=>s+1) : (setShowTutorial(false), localStorage.setItem('k_tut_done','t'))}>ДАЛЕЕ</button>
+              <div className="modal-overlay">
+                <div className="modal-content">
+                  <h2>{["СИГНАЛЫ","ИНДИКАТОРЫ","ЛИКВИДАЦИЯ"][tutStep]}</h2>
+                  <p>{["Анализируй сигнал в нижней части экрана для входа в сделку.","Красная точка помечает биржу с активным ордером.","Сделка автоматически закрывается через 120 секунд."][tutStep]}</p>
+                  <button className="primary-btn" onClick={() => tutStep < 2 ? setTutStep(s=>s+1) : (setShowTutorial(false), localStorage.setItem('k_tut_done','t'))}>ПОНЯТНО</button>
                 </div>
               </div>
             )}
 
             {!selectedDex ? (
-              <div className="dex-grid">
+              <div className="exchange-grid">
                 {EXCHANGES.map(d => {
                   const hasPos = Object.values(activePositions).some(p => p.dexId === d.id);
                   return (
-                    <div key={d.id} className="dex-card" style={{borderColor: d.color}} onClick={()=>setSelectedDex(d.id)}>
-                      {d.name}
-                      {hasPos && <div className="red-dot" />}
+                    <div key={d.id} className="exchange-card" style={{'--accent': d.color}} onClick={()=>setSelectedDex(d.id)}>
+                      <span className="dex-name">{d.name}</span>
+                      {hasPos && <div className="active-marker" />}
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="terminal">
-                {isGreedMode && <div className="greed-alert">EXTREME GREED ACTIVE: X2.5 PROFIT</div>}
-                <div className="term-nav">
-                  <button onClick={()=>setSelectedDex(null)}>←</button>
-                  <input type="number" placeholder="USD" value={tradeAmount} onChange={e=>setTradeAmount(e.target.value)} />
-                  <div className="lev-control">
-                    <span>x{leverage}</span>
+              <div className="trading-terminal">
+                {isGreedMode && <div className="greed-banner">EXTREME GREED: PROFITS X2.5</div>}
+                <div className="terminal-header">
+                  <button onClick={()=>setSelectedDex(null)} className="icon-btn">←</button>
+                  <input type="number" placeholder="AMOUNT" className="trade-input" value={tradeAmount} onChange={e=>setTradeAmount(e.target.value)} />
+                  <div className="leverage-control">
+                    <label>LEVERAGE: x{leverage}</label>
                     <input type="range" min="1" max={maxLev} value={leverage} onChange={e=>setLeverage(parseInt(e.target.value))} />
                   </div>
                 </div>
-                <div className="term-content">
-                  <div className="coin-list">
+                <div className="terminal-body">
+                  <div className="market-pairs">
                     {ALL_COINS.map(c => {
                       const pos = activePositions[c.id];
                       return (
-                        <div key={c.id} className={`coin-row ${pos ? 'active' : ''}`}>
-                          <div className="c-name">{c.id} {pos && <small>{120 - Math.floor((Date.now()-pos.startTime)/1000)}s</small>}</div>
-                          <button className={`trade-btn ${pos?.status}`} onClick={()=>pos?closePos(c.id):openPos(c.id)} disabled={pos?.status==='closed'}>
-                            {pos ? (pos.status==='closed' ? 'FIXED' : 'CLOSE') : 'OPEN'}
+                        <div key={c.id} className={`pair-row ${pos ? 'in-trade' : ''}`}>
+                          <div className="pair-info">
+                            <span className="symbol">{c.id}</span>
+                            {pos && <span className="countdown">{120 - Math.floor((Date.now()-pos.startTime)/1000)}s</span>}
+                          </div>
+                          <button className={`action-btn ${pos?.status || ''}`} onClick={()=>pos?closePos(c.id):openPos(c.id)} disabled={pos?.status==='closed'}>
+                            {pos ? (pos.status==='closed' ? 'LOCKED' : 'CLOSE') : 'BUY'}
                           </button>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="diary">
-                    <small>LOGS</small>
-                    {tradeLogs.map(l => <div key={l.id} className={l.isWin?'win':'loss'}>{l.coin} {l.pnl}$</div>)}
+                  <div className="trade-history">
+                    <div className="history-label">TRADE LOG</div>
+                    {tradeLogs.map(l => <div key={l.id} className={`history-item ${l.isWin ? 'win' : 'loss'}`}>{l.coin} {l.pnl > 0 ? '+' : ''}{l.pnl}$</div>)}
                   </div>
                 </div>
-                {signal && <div className="signal-bar">{signal.coin} ➔ {signal.sell} <span className="win">+{signal.profit}%</span></div>}
+                {signal && <div className="active-signal">{signal.coin} BUY ➔ {signal.sell} <span className="win">+{signal.profit}%</span></div>}
               </div>
             )}
           </div>
         )}
 
         {tab === 'settings' && (
-          <div className="page-settings">
-            <h2>НАСТРОЙКИ</h2>
-            <div className="setting-row">
-              <span>ЗВУКОВЫЕ ЭФФЕКТЫ</span>
-              <button onClick={()=>setSoundOn(!soundOn)}>{soundOn ? 'ВКЛ' : 'ВЫКЛ'}</button>
+          <div className="settings-screen">
+            <h1 className="page-title">SYSTEM SETTINGS</h1>
+            <div className="setting-card">
+              <div className="setting-label">AUDIO FEEDBACK</div>
+              <button className={`toggle-btn ${soundOn ? 'on' : ''}`} onClick={()=>setSoundOn(!soundOn)}>{soundOn ? 'ENABLED' : 'DISABLED'}</button>
             </div>
-            <a href="https://t.me/kriptoalians" target="_blank" className="tg-link">НАШ ТЕЛЕГРАМ: @kriptoalians</a>
+            <div className="credits">
+              <a href="https://t.me/kriptoalians" target="_blank" rel="noreferrer">NETWORK: @kriptoalians</a>
+            </div>
           </div>
         )}
-      </main>
+      </div>
 
-      <nav className="nav-bar">
-        <button onClick={()=>setTab('mining')} className={tab==='mining'?'active':''}>КЛИК</button>
-        <button onClick={()=>setTab('trade')} className={tab==='trade'?'active':''}>БИРЖИ</button>
-        <button onClick={()=>setTab('settings')} className={tab==='settings'?'active':''}>ОПЦИИ</button>
+      <nav className="bottom-navigation">
+        <button onClick={()=>setTab('mining')} className={tab==='mining' ? 'active' : ''}>CORE</button>
+        <button onClick={()=>setTab('trade')} className={tab==='trade' ? 'active' : ''}>MARKET</button>
+        <button onClick={()=>setTab('settings')} className={tab==='settings' ? 'active' : ''}>SYSTEM</button>
       </nav>
     </div>
   );
