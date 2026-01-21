@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// --- ДАННЫЕ ИГРЫ ---
 const EXCHANGES = [
   { id: '1inch', name: '1inch', color: '#00ccff' },
   { id: 'uniswap', name: 'Uniswap v3', color: '#ff007a' },
@@ -16,7 +15,6 @@ const ALL_COINS = [
 ];
 
 export default function App() {
-  // --- СОСТОЯНИЯ ---
   const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('k_bal')) || 100);
   const [xp, setXp] = useState(() => parseInt(localStorage.getItem('k_xp')) || 0);
   const [taps, setTaps] = useState(() => parseInt(localStorage.getItem('k_taps')) || 0);
@@ -33,22 +31,19 @@ export default function App() {
   const [isGreedMode, setIsGreedMode] = useState(false);
   const [tapAnims, setTapAnims] = useState([]);
 
-  // --- АУДИО ---
   const tapAudio = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'));
   const signalAudio = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
 
   const currentLvl = Math.floor(Math.sqrt(xp / 50)) + 1;
   const maxLev = currentLvl >= 5 ? 100 : currentLvl >= 3 ? 50 : 10;
 
-  // --- ЭФФЕКТЫ ---
   useEffect(() => {
-    localStorage.setItem('k_bal', balance);
-    localStorage.setItem('k_xp', xp);
+    localStorage.setItem('k_bal', balance.toString());
+    localStorage.setItem('k_xp', xp.toString());
     localStorage.setItem('k_logs', JSON.stringify(tradeLogs));
     localStorage.setItem('k_snd', JSON.stringify(soundOn));
   }, [balance, xp, tradeLogs, soundOn]);
 
-  // Сигналы + Колокольчик
   useEffect(() => {
     const genS = () => {
       const available = ALL_COINS.filter(c => c.lvl <= currentLvl);
@@ -69,7 +64,6 @@ export default function App() {
     return () => clearInterval(itv);
   }, [currentLvl, soundOn, tab]);
 
-  // Extreme Greed
   useEffect(() => {
     const itv = setInterval(() => {
       if (!isGreedMode && Math.random() > 0.8) {
@@ -80,7 +74,6 @@ export default function App() {
     return () => clearInterval(itv);
   }, [isGreedMode]);
 
-  // Таймер позиций
   useEffect(() => {
     const timer = setInterval(() => {
       setActivePositions(prev => {
@@ -105,12 +98,11 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // --- ЛОГИКА ---
   const handleTap = (e) => {
     setBalance(b => b + 0.1);
     setTaps(t => t + 1);
     if (soundOn) { tapAudio.current.currentTime = 0; tapAudio.current.play().catch(()=>{}); }
-    const touch = e.touches ? e.touches[0] : e;
+    const touch = (e.touches && e.touches[0]) || e;
     const id = Date.now();
     setTapAnims(p => [...p, { id, x: touch.clientX, y: touch.clientY }]);
     setTimeout(() => setTapAnims(p => p.filter(a => a.id !== id)), 800);
@@ -132,7 +124,7 @@ export default function App() {
     if (!pos || pos.status === 'closed') return;
     const isWin = signal && coinId === signal.coin && selectedDex === signal.sell;
     const mult = (isGreedMode && isWin) ? 2.5 : 1.0;
-    const pnl = ((isWin ? 10 : -30) * mult) / 100;
+    const pnl = ((isWin ? 10 : -35) * mult) / 100;
     setActivePositions(p => ({ 
       ...p, 
       [coinId]: { ...pos, status: 'closed', finalAmount: Math.max(0, pos.margin + (pos.margin * pos.lev * pnl)), isWin } 
@@ -141,7 +133,6 @@ export default function App() {
 
   return (
     <div style={s.app}>
-      {/* СТИЛИ ПРЯМО В КОДЕ */}
       <style>{`
         @keyframes flyUp { 0% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(-100px); } }
         @keyframes pulse { 50% { opacity: 0.5; } }
@@ -201,11 +192,15 @@ export default function App() {
                   <div style={s.coinSide}>
                     {ALL_COINS.map(c => {
                       const pos = activePositions[c.id];
+                      const timeElapsed = pos ? Math.floor((Date.now() - pos.startTime) / 1000) : 0;
                       return (
                         <div key={c.id} style={{...s.coinItem, borderLeft: pos ? '3px solid #00ccff' : 'none'}}>
-                          <span>{c.id}</span>
+                          <div style={{display:'flex', flexDirection:'column'}}>
+                            <span>{c.id}</span>
+                            {pos && <small style={{fontSize:8, color:'#555'}}>{120 - timeElapsed}s</small>}
+                          </div>
                           <button style={{...s.tradeBtn, color: pos?.status==='closed'?'#444':'#00ccff'}} onClick={()=>pos?closePos(c.id):openPos(c.id)} disabled={pos?.status==='closed'}>
-                            {pos ? (pos.status==='closed'?'FIXED':'CLOSE') : 'OPEN'}
+                            {pos ? (pos.status==='closed'?'WAIT':'CLOSE') : 'OPEN'}
                           </button>
                         </div>
                       );
@@ -213,7 +208,7 @@ export default function App() {
                   </div>
                   <div style={s.diary}>
                     <div style={{fontSize:9, color:'#444', marginBottom:5}}>DIARY</div>
-                    {tradeLogs.map(l => <div key={l.id} style={{fontSize:9, color: l.isWin?'#39ff14':'#ff0055'}}>{l.coin} {l.pnl}$</div>)}
+                    {tradeLogs.map(l => <div key={l.id} style={{fontSize:8, color: l.isWin?'#39ff14':'#ff0055'}}>{l.coin} {l.pnl}$</div>)}
                   </div>
                 </div>
                 {signal && <div style={s.signal}>{signal.coin} ➔ {signal.sell} <span style={{color:'#39ff14'}}>+{signal.profit}%</span></div>}
@@ -245,7 +240,6 @@ export default function App() {
   );
 }
 
-// --- СТИЛИ (JS-Objects) ---
 const s = {
   app: { height:'100vh', background:'#050508', color:'#fff', display:'flex', flexDirection:'column', fontFamily:'sans-serif', overflow:'hidden' },
   header: { padding:15, display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #111' },
@@ -259,6 +253,7 @@ const s = {
   tapDollar: { position:'absolute', color:'#39ff14', fontWeight:'bold', pointerEvents:'none', animation:'flyUp 0.8s forwards' },
   nav: { height:60, display:'flex', borderTop:'1px solid #111', background:'#0d0d14' },
   navBtn: { flex:1, background:'none', border:'none', fontWeight:'bold', fontSize:10 },
+  pageTrade: { flex:1, display:'flex', flexDirection:'column' },
   dexList: { padding:20, display:'grid', gridTemplateColumns:'1fr 1fr', gap:15 },
   dexCard: { position:'relative', padding:20, border:'1px solid #333', borderRadius:10, textAlign:'center', fontSize:12, background:'#0d0d14' },
   dot: { position:'absolute', top:5, right:5, width:8, height:8, background:'#ff0055', borderRadius:'50%', animation:'pulse 1s infinite' },
@@ -266,14 +261,14 @@ const s = {
   greedBanner: { background:'#39ff14', color:'#000', fontSize:10, fontWeight:'bold', textAlign:'center', padding:4 },
   termTop: { padding:10, borderBottom:'1px solid #111', display:'flex', gap:10, alignItems:'center' },
   input: { background:'#111', border:'1px solid #333', color:'#fff', width:60, padding:5, fontSize:12 },
-  backBtn: { background:'none', border:'1px solid #333', color:'#fff', borderRadius:4 },
+  backBtn: { background:'none', border:'1px solid #333', color:'#fff', borderRadius:4, padding:'2px 8px' },
   termBody: { display:'flex', flex:1 },
   coinSide: { flex:1, borderRight:'1px solid #111', overflowY:'auto' },
   coinItem: { display:'flex', justifyContent:'space-between', padding:10, borderBottom:'1px solid #080808', fontSize:12 },
   tradeBtn: { background:'none', border:'1px solid #444', fontSize:9, borderRadius:4, padding:'4px 8px' },
-  diary: { width:70, padding:5, background:'#020202' },
+  diary: { width:80, padding:5, background:'#020202', overflowY:'auto' },
   signal: { position:'absolute', bottom:10, left:'50%', transform:'translateX(-50%)', background:'rgba(0,0,0,0.9)', padding:'5px 15px', borderRadius:15, border:'1px solid #39ff14', fontSize:10, whiteSpace:'nowrap' },
-  tutOverlay: { position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', z-index:100, display:'flex', alignItems:'center', justifyContent:'center' },
+  tutOverlay: { position:'absolute', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.9)', zIndex:100, display:'flex', alignItems:'center', justifyContent:'center' },
   tutCard: { background:'#0d0d14', border:'1px solid #00ccff', padding:20, borderRadius:12, textAlign:'center', width:200 },
   settItem: { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:15 },
   btn: { background:'#00ccff', border:'none', color:'#000', fontWeight:'bold', padding:'5px 15px', borderRadius:4, fontSize:10 }
