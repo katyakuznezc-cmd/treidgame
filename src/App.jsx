@@ -6,7 +6,7 @@ import './App.css';
 const DEX_PLATFORMS = [
   { id: '1inch', name: '1inch', color: '#2f8af5' },
   { id: 'Uniswap', name: 'Uniswap v3', color: '#ff007a' },
-  { id: 'SushiSwap', nam e: 'SushiSwap', color: '#fa52a0' },
+  { id: 'SushiSwap', name: 'SushiSwap', color: '#fa52a0' },
   { id: 'PancakeSwap', name: 'PancakeSwap', color: '#d1884f' }
 ];
 
