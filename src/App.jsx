@@ -175,4 +175,59 @@ function App() {
     </div>
   );
 }
+// Добавь эти состояния в основной компонент App
+const [isPending, setIsPending] = useState(false); // Состояние ожидания транзакции
+const [txStatus, setTxStatus] = useState(''); // Текст статуса
+
+const trade = (coin, type) => {
+  if (isPending) return; // Нельзя спамить кнопки во время транзакции
+
+  if (type === 'buy' && balance < 50) {
+    alert("Not enough funds!");
+    return;
+  }
+  if (type === 'sell' && (inventory[coin] || 0) <= 0) {
+    alert("No coins to sell!");
+    return;
+  }
+
+  setIsPending(true);
+  setTxStatus(type === 'buy' ? 'Purchasing...' : 'Selling...');
+
+  // Имитация работы блокчейна (2.5 секунды)
+  setTimeout(() => {
+    if (type === 'buy') {
+      setBalance(b => b - 50);
+      setInventory(prev => ({ ...prev, [coin]: (prev[coin] || 0) + 1 }));
+    } else {
+      let price = 50;
+      // Проверка сигнала
+      if (signal && selectedDex === signal.sell && coin === signal.coin) {
+        price = 50 * (1 + parseFloat(signal.profit) / 100);
+        setTxStatus('PROFIT! +$' + (price - 50).toFixed(2));
+      } else {
+        price = 50 * 0.94; // Убыток при продаже без сигнала
+        setTxStatus('Sold with commission');
+      }
+      setBalance(b => b + price);
+      setInventory(prev => ({ ...prev, [coin]: prev[coin] - 1 }));
+    }
+    
+    // Оставляем сообщение о результате на секунду и закрываем лоадер
+    setTimeout(() => {
+      setIsPending(false);
+      setTxStatus('');
+    }, 1000);
+  }, 2500);
+};
+
+// Вставь этот блок в рендер внутри терминала биржи
+{isPending && (
+  <div className="tx-overlay">
+    <div className="tx-modal">
+      <div className="loader-line"></div>
+      <p>{txStatus}</p>
+    </div>
+  </div>
+)}
 export default App;
