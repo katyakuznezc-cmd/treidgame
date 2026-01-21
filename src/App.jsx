@@ -1,6 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+// Добавь эти стейты в начало компонента App
+const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('k_tut_done'));
+const [tutStep, setTutStep] = useState(0);
 
+const tutSteps = [
+  { title: "СИГНАЛЫ", text: "Следи за плашкой сверху. Она говорит, какую монету КУПИТЬ и на какой бирже ПРОДАТЬ для профита." },
+  { title: "АРБИТРАЖ", text: "Чтобы получить профит из сигнала, нужно зайти именно на ту биржу, которая указана в цели." },
+  { title: "РИСК-МЕНЕДЖМЕНТ", text: "Вводи сумму и выбирай плечо. Большое плечо (x100) дает огромную прибыль, но требует скорости!" },
+  { title: "ЛИКВИДАЦИЯ (2 МИН)", text: "У тебя есть 120 секунд. Если не нажмешь CLOSE до конца таймера — потеряешь всё!" },
+  { title: "ВЕРОЯТНОСТЬ 80/20", text: "Рынок коварен. Даже по сигналу 1 из 5 сделок может быть в минус. Проверяй успехи в Дневнике." }
+];
+
+const finishTut = () => {
+  setShowTutorial(false);
+  localStorage.setItem('k_tut_done', 'true');
+};
+
+// Вставь этот блок в начало рендера внутри tab === 'trade'
+{tab === 'trade' && showTutorial && (
+  <div className="tut-overlay">
+    <div className="tut-card">
+      <div className="tut-badge">{tutStep + 1} / {tutSteps.length}</div>
+      <h3>{tutSteps[tutStep].title}</h3>
+      <p>{tutSteps[tutStep].text}</p>
+      <div className="tut-btns">
+        {tutStep < tutSteps.length - 1 ? (
+          <button onClick={() => setTutStep(s => s + 1)}>ДАЛЕЕ</button>
+        ) : (
+          <button onClick={finishTut} className="finish-btn">ПОНЯТНО!</button>
+        )}
+      </div>
+    </div>
+  </div>
+)}
 // ... (EXCHANGES и ALL_COINS остаются прежними)
 
 export default function App() {
