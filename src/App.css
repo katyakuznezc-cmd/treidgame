@@ -207,3 +207,74 @@ body { margin:0; background: var(--dark); color: white; font-family: 'Segoe UI',
 /* Скроллбар для дневника */
 .logs-list::-webkit-scrollbar { width: 2px; }
 .logs-list::-webkit-scrollbar-thumb { background: #222; }
+/* Оверлей обучения */
+.tut-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(5px);
+}
+
+.tut-card {
+  background: #0d0d14;
+  border: 1px solid var(--neon);
+  border-radius: 16px;
+  padding: 25px;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(0, 204, 255, 0.3);
+  max-width: 300px;
+  position: relative;
+}
+
+.tut-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--neon);
+  color: #000;
+  padding: 2px 12px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.tut-card h3 {
+  color: var(--neon);
+  margin-top: 10px;
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.tut-card p {
+  color: #ccc;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 15px 0 25px;
+}
+
+.tut-btns button {
+  background: none;
+  border: 1px solid var(--neon);
+  color: var(--neon);
+  padding: 10px 30px;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.tut-btns button:active {
+  background: var(--neon);
+  color: #000;
+}
+
+.finish-btn {
+  border-color: var(--green) !important;
+  color: var(--green) !important;
+}
