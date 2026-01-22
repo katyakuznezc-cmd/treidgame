@@ -13,7 +13,7 @@ const DEX = [
 ];
 
 const VIP_ALERTS = [
-  "VIP: User_99 +$4,200 (BTC/SOL)", "VIP: Новая связка обнаружена!", "VIP: Вывод $1,500 пользователем ID-442", "VIP: Уровень 3 открывает плечо 100х"
+  "🚀 VIP: USER_001 ВЫВЕЛ $12,400", "🔥 СИГНАЛ BTC/USDT: +3.42%", "💎 PREMIUM: ДОСТУПЕН ВЫВОД НА КАРТЫ", "⚡️ СКОРОСТЬ СЕТИ: 0.001ms"
 ];
 
 export default function App() {
@@ -37,12 +37,12 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   const maxLev = level === 1 ? 5 : level === 2 ? 20 : level === 3 ? 50 : 100;
+  const neededTrades = 10 + (level - 1) * 5;
 
-  // Бегущие цифры баланса
   useEffect(() => {
-    if (Math.abs(displayBalance - balance) > 0.05) {
+    if (Math.abs(displayBalance - balance) > 0.01) {
       const diff = balance - displayBalance;
-      const timer = setTimeout(() => setDisplayBalance(displayBalance + diff / 10), 25);
+      const timer = setTimeout(() => setDisplayBalance(displayBalance + diff / 8), 20);
       return () => clearTimeout(timer);
     } else { setDisplayBalance(balance); }
   }, [balance, displayBalance]);
@@ -53,7 +53,6 @@ export default function App() {
     localStorage.setItem('trades', tradesInLevel.toString());
   }, [balance, level, tradesInLevel]);
 
-  // Генерация сигналов
   useEffect(() => {
     let timer;
     if (tab === 'trade' && !signal && !activePos) {
@@ -64,7 +63,7 @@ export default function App() {
         const bDex = DEX[Math.floor(Math.random()*DEX.length)].name;
         let sDex = DEX[Math.floor(Math.random()*DEX.length)].name;
         while(sDex === bDex) sDex = DEX[Math.floor(Math.random()*DEX.length)].name;
-        setSignal({ coin: coin.id, buyDex: bDex, sellDex: sDex, perc: (Math.random() * 1 + 2.5).toFixed(2) });
+        setSignal({ coin: coin.id, buyDex: bDex, sellDex: sDex, perc: (Math.random() * 1.5 + 2).toFixed(2) });
         setIsAnalyzing(false);
       }, 4000);
     }
@@ -88,13 +87,12 @@ export default function App() {
         setNetTimer(p => {
           if (p <= 1) {
             clearInterval(itv);
-            const loss = activePos.amount * 0.9;
+            const loss = activePos.amount * 0.95;
             setBalance(b => b + (activePos.amount - loss));
-            setResult({ win: false, val: loss.toFixed(2), msg: "ANTI-FARM LIQUIDATION" });
+            setResult({ win: false, val: loss.toFixed(2), msg: "BLOCKCHAIN LOCK: SAME DEX" });
             setIsBurning(true);
             setTimeout(() => setIsBurning(false), 1500);
-            setActivePos(null);
-            setSignal(null);
+            setActivePos(null); setSignal(null);
             return null;
           }
           return p - 1;
@@ -109,21 +107,23 @@ export default function App() {
         if (p <= 1) {
           clearInterval(itv);
           const isCorrect = signal && activePos.id === signal.coin && activePos.buyDex === signal.buyDex && selectedDex === signal.sellDex;
-          const win = isCorrect ? (Math.random() > 0.05) : (Math.random() > 0.6);
+          const win = isCorrect ? (Math.random() > 0.05) : (Math.random() > 0.65);
           let pnl;
           if (win) {
             const pRange = isCorrect ? (parseFloat(signal.perc) / 100) : 0.01;
             pnl = activePos.amount * activePos.leverage * pRange;
           } else {
-            pnl = -(activePos.amount * activePos.leverage * 0.012);
+            pnl = -(activePos.amount * activePos.leverage * 0.015);
             setIsBurning(true);
             setTimeout(() => setIsBurning(false), 1200);
           }
           setBalance(b => Math.max(0, b + activePos.amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
-          setActivePos(null);
-          setSignal(null);
-          setTradesInLevel(t => t + 1);
+          setActivePos(null); setSignal(null);
+          setTradesInLevel(t => {
+            if (t + 1 >= neededTrades) { setLevel(l => l + 1); return 0; }
+            return t + 1;
+          });
           return null;
         }
         return p - 1;
@@ -152,33 +152,35 @@ export default function App() {
       <style>{`
         :root { --n: #00d9ff; --w: #00ff88; --l: #ff3366; --vip: #ffd700; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', monospace; user-select: none; }
-        .app { width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column; position: relative; border-left: 1px solid #111; border-right: 1px solid #111; }
-        .burn-active { animation: shake 0.2s infinite; }
+        .app { width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column; position: relative; border-left: 1px solid #111; border-right: 1px solid #111; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        .burn-active { animation: shake 0.15s infinite; }
         .burn-active::after { content: ''; position: absolute; inset: 0; background: rgba(255, 0, 0, 0.4); z-index: 20000; pointer-events: none; }
-        @keyframes shake { 0% { transform: translate(4px, 4px); } 50% { transform: translate(-4px, -4px); } 100% { transform: translate(0,0); } }
-        .ticker-box { background: #1a1500; color: var(--vip); font-size: 11px; padding: 8px; overflow: hidden; white-space: nowrap; border-bottom: 1px solid var(--vip); }
-        .ticker { display: inline-block; animation: ticker 25s linear infinite; font-weight: bold; }
+        @keyframes shake { 0% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } 100% { transform: translate(0,0); } }
+        .ticker-box { background: #1a1500; color: var(--vip); font-size: 11px; padding: 10px; overflow: hidden; white-space: nowrap; border-bottom: 2px solid var(--vip); box-shadow: 0 5px 15px rgba(255,215,0,0.2); z-index: 10; }
+        .ticker { display: inline-block; animation: ticker 20s linear infinite; font-weight: 900; text-transform: uppercase; }
         @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 12px; position: relative; transition: 0.3s; }
-        .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
-        .btn:disabled { opacity: 0.1; filter: grayscale(1); }
-        .dollar { position: absolute; color: var(--w); font-weight: 900; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 9999; font-size: 28px; text-shadow: 0 0 10px var(--w); }
-        @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-150px); } }
-        .nav { position: absolute; bottom: 0; width: 100%; height: 75px; background: #050505; border-top: 1px solid #1a1a1a; display: flex; }
-        .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #444; }
-        .tab.active { color: var(--n); text-shadow: 0 0 5px var(--n); }
-        input { background: #000; border: 1px solid #333; color: var(--w); padding: 10px; border-radius: 8px; width: 100%; font-weight: bold; margin-top: 5px; outline: none; text-align: center; }
-        .lock-line { position: absolute; top: 0; left: 0; height: 3px; background: var(--l); transition: linear; box-shadow: 0 0 10px var(--l); }
+        .card { background: rgba(15, 15, 15, 0.8); border: 1px solid #222; padding: 20px; border-radius: 16px; margin-bottom: 15px; position: relative; overflow: hidden; backdrop-filter: blur(10px); }
+        .vip-card { border: 1px solid var(--vip); background: linear-gradient(135deg, #0a0a00 0%, #1a1500 100%); box-shadow: 0 0 20px rgba(255,215,0,0.1); }
+        .btn { width: 100%; padding: 18px; border-radius: 12px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; font-size: 14px; transition: 0.2s; }
+        .btn-buy { background: var(--w); color: #000; box-shadow: 0 4px 15px rgba(0,255,136,0.3); }
+        .btn-sell { background: var(--l); color: #fff; box-shadow: 0 4px 15px rgba(255,51,102,0.3); }
+        .dollar { position: absolute; color: var(--w); font-weight: 900; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 9999; font-size: 32px; text-shadow: 0 0 15px var(--w); }
+        @keyframes pop { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-160px) scale(1.6); } }
+        .nav { position: absolute; bottom: 0; width: 100%; height: 80px; background: #050505; border-top: 1px solid #222; display: flex; z-index: 100; }
+        .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #444; font-weight: 900; }
+        .tab.active { color: var(--n); text-shadow: 0 0 10px var(--n); }
+        input { background: #000; border: 1px solid #333; color: var(--w); padding: 14px; border-radius: 10px; width: 100%; font-weight: 900; margin-top: 8px; outline: none; text-align: center; font-size: 18px; border: 1px solid var(--n); }
+        .lock-progress { position: absolute; top: 0; left: 0; height: 4px; background: var(--l); transition: linear; box-shadow: 0 0 15px var(--l); }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-10, top: c.y-20}}>$</div>)}
 
       {result && (
-        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.98)', zIndex:15000, display:'flex', alignItems:'center', justifyContent:'center', padding:25}}>
-          <div className="card" style={{borderColor: result.win ? 'var(--w)' : 'var(--l)', textAlign: 'center', width: '100%', padding: '50px 20px'}}>
-            <h2 style={{color: result.win ? 'var(--w)' : 'var(--l)', fontSize: 24}}>{result.msg || (result.win ? 'SUCCESSFUL DEAL' : 'LIQUIDATED')}</h2>
-            <h1 style={{fontSize: 48, margin: '20px 0'}}>{result.win ? '+' : '-'}${Number(result.val).toLocaleString()}</h1>
-            <button className="btn" style={{background: '#fff', color: '#000'}} onClick={() => setResult(null)}>BACK TO TERMINAL</button>
+        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.99)', zIndex:15000, display:'flex', alignItems:'center', justifyContent:'center', padding:30}}>
+          <div className="card" style={{borderColor: result.win ? 'var(--w)' : 'var(--l)', textAlign: 'center', width: '100%', padding: '60px 20px', boxShadow: `0 0 50px ${result.win ? 'rgba(0,255,136,0.2)' : 'rgba(255,51,102,0.2)'}`}}>
+            <h2 style={{color: result.win ? 'var(--w)' : 'var(--l)', fontSize: 28, letterSpacing: 4}}>{result.msg || (result.win ? 'DEAL SUCCESS' : 'LIQUIDATED')}</h2>
+            <h1 style={{fontSize: 56, margin: '30px 0', fontWeight: 900}}>{result.win ? '+' : '-'}${Number(result.val).toLocaleString()}</h1>
+            <button className="btn" style={{background: '#fff', color: '#000'}} onClick={() => setResult(null)}>CLOSE TERMINAL</button>
           </div>
         </div>
       )}
@@ -186,55 +188,64 @@ export default function App() {
       <div className="app">
         <div className="ticker-box"><div className="ticker">{VIP_ALERTS.join("  •  ")}</div></div>
         
-        <header style={{padding: '20px 15px', background: '#050505', borderBottom: '1px solid #1a1a1a'}}>
-          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+        <header style={{padding: '30px 20px', background: 'linear-gradient(to bottom, #0a0a0a, #000)', borderBottom: '1px solid #222'}}>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
             <div>
-              <div style={{fontSize: 34, fontWeight: 900}}>${displayBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-              <div style={{fontSize: 10, color: '#444', marginTop: 4}}>{userId}</div>
+              <div style={{fontSize: 10, color: 'var(--n)', fontWeight: 900, marginBottom: 5, letterSpacing: 2}}>NET WORTH:</div>
+              <div style={{fontSize: 42, fontWeight: 900, letterSpacing: -1, textShadow: '0 0 20px rgba(255,255,255,0.1)'}}>
+                ${displayBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}
+              </div>
+              <div style={{fontSize: 10, color: '#333', marginTop: 8, fontWeight: 900}}>{userId}</div>
             </div>
             <div style={{textAlign: 'right'}}>
-              <div style={{color: 'var(--n)', fontWeight: 'bold', fontSize: 16}}>LVL {level}</div>
-              <div style={{fontSize: 10, color: '#444'}}>MAX {maxLev}x</div>
+              <div style={{color: 'var(--vip)', fontWeight: 900, fontSize: 20}}>LVL {level}</div>
+              <div style={{fontSize: 10, color: '#444', fontWeight: 900, marginTop: 5}}>LIMIT: {maxLev}X</div>
             </div>
+          </div>
+          <div style={{width:'100%', height:6, background:'#111', marginTop:25, borderRadius:10, overflow:'hidden', border: '1px solid #222'}}>
+            <div style={{width:`${(tradesInLevel / neededTrades) * 100}%`, height:'100%', background:'linear-gradient(90deg, var(--n), #fff)', boxShadow:'0 0 15px var(--n)', transition: '0.8s cubic-bezier(0.17, 0.67, 0.83, 0.67)'}} />
           </div>
         </header>
 
-        <main style={{flex:1, overflowY:'auto', padding:15, paddingBottom:90}}>
+        <main style={{flex:1, overflowY:'auto', padding:20, paddingBottom:100}}>
           {tab === 'trade' && (
             <>
               {!selectedDex ? (
                 <div>
-                  <div className="card" style={{border: '1px solid var(--vip)', background: 'linear-gradient(45deg, #0a0a00, #1a1500)'}}>
-                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--vip)', fontSize: 11}}>SCANNING INTER-EXCHANGE LIQUIDITY...</div> : 
+                  <div className="card vip-card">
+                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--vip)', fontSize: 12, fontWeight: 900, padding: 10, animation: 'pulse 1s infinite'}}>INITIALIZING ARBITRAGE SCANNER...</div> : 
                     <div>
-                      <div style={{display:'flex', justifyContent:'space-between'}}><b style={{color:'var(--vip)', fontSize: 18}}>{signal.coin}/USDT</b><b style={{color:'var(--w)', fontSize: 18}}>+{signal.perc}%</b></div>
-                      <div style={{fontSize: 11, color: '#888', marginTop: 10, lineHeight: '1.6'}}>
-                        STEP 1: BUY ON <span style={{color: '#fff', fontWeight:'bold'}}>{signal.buyDex}</span><br/>
-                        STEP 2: SELL ON <span style={{color: '#fff', fontWeight:'bold'}}>{signal.sellDex}</span>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}><b style={{color:'var(--vip)', fontSize: 22}}>{signal.coin}/USDT</b><b style={{color:'var(--w)', fontSize: 22}}>+{signal.perc}%</b></div>
+                      <div style={{fontSize: 12, color: '#888', marginTop: 15, lineHeight: '1.8', fontWeight: 700}}>
+                        <span style={{color: '#555'}}>SIGNAL:</span> BUY ON <span style={{color: '#fff'}}>{signal.buyDex}</span><br/>
+                        <span style={{color: '#555'}}>SIGNAL:</span> SELL ON <span style={{color: '#fff'}}>{signal.sellDex}</span>
                       </div>
                     </div>}
                   </div>
                   
-                  <div style={{fontSize: 10, color: '#444', margin: '20px 5px 10px', fontWeight: 'bold'}}>SELECT EXCHANGE:</div>
+                  <div style={{fontSize: 11, color: '#444', margin: '25px 5px 15px', fontWeight: 900, letterSpacing: 2}}>GLOBAL EXCHANGES:</div>
                   {DEX.map(d => (
-                    <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{display:'flex', justifyContent:'space-between', cursor:'pointer', alignItems: 'center'}}>
-                      <b style={{fontSize: 14}}>{d.name}</b><span style={{color:'var(--w)', fontSize:9, border: '1px solid var(--w)', padding: '2px 6px', borderRadius: 4}}>ONLINE</span>
+                    <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{display:'flex', justifyContent:'space-between', cursor:'pointer', alignItems: 'center', borderLeft: '4px solid var(--n)'}}>
+                      <b style={{fontSize: 16, letterSpacing: 1}}>{d.name}</b>
+                      <div style={{textAlign: 'right'}}>
+                        <div style={{color:'var(--w)', fontSize:9, fontWeight: 900}}>STABLE</div>
+                        <div style={{fontSize: 8, color: '#333'}}>v2.4.1</div>
+                      </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div>
-                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'var(--n)', marginBottom: 15, fontWeight:'bold', fontSize: 12}}>← BACK TO EXCHANGES</button>
+                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'var(--n)', marginBottom: 20, fontWeight: 900, fontSize: 14, letterSpacing: 1}}>← TERMINAL EXIT</button>
                   
-                  {/* ПАНЕЛЬ ТЕРМИНАЛА (СУММА И ПЛЕЧО) */}
-                  <div className="card" style={{borderColor: '#222'}}>
-                    <div style={{display:'flex', gap:10}}>
-                      <div style={{flex:1}}><label style={{fontSize:9, color: '#666'}}>AMOUNT $</label><input type="number" value={amount} onChange={(e)=>setAmount(Number(e.target.value))}/></div>
-                      <div style={{flex:1}}><label style={{fontSize:9, color: '#666'}}>LEVERAGE (MAX {maxLev}x)</label><input type="number" value={leverage} onChange={(e)=>{let v=parseInt(e.target.value)||0; setLeverage(v>maxLev?maxLev:v)}}/></div>
+                  <div className="card" style={{borderColor: 'var(--n)', background: 'rgba(0,217,255,0.02)'}}>
+                    <div style={{display:'flex', gap:15}}>
+                      <div style={{flex:1}}><label style={{fontSize:10, color: '#555', fontWeight: 900}}>INVESTMENT ($)</label><input type="number" value={amount} onChange={(e)=>setAmount(Number(e.target.value))}/></div>
+                      <div style={{flex:1}}><label style={{fontSize:10, color: '#555', fontWeight: 900}}>LEVERAGE ({maxLev}X)</label><input type="number" value={leverage} onChange={(e)=>{let v=parseInt(e.target.value)||0; setLeverage(v>maxLev?maxLev:v)}}/></div>
                     </div>
-                    <div style={{marginTop: 15, padding: '12px', background: '#000', borderRadius: 8, display: 'flex', justifyContent: 'space-between', border: '1px solid #111'}}>
-                      <span style={{fontSize: 11, color: '#666'}}>EST. PROFIT:</span>
-                      <b style={{color: 'var(--w)'}}>+${(amount * leverage * (signal ? parseFloat(signal.perc)/100 : 0.01)).toFixed(2)}</b>
+                    <div style={{marginTop: 20, padding: '15px', background: '#000', borderRadius: 12, display: 'flex', justifyContent: 'space-between', border: '1px solid #222'}}>
+                      <span style={{fontSize: 12, color: '#444', fontWeight: 900}}>POTENTIAL PNL:</span>
+                      <b style={{color: 'var(--w)', fontSize: 14}}>+${(amount * leverage * (signal ? parseFloat(signal.perc)/100 : 0.015)).toLocaleString()}</b>
                     </div>
                   </div>
 
@@ -244,22 +255,23 @@ export default function App() {
                     const timePassed = isThisActive ? (Date.now() - activePos.startTime) / 1000 : 0;
 
                     return (
-                      <div key={c.id} className="card" style={{opacity: (c.lvl > level) ? 0.2 : 1}}>
-                        {isThisActive && isSameDex && timePassed < 90 && <div className="lock-line" style={{width: `${100 - (timePassed/90)*100}%`}} />}
+                      <div key={c.id} className="card" style={{opacity: (c.lvl > level) ? 0.2 : 1, borderLeft: isThisActive ? '4px solid var(--l)' : '1px solid #222'}}>
+                        {isThisActive && isSameDex && timePassed < 90 && <div className="lock-progress" style={{width: `${100 - (timePassed/90)*100}%`}} />}
                         
                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <div><b style={{fontSize: 16}}>{c.id}</b><div style={{fontSize:10, color:'var(--n)'}}>${c.base}</div></div>
+                          <div>
+                            <b style={{fontSize: 20}}>{c.id}</b>
+                            <div style={{fontSize:12, color:'var(--n)', fontWeight: 900, marginTop: 4}}>${c.base.toLocaleString()}</div>
+                          </div>
                           {isThisActive ? (
                             <div style={{textAlign: 'right'}}>
-                              {isSameDex && timePassed < 90 && <div style={{fontSize:8, color:'var(--l)', marginBottom:4, fontWeight:'bold'}}>SAME EXCHANGE LOCK ({Math.ceil(90-timePassed)}s)</div>}
-                              <button className="btn" 
-                                      style={{background: isSameDex && timePassed < 90 ? '#200' : 'var(--l)', width: 140, color: '#fff'}} 
-                                      onClick={handleSell}>
-                                {netTimer ? `SYNCING ${netTimer}s` : (isSameDex && timePassed < 90 ? 'FORCE SELL' : 'SELL')}
+                              {isSameDex && timePassed < 90 && <div style={{fontSize:9, color:'var(--l)', marginBottom:8, fontWeight:900, animation: 'pulse 0.5s infinite'}}>LOCKED: {Math.ceil(90-timePassed)}s</div>}
+                              <button className={`btn btn-sell`} style={{width: 150, padding: '12px'}} onClick={handleSell}>
+                                {netTimer ? `WAIT ${netTimer}s` : (isSameDex && timePassed < 90 ? 'FORCE EXIT' : 'CLOSE')}
                               </button>
                             </div>
                           ) : (
-                            <button className="btn" style={{background:'var(--w)', width:110, color: '#000'}} disabled={!!activePos || c.lvl > level} onClick={() => handleOpenPosition(c.id)}>BUY</button>
+                            <button className={`btn btn-buy`} style={{width: 120, padding: '12px'}} disabled={!!activePos || c.lvl > level} onClick={() => handleOpenPosition(c.id)}>BUY</button>
                           )}
                         </div>
                       </div>
@@ -272,25 +284,25 @@ export default function App() {
 
           {tab === 'mining' && (
             <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-               <div onClick={() => setBalance(b => b + 0.1)} style={{width: 220, height: 220, border: '6px solid #111', borderTopColor: 'var(--n)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 50, color: 'var(--n)', fontWeight: '900', cursor: 'pointer', boxShadow: '0 0 30px rgba(0,217,255,0.1)'}}>TAP</div>
+               <div onClick={() => setBalance(b => b + 0.15)} style={{width: 250, height: 250, border: '10px solid #0a0a0a', borderTopColor: 'var(--n)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, color: 'var(--n)', fontWeight: '900', cursor: 'pointer', boxShadow: '0 0 50px rgba(0,217,255,0.15)', textShadow: '0 0 20px var(--n)'}}>TAP</div>
             </div>
           )}
 
           {tab === 'opts' && (
             <div style={{padding: 10}}>
-              <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
-                <span style={{fontSize: 12}}>AUDIO FEEDBACK</span>
-                <button onClick={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? 'var(--w)' : '#222', border:'none', padding:'10px 20px', borderRadius:8, color: '#000', fontWeight: 'bold'}}>{soundEnabled ? 'ON' : 'OFF'}</button>
+              <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center', borderLeft: '4px solid var(--w)'}}>
+                <span style={{fontSize: 14, fontWeight: 900}}>HAPTIC FEEDBACK</span>
+                <button onClick={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? 'var(--w)' : '#222', border:'none', padding:'12px 25px', borderRadius:10, color: '#000', fontWeight: 900}}>{soundEnabled ? 'ACTIVE' : 'MUTED'}</button>
               </div>
-              <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}}><div className="card" style={{textAlign:'center', color: 'var(--vip)', border: '1px solid var(--vip)', fontWeight: 'bold', marginTop: 10}}>SUPPORT: @KRIPTOALIANS</div></a>
+              <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}}><div className="card vip-card" style={{textAlign:'center', color: 'var(--vip)', fontWeight: 900, marginTop: 15, fontSize: 14, letterSpacing: 2}}>CONTACT @KRIPTOALIANS</div></a>
             </div>
           )}
         </main>
 
         <nav className="nav">
-          <div onClick={() => setTab('mining')} className={`tab ${tab === 'mining' ? 'active' : ''}`}><b style={{fontSize: 9}}>LIQUIDITY</b></div>
-          <div onClick={() => setTab('trade')} className={`tab ${tab === 'trade' ? 'active' : ''}`}><b style={{fontSize: 9}}>TERMINAL</b></div>
-          <div onClick={() => setTab('opts')} className={`tab ${tab === 'opts' ? 'active' : ''}`}><b style={{fontSize: 9}}>SYSTEM</b></div>
+          <div onClick={() => setTab('mining')} className={`tab ${tab === 'mining' ? 'active' : ''}`}><div style={{fontSize: 20, marginBottom: 5}}>⚡️</div><b style={{fontSize: 9, letterSpacing: 1}}>LIQUIDITY</b></div>
+          <div onClick={() => setTab('trade')} className={`tab ${tab === 'trade' ? 'active' : ''}`}><div style={{fontSize: 20, marginBottom: 5}}>📉</div><b style={{fontSize: 9, letterSpacing: 1}}>TERMINAL</b></div>
+          <div onClick={() => setTab('opts')} className={`tab ${tab === 'opts' ? 'active' : ''}`}><div style={{fontSize: 20, marginBottom: 5}}>⚙️</div><b style={{fontSize: 9, letterSpacing: 1}}>SYSTEM</b></div>
         </nav>
       </div>
     </div>
