@@ -8,8 +8,8 @@ const COINS_DATA = [
 ];
 
 const DEX = [
-  { id: '1in', name: '1INCH' }, { id: 'uni', name: 'UNISWAP' }, 
-  { id: 'pancake', name: 'PANCAKE' }, { id: 'ray', name: 'RAYDIUM' }
+  { id: '1INCH', name: '1INCH' }, { id: 'UNISWAP', name: 'UNISWAP' }, 
+  { id: 'PANCAKE', name: 'PANCAKE' }, { id: 'RAYDIUM', name: 'RAYDIUM' }
 ];
 
 const VIP_ALERTS = [
@@ -163,8 +163,8 @@ export default function App() {
         {showAds && (
           <div className="modal">
             <div style={{background: '#111', border: '1px solid var(--vip)', padding: 30, borderRadius: 20, textAlign: 'center'}}>
-              <h2 style={{color: 'var(--vip)', marginBottom: 15}}>УРОВЕНЬ {level}</h2>
-              <p style={{color: '#888', fontSize: 14, marginBottom: 25}}>Ваш профит стабилен. Заберите доступ к реальному VIP каналу.</p>
+              <h2 style={{color: 'var(--vip)', marginBottom: 15}}>УРОВЕНЬ {level} ДОСТИГНУТ</h2>
+              <p style={{color: '#888', fontSize: 14, marginBottom: 25}}>Ваш профит {balance.toFixed(0)}$ впечатляет. Запросите доступ в закрытый VIP канал.</p>
               <a href="https://t.me/kriptoalians" style={{textDecoration: 'none'}}><button className="btn" style={{background: 'var(--vip)', color: '#000'}}>ЗАПРОСИТЬ ДОСТУП</button></a>
               <button onClick={() => setShowAds(false)} style={{background:'none', border:'none', color:'#444', marginTop: 15}}>Позже</button>
             </div>
@@ -174,7 +174,7 @@ export default function App() {
         {result && (
           <div className="modal">
             <div style={{background: '#0a0a0a', border: `1px solid ${result.win ? 'var(--w)' : 'var(--l)'}`, padding: 30, borderRadius: 20, textAlign: 'center', width: '80%'}}>
-              <h1 style={{color: result.win ? 'var(--w)' : 'var(--l)'}}>{result.win ? 'УСПЕХ' : 'УБЫТОК'}</h1>
+              <h1 style={{color: result.win ? 'var(--w)' : 'var(--l)'}}>{result.win ? 'SUCCESS' : 'LOSS'}</h1>
               <p style={{fontSize: 28, margin: '15px 0'}}>${Number(result.val).toLocaleString()}</p>
               <button className="btn" style={{background: '#fff', color: '#000'}} onClick={() => setResult(null)}>OK</button>
             </div>
@@ -198,13 +198,15 @@ export default function App() {
               {!selectedDex ? (
                 <div>
                   <div className="card" style={{border: '1px solid var(--n)'}}>
-                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--n)', fontSize: 12}}>АНАЛИЗ РЫНКА...</div> : 
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
-                      <div>
+                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--n)', fontSize: 12}}>ПОИСК ПРИБЫЛЬНОЙ СВЯЗКИ...</div> : 
+                    <div>
+                      <div style={{display:'flex', justifyContent:'space-between', marginBottom: 5}}>
                         <b>{signal.coin}/USDT</b>
-                        <div style={{fontSize: 10, color: '#666'}}>${signal.price}</div>
+                        <b style={{color:'var(--w)'}}>+{signal.perc}%</b>
                       </div>
-                      <b style={{color:'var(--w)'}}>+{signal.perc}%</b>
+                      <div style={{fontSize: 11, color: '#888'}}>
+                        BUY: <span style={{color: '#fff'}}>{signal.buyDex}</span> → SELL: <span style={{color: '#fff'}}>{signal.sellDex}</span>
+                      </div>
                     </div>}
                   </div>
                   {DEX.map(d => (
@@ -215,7 +217,7 @@ export default function App() {
                 </div>
               ) : (
                 <div>
-                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'#444', marginBottom: 10}}>← НАЗАД</button>
+                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'#444', marginBottom: 10}}>← НАЗАД К БИРЖАМ</button>
                   <div className="card" style={{borderColor: '#333'}}>
                     <div style={{display: 'flex', gap: '10px'}}>
                       <div style={{flex: 1}}><label style={{fontSize: 10, color: '#666'}}>СУММА</label><input type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
@@ -257,7 +259,7 @@ export default function App() {
                 <button onClick={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? 'var(--w)' : '#333', border:'none', padding:'8px 15px', borderRadius:5, color: '#000'}}>{soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}</button>
               </div>
               <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}}><div className="card" style={{textAlign:'center', color: 'var(--n)', border: '1px solid var(--n)'}}>@KRIPTOALIANS</div></a>
-              <button onClick={() => {if(window.confirm("Сбросить?")){localStorage.clear(); window.location.reload();}}} className="btn" style={{background: '#111', color: 'var(--l)', border: '1px solid var(--l)', marginTop: 20}}>ОБНУЛИТЬ</button>
+              <button onClick={() => {if(window.confirm("Удалить весь прогресс?")){localStorage.clear(); window.location.reload();}}} className="btn" style={{background: '#111', color: 'var(--l)', border: '1px solid var(--l)', marginTop: 20}}>СБРОСИТЬ ДАННЫЕ</button>
             </div>
           )}
         </main>
