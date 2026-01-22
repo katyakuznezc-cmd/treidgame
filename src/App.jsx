@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -23,12 +22,7 @@ export default function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem(`k_bal_${userId}`)) || 500.00);
   const [xp, setXp] = useState(() => Number(localStorage.getItem(`k_xp_${userId}`)) || 0);
   const [winCount, setWinCount] = useState(() => Number(localStorage.getItem(`k_wins_${userId}`)) || 0);
-  
-  // Живые цены
-  const [prices, setPrices] = useState(() => 
-    COINS_DATA.reduce((acc, c) => ({ ...acc, [c.id]: c.base }), {})
-  );
-
+  const [prices, setPrices] = useState(() => COINS_DATA.reduce((acc, c) => ({ ...acc, [c.id]: c.base }), {}));
   const [tab, setTab] = useState('trade'); 
   const [selectedDex, setSelectedDex] = useState(null);
   const [activePositions, setActivePositions] = useState({});
@@ -45,17 +39,19 @@ export default function App() {
   const lvl = Math.floor(xp / 150) + 1;
   const progress = (xp % 150) / 1.5; 
   const maxLev = lvl >= 10 ? 100 : lvl >= 5 ? 50 : 10;
+  
+  // ЛИМИТ СТАВКИ: для новичков (lvl < 3) - 50% от баланса, для профи - 100%
+  const maxAllowedBet = lvl < 3 ? balance * 0.5 : balance;
 
   const sndClick = useRef(new Audio('https://www.fesliyanstudios.com/play-mp3/6510'));
   const sndBell = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
 
-  // Имитация движения рынка
   useEffect(() => {
     const itv = setInterval(() => {
       setPrices(prev => {
         const next = { ...prev };
         Object.keys(next).forEach(id => {
-          const change = 1 + (Math.random() * 0.01 - 0.005); // +/- 0.5%
+          const change = 1 + (Math.random() * 0.01 - 0.005);
           next[id] = Number((next[id] * change).toFixed(id === 'BTC' ? 1 : 4));
         });
         return next;
@@ -70,11 +66,7 @@ export default function App() {
     localStorage.setItem(`k_wins_${userId}`, winCount);
     localStorage.setItem(`k_hist_${userId}`, JSON.stringify(history));
     localStorage.setItem('k_uid', userId);
-    if (lvl >= 2 && !localStorage.getItem('ad_pro_shown')) {
-      setShowAd(true);
-      localStorage.setItem('ad_pro_shown', 'true');
-    }
-  }, [balance, xp, winCount, history, lvl, userId]);
+  }, [balance, xp, winCount, history, userId]);
 
   useEffect(() => {
     if (toast) {
@@ -106,16 +98,21 @@ export default function App() {
   const handleAction = (coinId) => {
     const pos = activePositions[coinId];
     if (pos) {
-      // 15% шанс проигрыша (имитация рыночного шума)
       const marketCrash = Math.random() < 0.15; 
       const isWin = !marketCrash && signal && pos.signalId === signal.id && signal.sellDexId === selectedDex;
-      const pnl = (Number(pos.amt) * ((isWin ? Number(pos.bonus) : -25) * Number(pos.lev)) / 100);
+      
+      // РАСЧЕТ PNL С ЗАЩИТОЙ ОТ МИНУСА
+      let pnl = (Number(pos.amt) * ((isWin ? Number(pos.bonus) : -25) * Number(pos.lev)) / 100);
       
       setPendingTrades(prev => ({ ...prev, [coinId]: true }));
       setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
       
       setTimeout(() => {
-        setBalance(b => b + Number(pos.amt) + pnl);
+        setBalance(b => {
+            const nextBal = b + Number(pos.amt) + pnl;
+            return nextBal < 0 ? 0 : nextBal; // Не уходим ниже нуля
+        });
+        
         if(isWin) { setXp(x => x + 15); setWinCount(w => w + 1); }
         setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
         setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
@@ -123,20 +120,28 @@ export default function App() {
         setToast({ 
             msg: isWin 
                 ? (lang === 'RU' ? `ПРИБЫЛЬ: +$${pnl.toFixed(2)}` : `PROFIT: +$${pnl.toFixed(2)}`) 
-                : (lang === 'RU' ? `РЫНОК УПАЛ: -$${Math.abs(pnl).toFixed(2)}` : `MARKET CRASH: -$${Math.abs(pnl).toFixed(2)}`), 
+                : (lang === 'RU' ? `УБЫТОК: -$${Math.abs(pnl).toFixed(2)}` : `LOSS: -$${Math.abs(pnl).toFixed(2)}`), 
             type: isWin ? 'win' : 'loss' 
         });
       }, 10000);
     } else {
-      if(tradeAmount > balance || tradeAmount <= 0) return setToast({msg: 'LOW BALANCE', type: 'loss'});
+      // ПРОВЕРКА ЛИМИТОВ ПЕРЕД ОТКРЫТИЕМ
+      if(tradeAmount > maxAllowedBet) {
+        return setToast({
+            msg: lang === 'RU' ? `МАКС СТАВКА: $${maxAllowedBet.toFixed(0)}` : `MAX BET: $${maxAllowedBet.toFixed(0)}`, 
+            type: 'loss'
+        });
+      }
+      if(tradeAmount <= 0) return;
+
       setBalance(b => b - tradeAmount);
       setActivePositions(p => ({ ...p, [coinId]: { amt: tradeAmount, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } }));
     }
   };
 
   const t = {
-    RU: { mine: 'МАЙНИНГ', trade: 'БИРЖА', logs: 'ИСТОРИЯ', opts: 'ОПЦИИ', prof: 'ПРИБЫЛЬ', buy: 'КУПИТЬ', sell: 'ЗАКРЫТЬ', back: 'НАЗАД' },
-    EN: { mine: 'MINING', trade: 'EXCHANGE', logs: 'LOGS', opts: 'OPTS', prof: 'PROFIT', buy: 'BUY', sell: 'CLOSE', back: 'BACK' }
+    RU: { mine: 'МАЙНИНГ', trade: 'БИРЖА', logs: 'ИСТОРИЯ', opts: 'ОПЦИИ', buy: 'КУПИТЬ', sell: 'ЗАКРЫТЬ', back: 'НАЗАД' },
+    EN: { mine: 'MINING', trade: 'EXCHANGE', logs: 'LOGS', opts: 'OPTS', buy: 'BUY', sell: 'CLOSE', back: 'BACK' }
   }[lang];
 
   return (
@@ -153,29 +158,17 @@ export default function App() {
         .content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
         .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 8px; }
         .dex-item { background: #0a0a0a; border: 1px solid #222; margin: 8px 10px; padding: 20px; border-radius: 12px; border-left: 5px solid; cursor: pointer; }
-        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; }
+        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; box-shadow: 0 0 15px rgba(0,217,255,0.1); }
         .nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; padding-bottom: env(safe-area-inset-bottom); }
         .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; cursor: pointer; }
         .nav-btn.active { color: var(--neon); }
         .center-toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 30px; border-radius: 20px; z-index: 10000; text-align: center; min-width: 250px; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1); }
         @keyframes pop { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-        .price-up { color: var(--win); transition: 0.3s; }
-        .price-down { color: var(--loss); transition: 0.3s; }
-        .calc-badge { font-size: 9px; background: #222; padding: 2px 6px; border-radius: 4px; color: var(--win); font-weight: bold; }
+        .price-tag { font-size: 12px; padding: 2px 6px; background: #111; border-radius: 4px; }
       `}</style>
-
-      {showAd && (
-        <div className="modal" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
-          <div className="ad-box" style={{background:'#111', border:'2px solid var(--win)', padding:'30px', borderRadius:'20px', textAlign:'center'}}>
-            <h2 style={{color: 'var(--win)', marginTop: 0}}>QUALIFIED</h2>
-            <button onClick={() => window.open('https://t.me/kriptoalians', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold'}}>JOIN CHANNEL</button>
-          </div>
-        </div>
-      )}
 
       {toast && (
         <div className="center-toast" style={{ background: toast.type === 'win' ? 'var(--win)' : 'var(--loss)', color: '#000' }}>
-            <div style={{fontSize: '12px', opacity: 0.7, marginBottom: '5px', fontWeight: 'bold'}}>{toast.type === 'win' ? 'SUCCESS' : 'FAILED'}</div>
             <div style={{fontSize: '20px', fontWeight: '900'}}>{toast.msg}</div>
         </div>
       )}
@@ -211,10 +204,18 @@ export default function App() {
             ) : (
               <div style={{display:'flex', flexDirection:'column', padding:'15px'}}>
                 <button onClick={() => setSelectedDex(null)} style={{background:'#222', border:'none', color:'#fff', padding:'10px', borderRadius:'8px', alignSelf:'flex-start', marginBottom:'15px'}}>{t.back}</button>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
-                  <span style={{fontSize:'12px'}}>AMT:</span>
-                  <input type="number" style={{background:'#111', border:'1px solid #333', color:'var(--win)', padding:'8px', width:'100px', borderRadius:'6px'}} value={tradeAmount} onChange={e => setTradeAmount(Number(e.target.value))} />
+                
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'5px'}}>
+                  <span style={{fontSize:'12px'}}>AMT (MAX: ${maxAllowedBet.toFixed(0)}):</span>
+                  <input type="number" style={{background:'#111', border:'1px solid #333', color:'var(--win)', padding:'8px', width:'100px', borderRadius:'6px'}} value={tradeAmount} 
+                    onChange={e => {
+                        let val = Number(e.target.value);
+                        if(val > maxAllowedBet) val = maxAllowedBet;
+                        setTradeAmount(val);
+                    }} 
+                  />
                 </div>
+
                 <div style={{fontSize:'11px', color:'#444', marginBottom:'5px'}}>LEVERAGE: x{leverage}</div>
                 <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(Number(e.target.value))} style={{width:'100%', marginBottom:'20px'}} />
                 
@@ -228,15 +229,12 @@ export default function App() {
                     <div key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px 0', borderBottom:'1px solid #111', opacity: locked ? 0.3 : 1}}>
                       <div>
                         <div style={{fontWeight:'bold', display:'flex', alignItems:'center', gap:'8px'}}>
-                          {c.id}/USDT 
-                          <span style={{fontSize:'12px', fontWeight:'normal'}} className={Math.random() > 0.5 ? 'price-up' : 'price-down'}>
-                            ${currentPrice}
-                          </span>
+                          {c.id}/USDT <span className="price-tag" style={{color: Math.random() > 0.5 ? 'var(--win)' : 'var(--loss)'}}>${currentPrice}</span>
                         </div>
                         {!locked && !pos && signal?.coin === c.id && (
-                          <div className="calc-badge">+{estProfit}$ PROFIT</div>
+                          <div style={{fontSize:'9px', color:'var(--win)', fontWeight:'bold'}}>EST. +${estProfit}</div>
                         )}
-                        {pos && <div style={{fontSize:'10px', color:'var(--win)', animation:'pulse 1s infinite'}}>WAITING 10s...</div>}
+                        {pos && <div style={{fontSize:'10px', color:'var(--win)'}}>TRADING... (10s)</div>}
                       </div>
                       
                       {locked ? <span>🔒 L{c.lvl}</span> : 
@@ -262,6 +260,7 @@ export default function App() {
               setBalance(b => b + 0.05);
               if(soundEnabled) { sndClick.current.currentTime = 0; sndClick.current.play().catch(()=>{}); }
             }}>$</div>
+            <p style={{textAlign:'center', fontSize:'10px', color:'#333'}}>TAP TO EARN DEP</p>
           </div>
         )}
 
