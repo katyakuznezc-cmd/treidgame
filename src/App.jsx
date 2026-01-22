@@ -21,8 +21,7 @@ export default function App() {
   const [amount, setAmount] = useState(100);
   const [leverage, setLeverage] = useState(5);
   
-  // СОСТОЯНИЕ АКТИВНОЙ СДЕЛКИ
-  const [activeTrade, setActiveTrade] = useState(null); // { coinId, buyDex, amount, leverage }
+  const [activeTrade, setActiveTrade] = useState(null); 
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncTimer, setSyncTimer] = useState(0);
   
@@ -47,7 +46,6 @@ export default function App() {
     }
   }, [balance, level, tradesInLevel]);
 
-  // Генератор сигналов
   useEffect(() => {
     if (tab === 'trade' && !signal && !activeTrade && !isSyncing) {
       setIsAnalyzing(true);
@@ -90,27 +88,24 @@ export default function App() {
   };
 
   const finalizeTrade = () => {
-    // ПРОВЕРКА: Продал ли игрок на той бирже, что была в сигнале?
-    const correctDex = selectedDex === signal.sellDex;
-    const correctCoin = activeTrade.coinId === signal.coin;
-    const luck = Math.random() < 0.8; // Шанс 80%
+    const isCorrectDex = selectedDex === signal.sellDex;
+    const luck = Math.random() < 0.85; // 85% шанс на успех при правильной бирже
+    const isWin = isCorrectDex && luck;
 
     let pnl;
-    const isWin = correctDex && correctCoin && luck;
-
     if (isWin) {
       pnl = activeTrade.amount * activeTrade.leverage * (parseFloat(signal.perc) / 100);
       if (tradesInLevel + 1 >= neededTrades) {
         setLevel(l => l + 1); setTradesInLevel(0); setLvlUpModal(true);
       } else { setTradesInLevel(t => t + 1); }
     } else {
-      // Если биржа не та, убыток больше
-      const lossFactor = correctDex ? (Math.random() * 0.5 + 1.0) : 2.5; 
-      pnl = -(activeTrade.amount * activeTrade.leverage * (lossFactor / 100));
+      // Если биржа неверная — убыток фиксированный и крупный
+      const lossPerc = isCorrectDex ? (Math.random() * 0.5 + 1.0) : 3.5;
+      pnl = -(activeTrade.amount * activeTrade.leverage * (lossPerc / 100));
     }
 
     setBalance(b => b + activeTrade.amount + pnl);
-    setResult({ win: isWin, val: Math.abs(pnl).toFixed(2), reason: !correctDex ? "WRONG EXCHANGE" : "" });
+    setResult({ win: isWin, val: Math.abs(pnl).toFixed(2), reason: !isCorrectDex ? "НЕВЕРНАЯ БИРЖА ПРОДАЖИ" : "" });
     setIsSyncing(false); setActiveTrade(null); setSignal(null); setSelectedDex(null);
   };
 
@@ -131,7 +126,7 @@ export default function App() {
   return (
     <div onPointerDown={handleGlobalClick} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', position:'relative'}}>
       <style>{`
-        .card { background:#0a0a0a; border:1px solid #00f2ff; border-radius:12px; padding:12px; margin-bottom:10px; }
+        .card { background:#0a0a0a; border:1px solid #00f2ff; border-radius:12px; padding:12px; margin-bottom:10px; transition: 0.2s; }
         .neon { color:#00f2ff; text-shadow:0 0 10px #00f2ff; }
         .btn { width:100%; padding:15px; border-radius:10px; border:none; font-weight:bold; cursor:pointer; text-transform:uppercase; }
         .dollar { position: absolute; color: #00ff88; font-weight: 900; pointer-events: none; animation: pop 0.6s forwards; z-index: 9999; font-size: 28px; }
@@ -155,31 +150,31 @@ export default function App() {
               <div style={{fontSize:10, color:'#ffcc00'}}>VIP ACADEMY - Manager: @vladstelin78</div>
             </div>
 
-            <div className="card" style={{textAlign:'center', minHeight: 70, display:'flex', alignItems:'center', justifyContent:'center', borderStyle: activeTrade ? 'dashed' : 'solid'}}>
-                {isAnalyzing ? <span className="neon">SCANNING...</span> : 
+            <div className="card" style={{textAlign:'center', minHeight: 70, display:'flex', alignItems:'center', justifyContent:'center'}}>
+                {isAnalyzing ? <span className="neon">SCANNING LIQUIDITY...</span> : 
                 signal ? (<div>
                     <div style={{fontSize:14, fontWeight:'bold', color:'#00ff88'}}>{signal.coin} +{signal.perc}%</div>
-                    <div style={{fontSize:10, color:'#aaa'}}>BUY: <span style={{color: activeTrade ? '#555' : '#00f2ff'}}>{signal.buyDex}</span> → SELL: <span style={{color:'#00f2ff'}}>{signal.sellDex}</span></div>
-                    {activeTrade && <div style={{fontSize:9, color:'#ffcc00', marginTop:5}}>ASSET SECURED. GO TO {signal.sellDex} TO SELL!</div>}
+                    <div style={{fontSize:10, color:'#aaa'}}>BUY: <span style={{color: activeTrade ? '#444' : '#00f2ff'}}>{signal.buyDex}</span> → SELL: <span style={{color:'#00f2ff'}}>{signal.sellDex}</span></div>
+                    {activeTrade && <div style={{fontSize:9, color:'#ffcc00', marginTop:5}}>ОРДЕР ВЫПОЛНЕН. НАЙДИТЕ БИРЖУ ДЛЯ ПРОДАЖИ!</div>}
                 </div>) : <span>WAITING...</span>}
             </div>
 
             {!selectedDex ? (
               DEX.map(d => (
-                <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer', borderColor: activeTrade && d.name === signal?.sellDex ? '#00ff88' : '#00f2ff'}}>
-                  {d.name} {activeTrade && d.name === signal?.sellDex && <span style={{float:'right', fontSize:10, color:'#00ff88'}}>TARGET</span>}
+                <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer'}}>
+                  {d.name} <span style={{float:'right', fontSize:10, color:'#222'}}>CONNECTED</span>
                 </div>
               ))
             ) : (
               <div>
-                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom:10, fontSize:12, cursor:'pointer'}}>← BACK TO LIST</div>
+                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom:10, fontSize:12, cursor:'pointer'}}>← ВЕРНУТЬСЯ К СПИСКУ БИРЖ</div>
                 
                 <div className="card">
                   <div style={{display:'flex', gap:10, marginBottom:10}}>
-                    <input type="number" disabled={activeTrade} value={amount} onChange={e=>setAmount(Number(e.target.value))} />
-                    <input type="number" disabled={activeTrade} value={leverage} onChange={e=>{
+                    <div style={{flex:1}}><small style={{fontSize:9, color:'#666'}}>SUM ($)</small><input type="number" disabled={activeTrade} value={amount} onChange={e=>setAmount(Number(e.target.value))} /></div>
+                    <div style={{flex:1}}><small style={{fontSize:9, color:'#666'}}>LEV (MAX x{getMaxLev()})</small><input type="number" disabled={activeTrade} value={leverage} onChange={e=>{
                       let v = Number(e.target.value); if(v > getMaxLev()) v = getMaxLev(); setLeverage(v);
-                    }} />
+                    }} /></div>
                   </div>
                   <div style={{display:'flex', justifyContent:'space-between', fontSize:9}}>
                     <span style={{color:'#00ff88'}}>PROFIT: +${(amount * leverage * (parseFloat(signal?.perc || 0)/100)).toFixed(2)}</span>
@@ -209,7 +204,6 @@ export default function App() {
             )}
           </>
         )}
-        {/* Вкладки FARM и OPTS аналогичны */}
         {tab === 'mining' && <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><div onClick={() => setBalance(b => b + 0.15)} style={{width: 200, height: 200, border: '6px solid #00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, color: '#00f2ff', cursor:'pointer'}}>TAP</div></div>}
         {tab === 'opts' && <div><div className="card" onClick={() => setSoundEnabled(!soundEnabled)}>SOUND: {soundEnabled ? 'ON' : 'OFF'}</div><div className="card" onClick={() => window.open('https://t.me/kriptoalians')} style={{color:'#ffcc00', textAlign:'center'}}>@KRIPTOALIANS</div></div>}
       </main>
@@ -223,7 +217,7 @@ export default function App() {
       {result && (
         <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
             <div className="card" style={{width:'100%', textAlign:'center', borderColor: result.win ? '#00ff88' : '#ff0055'}}>
-                <h2 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'SUCCESS' : 'FAILED'}</h2>
+                <h2 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'УСПЕХ' : 'ОШИБКА'}</h2>
                 <div style={{fontSize:10, color:'#aaa', marginBottom:10}}>{result.reason}</div>
                 <h1 className="neon">${result.val}</h1>
                 <button className="btn" style={{background:'#fff', color:'#000'}} onClick={()=>setResult(null)}>OK</button>
