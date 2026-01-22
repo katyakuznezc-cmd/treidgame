@@ -22,7 +22,8 @@ const STRINGS = {
     buy: "КУПИТЬ", sell: "ПРОДАТЬ", sync: "СИНХРОНИЗАЦИЯ", 
     lang: "ЯЗЫК", sound: "ЗВУК", fx: "ЭФФЕКТЫ ($)",
     tutorial: ["Добро пожаловать! На вкладке ФАРМ добывай капитал.", "В ТРЕЙДЕ следи за сигналами: покупай на одной бирже, продавай на другой.", "Даже по сигналу рынок может пойти в минус — будь осторожен!"],
-    next: "ДАЛЕЕ", start: "ПОНЯЛ!"
+    next: "ДАЛЕЕ", start: "ПОНЯЛ!",
+    vip_msg: "Менеджер: @vladstelin78", vip_title: "VIP АКАДЕМИЯ"
   },
   EN: {
     farm: "FARM", trade: "TRADE", sets: "SETS", 
@@ -31,7 +32,8 @@ const STRINGS = {
     buy: "BUY", sell: "SELL", sync: "SYNCING", 
     lang: "LANG", sound: "SOUND", fx: "CLICK FX ($)",
     tutorial: ["Welcome! Use FARM tab to get your capital.", "In TRADE follow signals: buy on one DEX, sell on another.", "Even with a signal, the market can go down — be careful!"],
-    next: "NEXT", start: "GOT IT!"
+    next: "NEXT", start: "GOT IT!",
+    vip_msg: "Manager: @vladstelin78", vip_title: "VIP ACADEMY"
   }
 };
 
@@ -88,7 +90,6 @@ export default function App() {
     } else { setDisplayBalance(balance); }
   }, [balance, displayBalance]);
 
-  // Генерация нового сигнала (без повторов)
   useEffect(() => {
     let timer;
     if (tab === 'trade' && !signal && !activePos) {
@@ -122,22 +123,17 @@ export default function App() {
     }
   };
 
-  // ТА САМАЯ ФУНКЦИЯ ПРОДАЖИ С НОВЫМ ШАНСОМ 72%
   const sellPos = () => {
     if (isProcessing) return;
     setIsProcessing(true);
     setNetTimer(8);
-    
     const itv = setInterval(() => {
       setNetTimer(p => {
         if (p <= 1) {
           clearInterval(itv);
           const isCorrect = signal && activePos.id === signal.coin && activePos.buyDex === signal.buyDex && selectedDex === signal.sellDex;
-          
-          // Шанс 72% если по сигналу, иначе 20%
           const winChance = isCorrect ? 0.72 : 0.20; 
           const win = Math.random() < winChance;
-          
           let pnl;
           if (win) {
             pnl = activePos.amount * activePos.leverage * (Math.random() * 0.015 + 0.015);
@@ -146,7 +142,7 @@ export default function App() {
           } else {
             pnl = -(activePos.amount * activePos.leverage * (Math.random() * 0.015 + 0.01));
             setIsBurning(true); setTimeout(() => setIsBurning(false), 800);
-            setTradesInLevel(t => Math.max(0, t - 1)); 
+            setTradesInLevel(t => Math.max(0, t - 1));
           }
           setBalance(b => Math.max(0, b + activePos.amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
@@ -178,6 +174,7 @@ export default function App() {
         .burn { animation: flash 0.2s infinite; }
         @keyframes flash { 0% { background: #000; } 50% { background: #200; } 100% { background: #000; } }
         .tut-overlay { position:absolute; inset:0; background:rgba(0,0,0,0.9); z-index:5000; display:flex; align-items:center; justifyContent:center; padding:30px; }
+        .st-offer { border: 1px solid #ffcc00; background: rgba(255,204,0,0.05); padding: 15px; border-radius: 12px; text-decoration: none; display: block; margin: 10px 0; text-align: center; }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-15, top: c.y-25}}>$</div>)}
@@ -190,9 +187,7 @@ export default function App() {
             <button className="btn" style={{background:'#00f2ff', color:'#000'}} onClick={() => {
               if (tutStep < T.tutorial.length - 1) setTutStep(s => s + 1);
               else { setShowTut(false); localStorage.setItem('st_tut_done', 'true'); }
-            }}>
-              {tutStep < T.tutorial.length - 1 ? T.next : T.start}
-            </button>
+            }}>{tutStep < T.tutorial.length - 1 ? T.next : T.start}</button>
           </div>
         </div>
       )}
@@ -235,6 +230,13 @@ export default function App() {
                     </div>
                   )}
                 </div>
+
+                {/* БАННЕР МЕНЕДЖЕРА */}
+                <a href="https://t.me/vladstelin78" className="st-offer">
+                  <div style={{color: '#ffcc00', fontSize: 10, fontWeight: 900, marginBottom: 5}}>{T.vip_title}</div>
+                  <div style={{color: '#fff', fontSize: 12}}>{T.vip_msg}</div>
+                </a>
+
                 <div style={{fontSize: 10, color: '#444', marginBottom: 10, fontWeight: 900}}>{T.terminal}</div>
                 {DEX.map(d => (
                   <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
