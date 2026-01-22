@@ -30,7 +30,6 @@ export default function App() {
   const [tradeAmount, setTradeAmount] = useState(100); 
   const [leverage, setLeverage] = useState(1);
   
-  // Сигналы с задержкой
   const [signal, setSignal] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [signalTimer, setSignalTimer] = useState(0);
@@ -38,10 +37,9 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [lang, setLang] = useState('RU');
   const [toast, setToast] = useState(null);
-
-  // Обучение
   const [tutStep, setTutStep] = useState(() => localStorage.getItem('k_tut') ? -1 : 0);
 
+  // Исправленная переменная maxLev
   const lvl = Math.floor(xp / 150) + 1;
   const progress = (xp % 150) / 1.5; 
   const maxLev = lvl >= 10 ? 100 : lvl >= 5 ? 50 : 10;
@@ -69,16 +67,16 @@ export default function App() {
     localStorage.setItem('k_uid', userId);
   }, [balance, xp, winCount, userId]);
 
-  // Логика сигнала: Анализ 5 сек -> Сигнал 90 сек
   useEffect(() => {
     if (tab === 'trade' && !signal && !isAnalyzing) {
       setIsAnalyzing(true);
-      setTimeout(() => {
+      const t = setTimeout(() => {
         generateSignal();
         setIsAnalyzing(false);
       }, 5000);
+      return () => clearTimeout(t);
     }
-  }, [tab, signal]);
+  }, [tab, signal, isAnalyzing]);
 
   useEffect(() => {
     if (signalTimer > 0) {
@@ -108,10 +106,10 @@ export default function App() {
   };
 
   const tutConfig = [
-    { t: "Баланс", c: "Здесь твои деньги. Мы дали $1000 для старта!", ref: "h-bal" },
-    { t: "Сигналы", c: "Появляются после анализа. Показывают, где выгодно купить!", ref: "s-box" },
-    { t: "Биржи", c: "Выбери биржу из списка, чтобы зайти в терминал.", ref: "d-list" },
-    { t: "Майнинг", c: "Если деньги кончились — тапай доллар здесь.", ref: "n-mine" }
+    { t: "Баланс", c: "Тут твои деньги. Начни с $1000!", ref: "h-bal" },
+    { t: "Сигналы", c: "Появляются после анализа. Жди надписи!", ref: "s-box" },
+    { t: "Биржи", c: "Выбери площадку для торговли.", ref: "d-list" },
+    { t: "Майнинг", c: "Кликай тут, если деньги кончились.", ref: "n-mine" }
   ];
 
   const handleAction = (coinId) => {
@@ -152,21 +150,20 @@ export default function App() {
         :root { --win: #00ff88; --loss: #ff3366; --neon: #00d9ff; --panel: #121214; }
         html, body { height: 100%; width: 100%; margin: 0; background: #000; overflow: hidden; color: #eee; font-family: sans-serif; }
         .app-main { height: 100vh; width: 100vw; display: flex; flex-direction: column; position: relative; }
-        
-        /* Обучение с фокусом */
         .tut-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; }
         .tut-card { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; max-width: 350px; background: #1a1a1a; border: 2px solid var(--neon); border-radius: 20px; padding: 25px; z-index: 1100; text-align: center; }
         .focus-el { position: relative; z-index: 1005 !important; border: 2px solid #fff !important; box-shadow: 0 0 20px #fff !important; pointer-events: none; }
-
         .header { padding: 15px; background: var(--panel); border-bottom: 1px solid #222; }
         .balance { color: var(--win); font-size: 26px; font-weight: 900; }
         .content { flex: 1; overflow-y: auto; }
-        .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 15px; border-radius: 12px; position: relative; min-height: 60px; display: flex; flex-direction: column; justify-content: center; }
+        .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 15px; border-radius: 12px; position: relative; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
         .dex-item { background: #0a0a0a; border: 1px solid #222; margin: 10px; padding: 18px; border-radius: 12px; cursor: pointer; }
         .nav { height: 75px; display: flex; background: var(--panel); border-top: 1px solid #222; }
         .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 11px; font-weight: bold; }
         .nav-btn.active { color: var(--neon); }
         .center-toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 40px; border-radius: 30px; z-index: 5000; text-align: center; color: #000; font-weight: 900; font-size: 32px; box-shadow: 0 0 100px rgba(0,0,0,1); }
+        @keyframes fly { to { transform: translateY(-70px); opacity: 0; } }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
       `}</style>
 
       {tutStep >= 0 && (
@@ -183,14 +180,4 @@ export default function App() {
         </>
       )}
 
-      {toast && <div className="center-toast" style={{background: toast.type==='win'?'var(--win)':'var(--loss)'}}>{toast.msg}</div>}
-
-      <header className={`header ${tutStep === 0 ? 'focus-el' : ''}`}>
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-          <div style={{fontSize:'12px', color:'#555'}}>ID: {userId}</div>
-          <div className="balance">${balance.toFixed(2)}</div>
-        </div>
-        <div style={{height: 4, background: '#222', marginTop: 10, borderRadius: 2}}>
-          <div style={{width: `${progress}%`, height: '100%', background: 'var(--neon)'}}></div>
-        </div>
-      </header
+      {toast && <div className
