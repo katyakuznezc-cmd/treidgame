@@ -28,7 +28,7 @@ export default function App() {
   const [selectedDex, setSelectedDex] = useState(null);
   const [activePositions, setActivePositions] = useState({});
   const [pendingTrades, setPendingTrades] = useState({});
-  const [tradeAmount, setTradeAmount] = useState('50');
+  const [tradeAmount, setTradeAmount] = useState('100'); // ПОЛЕ ДЛЯ ВВОДА
   const [leverage, setLeverage] = useState(1);
   const [signal, setSignal] = useState(null);
   const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem(`k_hist_${userId}`)) || []);
@@ -43,21 +43,17 @@ export default function App() {
   const sndClick = useRef(new Audio('https://www.fesliyanstudios.com/play-mp3/6510'));
   const sndBell = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
 
-  // Сохранение данных
   useEffect(() => {
     localStorage.setItem('k_uid', userId);
     localStorage.setItem(`k_bal_${userId}`, balance);
     localStorage.setItem(`k_xp_${userId}`, xp);
     localStorage.setItem(`k_hist_${userId}`, JSON.stringify(history));
-    
-    // Реклама при достижении 2 уровня
     if (lvl === 2 && !localStorage.getItem('ad_shown_2')) {
       setShowAd(true);
       localStorage.setItem('ad_shown_2', 'true');
     }
   }, [balance, xp, history, userId, lvl]);
 
-  // Функция генерации сигнала
   const generateSignal = () => {
     const avail = COINS_DATA.filter(c => c.lvl <= lvl);
     const coin = avail[Math.floor(Math.random() * avail.length)];
@@ -70,156 +66,167 @@ export default function App() {
       buyDex: d1.name, 
       sellDexId: d2.id, 
       sellDexName: d2.name, 
-      bonus: (Math.random() * 8 + 5).toFixed(1), 
+      bonus: (Math.random() * 5 + 5).toFixed(1), 
       id: Date.now() 
     });
     if(soundEnabled) { sndBell.current.currentTime = 0; sndBell.current.play().catch(() => {}); }
   };
 
-  // Генерируем сигнал СРАЗУ при переходе на вкладку Трейдинг
   useEffect(() => {
-    if (tab === 'trade' && !signal) {
-      generateSignal();
-    }
-    const itv = setInterval(() => { if(tab === 'trade') generateSignal() }, 40000);
+    if (tab === 'trade' && !signal) generateSignal();
+    const itv = setInterval(() => { if(tab === 'trade') generateSignal() }, 30000);
     return () => clearInterval(itv);
-  }, [tab, lvl]);
+  }, [tab]);
 
   const openTrade = (coinId) => {
     const amt = parseFloat(tradeAmount);
+    if (isNaN(amt) || amt <= 0) return setToast({msg: "НЕВЕРНАЯ СУММА", type: "loss"});
     if (amt > balance) return setToast({msg: "МАЛО СРЕДСТВ", type: "loss"});
+    
     setBalance(b => b - amt);
-    setActivePositions(p => ({ ...p, [coinId]: { amt, lev: leverage, dex: selectedDex, signalId: signal?.id } }));
-    setToast({ msg: "ОРДЕР ОТКРЫТ", type: "info" });
+    setActivePositions(p => ({ ...p, [coinId]: { amt, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } }));
+    setToast({ msg: "СДЕЛКА ОТКРЫТА", type: "info" });
   };
 
   const closeTrade = (coinId) => {
     const p = activePositions[coinId];
     const isWin = signal && p.signalId === signal.id && signal.sellDexId === selectedDex;
-    const pnl = (p.amt * ((isWin ? parseFloat(signal.bonus) : -20) * p.lev) / 100);
+    const pnl = (p.amt * ((isWin ? parseFloat(p.bonus) : -15) * p.lev) / 100);
     
     setPendingTrades(prev => ({ ...prev, [coinId]: true }));
     setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
     
     setTimeout(() => {
       setBalance(b => b + p.amt + pnl);
-      setXp(x => x + 80);
+      setXp(x => x + 100);
       setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
       setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
-      setToast({ msg: isWin ? `ПРОФИТ +$${pnl.toFixed(2)}` : `УБЫТОК $${pnl.toFixed(2)}`, type: isWin ? 'win' : 'loss' });
-    }, 6000);
+      setToast({ msg: isWin ? "ПРОФИТ ВЫПЛАЧЕН" : "ЛИКВИДАЦИЯ", type: isWin ? 'win' : 'loss' });
+    }, 4000);
   };
 
   return (
-    <div className="app-container">
+    <div className="app-main">
       <style>{`
         :root { --win: #00ff88; --loss: #ff3366; --neon: #00d9ff; --panel: #121214; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { margin: 0; background: #080808; color: #eee; font-family: sans-serif; overflow: hidden; }
-        .app-container { height: 100vh; display: flex; flex-direction: column; }
+        body { margin: 0; background: #000; color: #eee; font-family: 'Roboto Mono', monospace; overflow: hidden; }
+        .app-main { height: 100vh; display: flex; flex-direction: column; }
         
-        .header { padding: 15px; background: var(--panel); border-bottom: 1px solid #222; }
-        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .balance { color: var(--win); font-size: 22px; font-weight: bold; }
-        .xp-bg { height: 4px; background: #222; border-radius: 2px; }
-        .xp-fill { height: 100%; background: var(--neon); box-shadow: 0 0 10px var(--neon); transition: 0.3s; }
+        .header { padding: 12px 15px; background: var(--panel); border-bottom: 1px solid #222; }
+        .header-top { display: flex; justify-content: space-between; align-items: baseline; }
+        .balance { color: var(--win); font-size: 24px; font-weight: 800; }
+        .xp-bar { height: 3px; background: #222; margin-top: 8px; border-radius: 2px; }
+        .xp-progress { height: 100%; background: var(--neon); transition: 0.5s; }
 
-        .signal-card { background: rgba(0, 217, 255, 0.1); border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 8px; position: relative; }
-        .signal-timer { position: absolute; bottom: 0; left: 0; height: 2px; background: var(--neon); animation: progress 40s linear forwards; }
-        @keyframes progress { from { width: 100%; } to { width: 0%; } }
+        .signal-banner { background: #00151a; border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 6px; }
+        .calc-info { font-size: 10px; color: #555; margin-top: 4px; border-top: 1px solid #1a3a40; padding-top: 4px; }
 
-        .btn-buy { background: linear-gradient(135deg, #00ff88, #00bd65); color: #000; border: none; padding: 10px; border-radius: 6px; font-weight: bold; width: 90px; }
-        .btn-close { background: linear-gradient(135deg, #ff3366, #c21a44); color: #fff; border: none; padding: 10px; border-radius: 6px; font-weight: bold; width: 90px; }
-        .btn-exit { background: var(--loss); color: #fff; border: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; font-size: 11px; }
+        .dex-card { background: #0a0a0a; border: 1px solid #222; margin: 8px 12px; padding: 18px; border-radius: 10px; display: flex; justify-content: space-between; }
+        
+        .trade-controls { padding: 12px; background: #000; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #222; }
+        .input-sum { background: #111; border: 1px solid #333; color: var(--win); padding: 8px; border-radius: 4px; width: 100px; font-weight: bold; }
 
-        .dex-item { background: var(--panel); padding: 20px; margin: 10px; border-radius: 12px; border-left: 5px solid; display: flex; justify-content: space-between; align-items: center; }
-        .pair-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #1a1a1d; }
+        .pair-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 15px; border-bottom: 1px solid #111; }
+        .btn-action { border: none; padding: 12px 0; border-radius: 6px; font-weight: 900; width: 85px; text-transform: uppercase; font-size: 11px; }
+        .btn-buy { background: var(--win); color: #000; }
+        .btn-close { background: var(--loss); color: #fff; }
+        .btn-back { background: #222; color: #fff; border: 1px solid #444; padding: 6px 12px; border-radius: 4px; font-size: 10px; }
 
-        .nav-bar { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; }
-        .nav-btn { flex: 1; background: none; border: none; color: #444; font-weight: bold; font-size: 11px; }
-        .nav-btn.active { color: var(--neon); border-top: 2px solid var(--neon); }
+        .nav { height: 65px; display: flex; background: var(--panel); border-top: 1px solid #222; }
+        .nav-item { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; }
+        .nav-item.active { color: var(--neon); }
 
+        .modal-ad { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 30px; }
+        .ad-box { background: #0a0a0a; border: 2px solid var(--win); padding: 25px; border-radius: 15px; text-align: center; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 6px; z-index: 20000; font-weight: bold; font-size: 12px; }
+        
         .sphere { width: 140px; height: 140px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 60px auto; cursor: pointer; box-shadow: 0 0 20px rgba(0,217,255,0.2); }
-        .sphere:active { transform: scale(0.95); }
-
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { background: #1a1a1d; padding: 30px; border-radius: 20px; border: 1px solid var(--neon); text-align: center; }
-        
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 20px; border-radius: 8px; z-index: 2000; font-weight: bold; }
-        .toast.win { background: var(--win); color: #000; }
-        .toast.loss { background: var(--loss); color: #fff; }
-        .toast.info { background: var(--neon); color: #000; }
       `}</style>
 
       {showAd && (
-        <div className="modal">
-          <div className="modal-content">
-            <h2 style={{color: 'var(--win)'}}>УРОВЕНЬ 2 ДОСТИГНУТ!</h2>
-            <p>Теперь ты понимаешь, как работает арбитраж. Хочешь торговать по-настоящему?</p>
-            <button 
-              onClick={() => window.open('https://t.me/kriptoalians', '_blank')}
-              style={{background: 'var(--win)', border: 'none', padding: '15px 25px', borderRadius: '10px', fontWeight: 'bold', margin: '10px'}}
-            >НАЧАТЬ ЗАРАБАТЫВАТЬ</button>
-            <br/>
-            <button onClick={() => setShowAd(false)} style={{background: 'none', border: 'none', color: '#555', textDecoration: 'underline'}}>Позже</button>
+        <div className="modal-ad">
+          <div className="ad-box">
+            <h2 style={{color: 'var(--win)', margin: '0 0 10px'}}>LVL 2: ПРОФИ</h2>
+            <p style={{fontSize: '13px'}}>Вы освоили базу. Готовы к реальным сделкам?</p>
+            <button onClick={() => window.open('https://t.me/kriptoalians', '_blank')} style={{background: 'var(--win)', border:'none', padding:'15px', width:'100%', borderRadius:'8px', fontWeight:'bold'}}>ВСТУПИТЬ В КАНАЛ</button>
+            <button onClick={() => setShowAd(false)} style={{background:'none', border:'none', color:'#555', marginTop:'15px'}}>Закрыть</button>
           </div>
         </div>
       )}
 
-      {toast && <div className={`toast ${toast.type}`} onClick={() => setToast(null)}>{toast.msg}</div>}
+      {toast && <div className={`toast`} style={{background: toast.type === 'win' ? 'var(--win)' : toast.type === 'loss' ? 'var(--loss)' : 'var(--neon)', color: '#000'}}>{toast.msg}</div>}
 
       <header className="header">
         <div className="header-top">
-          <div style={{color: 'var(--neon)', fontWeight: 'bold'}}>LVL {lvl}</div>
-          <div className="balance">${balance.toFixed(2)}</div>
+          <div style={{fontSize: '11px', color: '#555'}}>MASTER ARBITRAGE</div>
+          <div className="balance">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </div>
-        <div className="xp-bg"><div className="xp-fill" style={{width: `${progress}%`}}></div></div>
+        <div className="xp-bar"><div className="xp-progress" style={{width: `${progress}%`}}></div></div>
       </header>
 
       <main style={{flex: 1, overflowY: 'auto'}}>
         {tab === 'trade' && (
           <>
             {signal && (
-              <div className="signal-card">
-                <div style={{fontSize: '10px', color: 'var(--neon)'}}>СИГНАЛ ОБ АРБИТРАЖЕ:</div>
-                <div style={{fontWeight: 'bold'}}>
-                  {signal.buyDex} → {signal.sellDexName} | {signal.coin} <span style={{color: 'var(--win)'}}>+{signal.bonus}%</span>
+              <div className="signal-banner">
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <span style={{fontSize: '10px', color: 'var(--neon)', fontWeight: 'bold'}}>LIVE SIGNAL</span>
+                  <span style={{fontSize: '10px', color: 'var(--win)'}}>+{signal.bonus}% PROFIT</span>
                 </div>
-                <div className="signal-timer" key={signal.id}></div>
+                <div style={{fontSize: '13px', margin: '5px 0', fontWeight: 'bold'}}>
+                  {signal.buyDex} <span style={{color: '#555'}}>→</span> {signal.sellDexName} : {signal.coin}
+                </div>
+                <div className="calc-info">
+                  ПРОГНОЗ: ${(parseFloat(tradeAmount || 0) * leverage).toFixed(0)} → <span style={{color: 'var(--win)'}}>${(parseFloat(tradeAmount || 0) * leverage * (1 + signal.bonus/100)).toFixed(0)}</span>
+                </div>
               </div>
             )}
 
             {!selectedDex ? (
               EXCHANGES.map(d => (
-                <div key={d.id} className="dex-item" style={{borderColor: d.color}} onClick={() => setSelectedDex(d.id)}>
-                  <span style={{fontSize: '18px', fontWeight: 'bold'}}>{d.name}</span>
-                  <span style={{fontSize: '10px', color: '#555'}}>ВХОД →</span>
+                <div key={d.id} className="dex-card" style={{borderLeft: `5px solid ${d.color}`}} onClick={() => setSelectedDex(d.id)}>
+                  <div>
+                    <div style={{fontWeight: 'bold', fontSize: '16px'}}>{d.name}</div>
+                    <div style={{fontSize: '9px', color: '#444'}}>NETWORK: ACTIVE</div>
+                  </div>
+                  {Object.values(activePositions).some(p => p.dex === d.id) && <span style={{color: 'var(--win)', fontSize: '10px'}}>● В СДЕЛКЕ</span>}
                 </div>
               ))
             ) : (
               <div style={{background: '#000', height: '100%'}}>
-                <div style={{padding: '10px', display: 'flex', justifyItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #222'}}>
-                  <button className="btn-exit" onClick={() => setSelectedDex(null)}>✖ ВЫХОД</button>
-                  <div style={{fontSize: '11px'}}>
-                    ЛЕВЕРЕДЖ: x{leverage}
-                    <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(e.target.value)} style={{width: '60px', marginLeft: '10px'}} />
+                <div className="trade-controls">
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <button className="btn-back" onClick={() => setSelectedDex(null)}>← НАЗАД</button>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <span style={{fontSize: '10px', color: '#555'}}>СУММА:</span>
+                      <input 
+                        type="number" 
+                        className="input-sum" 
+                        value={tradeAmount} 
+                        onChange={(e) => setTradeAmount(e.target.value)} 
+                      />
+                    </div>
+                  </div>
+                  <div style={{textAlign: 'right'}}>
+                    <div style={{fontSize: '9px', color: '#555', marginBottom: '4px'}}>ПЛЕЧО: x{leverage} (LIMIT x{maxLev})</div>
+                    <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(e.target.value)} style={{width: '100%'}} />
                   </div>
                 </div>
                 {COINS_DATA.map(c => {
                   const pos = activePositions[c.id];
                   const locked = c.lvl > lvl;
                   return (
-                    <div key={c.id} className="pair-row" style={{opacity: locked ? 0.3 : 1}}>
+                    <div key={c.id} className="pair-item" style={{opacity: locked ? 0.3 : 1}}>
                       <div>
-                        <div style={{fontWeight: 'bold'}}>{c.id}/USDT</div>
-                        <div style={{fontSize: '10px', color: '#555'}}>LVL {c.lvl}</div>
+                        <div style={{fontWeight: 'bold', fontSize: '15px'}}>{c.id}/USDT</div>
+                        {pos && <div style={{fontSize: '9px', color: 'var(--win)'}}>LIVE: +${(pos.amt * (pos.bonus/100) * leverage * 0.4).toFixed(2)}</div>}
+                        {!pos && <div style={{fontSize: '9px', color: '#444'}}>LVL {c.lvl}</div>}
                       </div>
                       {locked ? <span>🔒</span> : 
-                        pendingTrades[c.id] ? <span style={{fontSize: '10px'}}>ОБРАБОТКА...</span> :
-                        <button 
-                          className={pos ? "btn-close" : "btn-buy"} 
-                          onClick={() => pos ? closeTrade(c.id) : openTrade(c.id)}
-                        >{pos ? 'CLOSE' : 'BUY'}</button>
+                        pendingTrades[c.id] ? <span style={{fontSize: '11px', color: '#555'}}>Wait...</span> :
+                        <button className={`btn-action ${pos ? 'btn-close' : 'btn-buy'}`} onClick={() => pos ? closeTrade(c.id) : openTrade(c.id)}>
+                          {pos ? 'SELL' : 'BUY'}
+                        </button>
                       }
                     </div>
                   )
@@ -230,23 +237,22 @@ export default function App() {
         )}
 
         {tab === 'mining' && (
-          <div style={{textAlign: 'center'}}>
+          <div style={{height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center'}}>
             <div className="sphere" onClick={() => {
-              setBalance(b => b + 0.05);
-              setXp(x => x + 2);
+              setBalance(b => b + 0.1); setXp(x => x + 2);
               if(soundEnabled) { sndClick.current.currentTime = 0; sndClick.current.play().catch(()=>{}); }
             }}>$</div>
-            <p style={{color: '#444', fontSize: '12px'}}>МАЙНИНГ ОПЫТА АКТИВЕН</p>
+            <div style={{marginTop: '20px', color: '#333', fontSize: '10px'}}>КЛИКАЙ ДЛЯ ОПЫТА</div>
           </div>
         )}
 
         {tab === 'awards' && (
           <div style={{padding: '20px'}}>
-            <h3 style={{color: 'var(--neon)'}}>ИСТОРИЯ СДЕЛОК</h3>
+            <h3 style={{fontSize: '14px'}}>ИСТОРИЯ</h3>
             {history.map((h, i) => (
-              <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111'}}>
+              <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111', fontSize: '12px'}}>
                 <span>{h.coin}</span>
-                <span style={{color: h.win ? 'var(--win)' : 'var(--loss)'}}>{h.win?'+':''}${h.pnl.toFixed(2)}</span>
+                <span style={{color: h.win ? 'var(--win)' : 'var(--loss)'}}>${h.pnl.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -254,21 +260,20 @@ export default function App() {
 
         {tab === 'settings' && (
           <div style={{padding: '20px'}}>
-            <button onClick={() => setSoundEnabled(!soundEnabled)} style={{width: '100%', padding: '15px', background: '#222', color: '#fff', border: 'none', borderRadius: '8px'}}>
-              ЗВУК: {soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}
-            </button>
-            <div style={{marginTop: '20px', textAlign: 'center'}}>
-              <a href="https://t.me/kriptoalians" target="_blank" style={{color: 'var(--neon)', textDecoration: 'none'}}>@kriptoalians</a>
+            <div style={{background: '#0a0a0a', padding: '20px', borderRadius: '12px', border: '1px solid #222'}}>
+              <button onClick={() => setSoundEnabled(!soundEnabled)} style={{width: '100%', padding: '10px', background: '#222', color: '#fff', border: 'none', borderRadius: '5px', marginBottom: '20px'}}>ЗВУК: {soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}</button>
+              <div style={{fontSize: '10px', color: '#444'}}>ID: {userId}</div>
+              <div style={{marginTop: '15px'}}><a href="https://t.me/kriptoalians" target="_blank" style={{color: 'var(--neon)', textDecoration: 'none'}}>SUPPORT: @kriptoalians</a></div>
             </div>
           </div>
         )}
       </main>
 
-      <nav className="nav-bar">
-        <button className={`nav-btn ${tab === 'mining' ? 'active' : ''}`} onClick={() => setTab('mining')}>MINE</button>
-        <button className={`nav-btn ${tab === 'trade' ? 'active' : ''}`} onClick={() => setTab('trade')}>EXCHANGE</button>
-        <button className={`nav-btn ${tab === 'awards' ? 'active' : ''}`} onClick={() => setTab('awards')}>LOGS</button>
-        <button className={`nav-btn ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>OPTS</button>
+      <nav className="nav">
+        <button className={`nav-item ${tab === 'mining' ? 'active' : ''}`} onClick={() => setTab('mining')}>MINE</button>
+        <button className={`nav-item ${tab === 'trade' ? 'active' : ''}`} onClick={() => setTab('trade')}>EXCHANGE</button>
+        <button className={`nav-item ${tab === 'awards' ? 'active' : ''}`} onClick={() => setTab('awards')}>LOGS</button>
+        <button className={`nav-item ${tab === 'settings' ? 'active' : ''}`} onClick={() => setTab('settings')}>OPTS</button>
       </nav>
     </div>
   );
