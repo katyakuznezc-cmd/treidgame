@@ -128,7 +128,7 @@ export default function App() {
           <div className="ad-box">
             <h2 style={{color: 'var(--win)', marginTop: 0}}>ПРОФИЛЬ ПОДТВЕРЖДЕН</h2>
             <p>Вы успешно закрыли 10 сделок. Теперь вы допущены в закрытое комьюнити.</p>
-            <button onClick={() => window.open('https://t.me/kriptoalians', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold', cursor:'pointer'}}>ВСТУПИТЬ В VIP</button>
+            <button onClick={() => window.open('https://t.me/vladstelin78', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold', cursor:'pointer'}}>ВСТУПИТЬ В VIP</button>
           </div>
         </div>
       )}
