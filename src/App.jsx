@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -22,6 +24,11 @@ export default function App() {
   const [xp, setXp] = useState(() => Number(localStorage.getItem(`k_xp_${userId}`)) || 0);
   const [winCount, setWinCount] = useState(() => Number(localStorage.getItem(`k_wins_${userId}`)) || 0);
   
+  // Живые цены
+  const [prices, setPrices] = useState(() => 
+    COINS_DATA.reduce((acc, c) => ({ ...acc, [c.id]: c.base }), {})
+  );
+
   const [tab, setTab] = useState('trade'); 
   const [selectedDex, setSelectedDex] = useState(null);
   const [activePositions, setActivePositions] = useState({});
@@ -42,20 +49,33 @@ export default function App() {
   const sndClick = useRef(new Audio('https://www.fesliyanstudios.com/play-mp3/6510'));
   const sndBell = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
 
+  // Имитация движения рынка
+  useEffect(() => {
+    const itv = setInterval(() => {
+      setPrices(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => {
+          const change = 1 + (Math.random() * 0.01 - 0.005); // +/- 0.5%
+          next[id] = Number((next[id] * change).toFixed(id === 'BTC' ? 1 : 4));
+        });
+        return next;
+      });
+    }, 2000);
+    return () => clearInterval(itv);
+  }, []);
+
   useEffect(() => {
     localStorage.setItem(`k_bal_${userId}`, balance);
     localStorage.setItem(`k_xp_${userId}`, xp);
     localStorage.setItem(`k_wins_${userId}`, winCount);
     localStorage.setItem(`k_hist_${userId}`, JSON.stringify(history));
     localStorage.setItem('k_uid', userId);
-
     if (lvl >= 2 && !localStorage.getItem('ad_pro_shown')) {
       setShowAd(true);
       localStorage.setItem('ad_pro_shown', 'true');
     }
   }, [balance, xp, winCount, history, lvl, userId]);
 
-  // Скрытие уведомления через 5 секунд
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 5000);
@@ -86,9 +106,10 @@ export default function App() {
   const handleAction = (coinId) => {
     const pos = activePositions[coinId];
     if (pos) {
-      // ЗАКРЫТИЕ СДЕЛКИ (10 секунд)
-      const isWin = signal && pos.signalId === signal.id && signal.sellDexId === selectedDex;
-      const pnl = (Number(pos.amt) * ((isWin ? Number(pos.bonus) : -20) * Number(pos.lev)) / 100);
+      // 15% шанс проигрыша (имитация рыночного шума)
+      const marketCrash = Math.random() < 0.15; 
+      const isWin = !marketCrash && signal && pos.signalId === signal.id && signal.sellDexId === selectedDex;
+      const pnl = (Number(pos.amt) * ((isWin ? Number(pos.bonus) : -25) * Number(pos.lev)) / 100);
       
       setPendingTrades(prev => ({ ...prev, [coinId]: true }));
       setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
@@ -99,16 +120,14 @@ export default function App() {
         setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
         setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
         
-        // Уведомление по центру
         setToast({ 
             msg: isWin 
                 ? (lang === 'RU' ? `ПРИБЫЛЬ: +$${pnl.toFixed(2)}` : `PROFIT: +$${pnl.toFixed(2)}`) 
-                : (lang === 'RU' ? `УБЫТОК: -$${Math.abs(pnl).toFixed(2)}` : `LOSS: -$${Math.abs(pnl).toFixed(2)}`), 
+                : (lang === 'RU' ? `РЫНОК УПАЛ: -$${Math.abs(pnl).toFixed(2)}` : `MARKET CRASH: -$${Math.abs(pnl).toFixed(2)}`), 
             type: isWin ? 'win' : 'loss' 
         });
-      }, 10000); // 10 секунд
+      }, 10000);
     } else {
-      // ОТКРЫТИЕ СДЕЛКИ
       if(tradeAmount > balance || tradeAmount <= 0) return setToast({msg: 'LOW BALANCE', type: 'loss'});
       setBalance(b => b - tradeAmount);
       setActivePositions(p => ({ ...p, [coinId]: { amt: tradeAmount, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } }));
@@ -134,49 +153,30 @@ export default function App() {
         .content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
         .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 8px; }
         .dex-item { background: #0a0a0a; border: 1px solid #222; margin: 8px 10px; padding: 20px; border-radius: 12px; border-left: 5px solid; cursor: pointer; }
-        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; box-shadow: 0 0 15px rgba(0,217,255,0.1); transition: 0.1s; }
-        .sphere:active { transform: scale(0.9); }
+        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; }
         .nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; padding-bottom: env(safe-area-inset-bottom); }
         .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; cursor: pointer; }
         .nav-btn.active { color: var(--neon); }
-        
-        /* ЦЕНТРАЛЬНОЕ УВЕДОМЛЕНИЕ */
-        .center-toast { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
-            padding: 30px; border-radius: 20px; z-index: 10000; text-align: center;
-            min-width: 250px; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 0 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1);
-        }
+        .center-toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 30px; border-radius: 20px; z-index: 10000; text-align: center; min-width: 250px; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1); }
         @keyframes pop { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
-
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .ad-box { background: #111; border: 2px solid var(--win); padding: 30px; border-radius: 20px; text-align: center; }
+        .price-up { color: var(--win); transition: 0.3s; }
+        .price-down { color: var(--loss); transition: 0.3s; }
         .calc-badge { font-size: 9px; background: #222; padding: 2px 6px; border-radius: 4px; color: var(--win); font-weight: bold; }
       `}</style>
 
       {showAd && (
-        <div className="modal">
-          <div className="ad-box">
+        <div className="modal" style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <div className="ad-box" style={{background:'#111', border:'2px solid var(--win)', padding:'30px', borderRadius:'20px', textAlign:'center'}}>
             <h2 style={{color: 'var(--win)', marginTop: 0}}>QUALIFIED</h2>
-            <p>{lang === 'RU' ? '10 сделок закрыто! Доступ в VIP открыт.' : '10 trades closed! VIP access granted.'}</p>
-            <button onClick={() => window.open('https://t.me/kriptoalians', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold', cursor:'pointer'}}>JOIN CHANNEL</button>
+            <button onClick={() => window.open('https://t.me/kriptoalians', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold'}}>JOIN CHANNEL</button>
           </div>
         </div>
       )}
 
-      {/* УВЕДОМЛЕНИЕ ПО ЦЕНТРУ */}
       {toast && (
-        <div className="center-toast" style={{
-            background: toast.type === 'win' ? 'var(--win)' : 'var(--loss)',
-            color: '#000'
-        }}>
-            <div style={{fontSize: '12px', opacity: 0.7, marginBottom: '5px', fontWeight: 'bold'}}>
-                {toast.type === 'win' ? 'SUCCESS' : 'FAILED'}
-            </div>
-            <div style={{fontSize: '22px', fontWeight: '900'}}>{toast.msg}</div>
-            <div style={{fontSize: '10px', marginTop: '10px', opacity: 0.6}}>
-                {lang === 'RU' ? 'Закроется через 5 сек' : 'Closing in 5s'}
-            </div>
+        <div className="center-toast" style={{ background: toast.type === 'win' ? 'var(--win)' : 'var(--loss)', color: '#000' }}>
+            <div style={{fontSize: '12px', opacity: 0.7, marginBottom: '5px', fontWeight: 'bold'}}>{toast.type === 'win' ? 'SUCCESS' : 'FAILED'}</div>
+            <div style={{fontSize: '20px', fontWeight: '900'}}>{toast.msg}</div>
         </div>
       )}
 
@@ -221,16 +221,22 @@ export default function App() {
                 {COINS_DATA.map(c => {
                   const pos = activePositions[c.id];
                   const locked = c.lvl > lvl;
+                  const currentPrice = prices[c.id];
                   const estProfit = ((tradeAmount * leverage * (signal?.bonus || 0)) / 100).toFixed(2);
 
                   return (
                     <div key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px 0', borderBottom:'1px solid #111', opacity: locked ? 0.3 : 1}}>
                       <div>
-                        <div style={{fontWeight:'bold'}}>{c.id}/USDT</div>
+                        <div style={{fontWeight:'bold', display:'flex', alignItems:'center', gap:'8px'}}>
+                          {c.id}/USDT 
+                          <span style={{fontSize:'12px', fontWeight:'normal'}} className={Math.random() > 0.5 ? 'price-up' : 'price-down'}>
+                            ${currentPrice}
+                          </span>
+                        </div>
                         {!locked && !pos && signal?.coin === c.id && (
                           <div className="calc-badge">+{estProfit}$ PROFIT</div>
                         )}
-                        {pos && <div style={{fontSize:'9px', color:'var(--win)'}}>PROCESSING... (10s)</div>}
+                        {pos && <div style={{fontSize:'10px', color:'var(--win)', animation:'pulse 1s infinite'}}>WAITING 10s...</div>}
                       </div>
                       
                       {locked ? <span>🔒 L{c.lvl}</span> : 
@@ -274,15 +280,10 @@ export default function App() {
         {tab === 'opts' && (
           <div style={{padding:'20px'}}>
             <h3 style={{fontSize: '20px'}}>{t.opts}</h3>
-            <button onClick={() => setSoundEnabled(!soundEnabled)} style={{width:'100%', padding:'15px', background:'#222', color:'#fff', border:'none', borderRadius:'10px', marginBottom:'10px'}}>
-              SOUND: {soundEnabled ? 'ON' : 'OFF'}
-            </button>
-            <button onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{width:'100%', padding:'15px', background:'#222', color:'#fff', border:'none', borderRadius:'10px', marginBottom:'20px'}}>
-              LANG: {lang}
-            </button>
+            <button onClick={() => setSoundEnabled(!soundEnabled)} style={{width:'100%', padding:'15px', background:'#222', color:'#fff', border:'none', borderRadius:'10px', marginBottom:'10px'}}>SOUND: {soundEnabled ? 'ON' : 'OFF'}</button>
+            <button onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{width:'100%', padding:'15px', background:'#222', color:'#fff', border:'none', borderRadius:'10px', marginBottom:'20px'}}>LANG: {lang}</button>
             <div style={{textAlign:'center', fontSize:'12px', color:'#444'}}>
-              Dev: <a href="https://t.me/vladstelin78" style={{color:'var(--neon)'}}>@vladstelin78</a><br/>
-              Creator: <a href="https://t.me/kriptoalians" style={{color:'var(--neon)'}}>@kriptoalians</a>
+              Dev: <a href="https://t.me/vladstelin78" style={{color:'var(--neon)'}}>@vladstelin78</a><br/>Creator: <a href="https://t.me/kriptoalians" style={{color:'var(--neon)'}}>@kriptoalians</a>
             </div>
           </div>
         )}
