@@ -7,7 +7,9 @@ const ASSETS = {
   BNB: { symbol: 'BNB', name: 'BNB', price: 605.20, icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' }
 };
 
-export default function ArbitrageMaster() {
+const DEXES = ['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'];
+
+export default function ArbitrageUltraApp() {
   const [balanceUSDT, setBalanceUSDT] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
   const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet')) || {});
   
@@ -27,36 +29,38 @@ export default function ArbitrageMaster() {
     localStorage.setItem('arb_wallet', JSON.stringify(wallet));
   }, [balanceUSDT, wallet]);
 
+  // ГЕНЕРАТОР РАНДОМНЫХ СИГНАЛОВ
   useEffect(() => {
     if (!signal) {
       const tokens = [ASSETS.SOL, ASSETS.ETH, ASSETS.BNB];
       const coin = tokens[Math.floor(Math.random() * tokens.length)];
+      
+      // Выбираем две разные случайные биржи
+      const shuffledDex = [...DEXES].sort(() => 0.5 - Math.random());
+      const buyAt = shuffledDex[0];
+      const sellAt = shuffledDex[1];
+
       const isNegative = Math.random() < 0.25;
       const profit = isNegative ? -(Math.random() * 1.5).toFixed(2) : (Math.random() * 2 + 1).toFixed(2);
-      setSignal({ coin, buyAt: 'UNISWAP', sellAt: 'RAYDIUM', profit: parseFloat(profit) });
+      
+      setSignal({ coin, buyAt, sellAt, profit: parseFloat(profit) });
     }
   }, [signal]);
 
-  // Умная кнопка MAX: берет баланс того токена, который сейчас в поле "Pay"
   const handleMax = () => {
-    if (payToken.symbol === 'USDT') {
-      setAmount(balanceUSDT.toString());
-    } else {
-      const tokenBal = wallet[payToken.symbol] || 0;
-      setAmount(tokenBal.toString());
-    }
+    const maxVal = payToken.symbol === 'USDT' ? balanceUSDT : (wallet[payToken.symbol] || 0);
+    setAmount(maxVal.toString());
   };
 
-  const showNotify = (type, text) => {
+  const showNotify = (type, text, duration = 3500) => {
     setNotification({ type, text });
-    setTimeout(() => setNotification(null), 3500);
+    setTimeout(() => setNotification(null), duration);
   };
 
   const handleSwap = () => {
     if (!amount || amount <= 0) return;
     setIsProcessing(true);
 
-    // Ровно 6 секунд обработки
     setTimeout(() => {
       const numAmount = Number(amount);
       
@@ -66,38 +70,36 @@ export default function ArbitrageMaster() {
           const received = numAmount / receiveToken.price;
           setBalanceUSDT(b => b - numAmount);
           setWallet(w => ({ ...w, [receiveToken.symbol]: (w[receiveToken.symbol] || 0) + received }));
-          showNotify('success', `Куплено ${received.toFixed(4)} ${receiveToken.symbol}`);
+          // Сообщение о покупке исчезает быстро (1.2 сек)
+          showNotify('success', `Куплено ${receiveToken.symbol}`, 1200);
         } else {
-          showNotify('error', 'Недостаточно USDT!');
+          showNotify('error', 'Недостаточно USDT');
         }
       } else {
         // ПРОДАЖА
         const userHas = wallet[payToken.symbol] || 0;
         if (userHas >= numAmount) {
           const isCorrectDex = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
-          const slippageEvent = Math.random() < 0.2; // Риск просадки
+          const slippage = Math.random() < 0.2; 
           
-          let resultProfit = isCorrectDex ? signal.profit : -10; 
-          if (slippageEvent) resultProfit = -(Math.random() * 1.5);
+          let resProfit = isCorrectDex ? signal.profit : -15; 
+          if (slippage && isCorrectDex) resProfit = -(Math.random() * 1.5);
 
-          const finalUSDT = (numAmount * payToken.price) * (1 + resultProfit/100);
+          const finalUSDT = (numAmount * payToken.price) * (1 + resProfit/100);
           const diff = finalUSDT - (numAmount * payToken.price);
 
           setBalanceUSDT(b => b + finalUSDT);
           setWallet(w => ({ ...w, [payToken.symbol]: userHas - numAmount }));
           
-          if (diff >= 0) {
-            showNotify('success', `Сделка закрыта: +$${diff.toFixed(2)} (${resultProfit}%)`);
-          } else {
-            showNotify('error', `Отрицательный результат: $${diff.toFixed(2)} (${resultProfit}%)`);
-          }
-          setSignal(null); // Генерируем новый сигнал
+          if (diff >= 0) showNotify('success', `Профит: +$${diff.toFixed(2)} (${resProfit}%)`);
+          else showNotify('error', `Убыток: $${diff.toFixed(2)} (${resProfit}%)`);
+          
+          setSignal(null); 
         } else {
-          showNotify('error', `У вас нет столько ${payToken.symbol}`);
+          showNotify('error', 'Недостаточно токенов');
         }
       }
-
-      setIsProcessing(false); // ОСТАНОВКА ЗАГРУЗКИ
+      setIsProcessing(false);
       setAmount('');
     }, 6000);
   };
@@ -105,17 +107,17 @@ export default function ArbitrageMaster() {
   const TokenSelector = () => (
     <div style={{ position: 'fixed', inset: 0, background: '#111', zIndex: 9999, padding: 20 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h2>Выберите токен</h2>
-        <button onClick={() => setShowTokenList(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 30 }}>×</button>
+        <h2>Токены</h2>
+        <button onClick={() => setShowTokenList(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 32 }}>×</button>
       </div>
       {Object.values(ASSETS).map(t => (
         <div key={t.symbol} onClick={() => {
           if (selectingFor === 'pay') setPayToken(t); else setReceiveToken(t);
           setShowTokenList(false);
-        }} style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '15px 0', borderBottom: '1px solid #222' }}>
+        }} style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '18px 0', borderBottom: '1px solid #222' }}>
           <img src={t.icon} width="30" />
           <div style={{ flex: 1 }}><b>{t.symbol}</b></div>
-          <div style={{ color: '#39f2af' }}>
+          <div style={{ color: '#39f2af', fontSize: 14 }}>
             {t.symbol === 'USDT' ? balanceUSDT.toFixed(2) : (wallet[t.symbol] || 0).toFixed(4)}
           </div>
         </div>
@@ -124,11 +126,10 @@ export default function ArbitrageMaster() {
   );
 
   return (
-    <div style={{ width: '100vw', height: '100dvh', background: '#000', color: '#fff', fontFamily: 'sans-serif' }}>
+    <div style={{ width: '100vw', height: '100dvh', background: '#000', color: '#fff', fontFamily: 'system-ui' }}>
       
       {showTokenList && <TokenSelector />}
 
-      {/* УВЕДОМЛЕНИЕ */}
       {notification && (
         <div style={{ position: 'fixed', top: 20, left: '5%', width: '90%', background: notification.type === 'success' ? '#39f2af' : '#ff4444', color: '#000', padding: 15, borderRadius: 12, zIndex: 10000, textAlign: 'center', fontWeight: 'bold' }}>
           {notification.text}
@@ -137,89 +138,82 @@ export default function ArbitrageMaster() {
 
       {!activeDex ? (
         <div style={{ padding: 20 }}>
-          <div style={{ textAlign: 'center', margin: '40px 0' }}>
-            <h1 style={{ fontSize: 40, fontWeight: 900 }}>${balanceUSDT.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
-            <p style={{ opacity: 0.5 }}>ВАШ БАЛАНС</p>
+          <div style={{ textAlign: 'center', margin: '30px 0' }}>
+            <h1 style={{ fontSize: 44, fontWeight: 900 }}>${balanceUSDT.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
+            <p style={{ opacity: 0.5, fontSize: 12, letterSpacing: 1 }}>WALLET ASSETS</p>
           </div>
 
-          <div style={{ background: '#111', padding: 20, borderRadius: 24, border: '1px solid #222', marginBottom: 25 }}>
-            <span style={{ color: '#39f2af', fontSize: 10, fontWeight: 'bold' }}>СИГНАЛ ОБНАРУЖЕН</span>
-            {signal && (
-              <div style={{ marginTop: 10 }}>
-                <div>Купи {signal.coin.symbol} на <span style={{ color: '#ff007a' }}>{signal.buyAt}</span></div>
-                <div>Продай на {signal.sellAt} <b style={{ color: signal.profit > 0 ? '#39f2af' : '#ff4444' }}>{signal.profit}%</b></div>
-              </div>
-            )}
-          </div>
+          {signal && (
+            <div style={{ background: 'linear-gradient(135deg, #111, #1a1a1a)', padding: 20, borderRadius: 24, border: '1px solid #333', marginBottom: 25 }}>
+              <div style={{ color: '#39f2af', fontSize: 10, fontWeight: 900, marginBottom: 10 }}>LIVE ARBITRAGE SIGNAL</div>
+              <div style={{ fontSize: 17 }}>1. Купи {signal.coin.symbol} на <b style={{ color: '#ff007a' }}>{signal.buyAt}</b></div>
+              <div style={{ fontSize: 17 }}>2. Продай на <b style={{ color: '#39f2af' }}>{signal.sellAt}</b> <span style={{ color: signal.profit > 0 ? '#39f2af' : '#ff4444' }}>({signal.profit}%)</span></div>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'].map(id => (
-              <button key={id} onClick={() => setActiveDex(id)} style={{ background: '#1a1a1a', border: '1px solid #333', padding: 25, borderRadius: 20, color: '#fff', fontWeight: 'bold' }}>{id}</button>
+            {DEXES.map(id => (
+              <button key={id} onClick={() => setActiveDex(id)} style={{ background: '#111', border: '1px solid #222', padding: 25, borderRadius: 20, color: '#fff', fontWeight: 'bold' }}>{id}</button>
             ))}
           </div>
           
           <div style={{ marginTop: 40, textAlign: 'center' }}>
-            <a href="https://t.me/kriptoalians" style={{ color: '#333', textDecoration: 'none', fontSize: 12 }}>MANAGER @KRIPTOALIANS</a>
+            <a href="https://t.me/kriptoalians" style={{ color: '#222', textDecoration: 'none', fontSize: 11 }}>SUPPORT @KRIPTOALIANS</a>
           </div>
         </div>
       ) : (
-        /* ТЕРМИНАЛ */
         <div style={{ height: '100%', background: activeDex === 'UNISWAP' ? '#fff' : '#0c0d21', color: activeDex === 'UNISWAP' ? '#000' : '#fff' }}>
-          <div style={{ padding: 15, display: 'flex', justifyContent: 'space-between' }}>
-            <b>{activeDex} EXCHANGE</b>
-            <span onClick={() => setActiveDex(null)}>ВЫХОД</span>
+          <div style={{ padding: 15, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
+            <b style={{ fontSize: 18 }}>{activeDex}</b>
+            <span onClick={() => setActiveDex(null)} style={{ opacity: 0.5, fontSize: 14 }}>ЗАКРЫТЬ</span>
           </div>
 
           <div style={{ padding: 20 }}>
             <div style={{ background: activeDex === 'UNISWAP' ? '#f7f8fa' : '#14162e', padding: 15, borderRadius: 24 }}>
               
               <div style={{ background: activeDex === 'UNISWAP' ? '#fff' : '#050614', padding: 15, borderRadius: 16 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span>Вы отдаете</span>
-                  <span onClick={handleMax} style={{ color: '#39f2af', fontWeight: 'bold', cursor: 'pointer' }}>MAX</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 8 }}>
+                  <span>ОТДАЕТЕ</span>
+                  <span onClick={handleMax} style={{ color: '#39f2af', fontWeight: 900, cursor: 'pointer' }}>MAX</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 24, color: 'inherit', width: '60%', outline: 'none' }} />
-                  <button onClick={() => { setShowTokenList(true); setSelectingFor('pay'); }} style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '5px 10px', borderRadius: 10, color: 'inherit' }}>
-                    {payToken.symbol} ▾
-                  </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 26, color: 'inherit', width: '60%', outline: 'none' }} />
+                  <button onClick={() => { setShowTokenList(true); setSelectingFor('pay'); }} style={{ background: 'rgba(128,128,128,0.05)', border: 'none', padding: '5px 10px', borderRadius: 10, color: 'inherit', fontWeight: 'bold' }}>{payToken.symbol} ▾</button>
                 </div>
               </div>
 
-              <div style={{ textAlign: 'center', margin: '10px 0' }}>↓</div>
+              <div style={{ textAlign: 'center', margin: '8px 0', fontSize: 20 }}>↓</div>
 
               <div style={{ background: activeDex === 'UNISWAP' ? '#fff' : '#050614', padding: 15, borderRadius: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 12, opacity: 0.5 }}>Вы получаете (эстимейт)</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                  <div style={{ fontSize: 24 }}>{amount ? (payToken.symbol === 'USDT' ? (amount / receiveToken.price).toFixed(4) : (amount * payToken.price).toFixed(2)) : '0.0'}</div>
-                  <button onClick={() => { setShowTokenList(true); setSelectingFor('receive'); }} style={{ background: activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af', border: 'none', padding: '5px 10px', borderRadius: 10, color: activeDex === 'UNISWAP' ? '#fff' : '#000' }}>
-                    {receiveToken.symbol} ▾
-                  </button>
+                <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 8 }}>ПОЛУЧАЕТЕ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 26 }}>{amount ? (payToken.symbol === 'USDT' ? (amount / receiveToken.price).toFixed(4) : (amount * payToken.price).toFixed(2)) : '0.0'}</div>
+                  <button onClick={() => { setShowTokenList(true); setSelectingFor('receive'); }} style={{ background: activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af', border: 'none', padding: '5px 10px', borderRadius: 10, color: activeDex === 'UNISWAP' ? '#fff' : '#000', fontWeight: 'bold' }}>{receiveToken.symbol} ▾</button>
                 </div>
               </div>
 
               <button onClick={handleSwap} disabled={isProcessing} style={{ 
-                width: '100%', padding: 20, borderRadius: 20, border: 'none', fontWeight: 'bold', fontSize: 16,
-                background: isProcessing ? '#444' : (activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af'),
-                color: isProcessing ? '#888' : (activeDex === 'UNISWAP' ? '#fff' : '#000')
+                width: '100%', padding: 20, borderRadius: 20, border: 'none', fontWeight: 900, fontSize: 16,
+                background: isProcessing ? '#222' : (activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af'),
+                color: isProcessing ? '#555' : (activeDex === 'UNISWAP' ? '#fff' : '#000'),
+                transition: '0.2s'
               }}>
-                {isProcessing ? 'ТРАНЗАКЦИЯ В ОБРАБОТКЕ...' : (payToken.symbol === 'USDT' ? 'КУПИТЬ' : 'ПРОДАТЬ')}
+                {isProcessing ? 'CONFIRMING...' : (payToken.symbol === 'USDT' ? 'КУПИТЬ' : 'ПРОДАТЬ')}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ФИНАЛЬНЫЙ ЛОАДЕР */}
       {isProcessing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 9000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div className="loader"></div>
-          <h2 style={{ marginTop: 25 }}>Ожидание сети...</h2>
-          <p style={{ opacity: 0.4 }}>Это может занять до 6 секунд</p>
+          <h2 style={{ marginTop: 25, letterSpacing: 1 }}>ОБРАБОТКА...</h2>
+          <p style={{ opacity: 0.4, fontSize: 13 }}>Ожидание подтверждения валидаторов</p>
         </div>
       )}
 
-      <style>{`.loader { width: 50px; height: 50px; border: 5px solid #222; border-top-color: #39f2af; border-radius: 50%; animation: s 1s linear infinite; } @keyframes s { to { transform: rotate(360deg); } }`}</style>
+      <style>{`.loader { width: 50px; height: 50px; border: 5px solid #111; border-top-color: #39f2af; border-radius: 50%; animation: s 0.8s linear infinite; } @keyframes s { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
