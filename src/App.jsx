@@ -55,11 +55,10 @@ export default function App() {
   const [netTimer, setNetTimer] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // СИСТЕМА ЗАМКОВ (ANTI-MULTI-TAP)
-  const lockRef = useRef(false);
-  const lastClickRef = useRef(0);
+  // ФИЗИЧЕСКИЕ ЗАМКИ
+  const isGlobalLocked = useRef(false);
+  const lastCallTime = useRef(0);
 
-  // АДМИНКА
   const [adminClicks, setAdminClicks] = useState(0);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -119,7 +118,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [tab, signal, activePos, level]);
 
-  const handleAction = (e) => {
+  const handleGlobalClick = (e) => {
     if (soundEnabled) {
       const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
       audio.volume = 0.05; audio.play().catch(()=>{});
@@ -134,13 +133,23 @@ export default function App() {
     }
   };
 
-  const sellPos = () => {
-    const now = Date.now();
-    // ЗАЩИТА: не чаще раза в 2 сек + проверка замков
-    if (now - lastClickRef.current < 2000 || lockRef.current || isProcessing) return;
+  // ФИНАЛЬНЫЙ ФИКС МУЛЬТИТАПА
+  const sellPos = (e) => {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
     
-    lastClickRef.current = now;
-    lockRef.current = true;
+    const now = Date.now();
+    // 1. Проверка по времени (минимум 1.5 сек между кликами)
+    if (now - lastCallTime.current < 1500) return;
+    
+    // 2. Проверка жесткого реф-замка
+    if (isGlobalLocked.current || isProcessing) return;
+
+    // СТАВИМ ЗАМКИ
+    lastCallTime.current = now;
+    isGlobalLocked.current = true;
     setIsProcessing(true);
     
     setNetTimer(8);
@@ -163,8 +172,11 @@ export default function App() {
           }
           setBalance(b => Math.max(0, b + activePos.amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
-          setActivePos(null); setSignal(null); setIsProcessing(false);
-          lockRef.current = false;
+          
+          setActivePos(null); 
+          setSignal(null); 
+          setIsProcessing(false);
+          isGlobalLocked.current = false; // Открываем только в конце
           return null;
         }
         return p - 1;
@@ -173,17 +185,17 @@ export default function App() {
   };
 
   return (
-    <div className={`app ${isBurning ? 'burn' : ''}`} onMouseDown={handleAction} onTouchStart={handleAction} style={{
+    <div className={`app ${isBurning ? 'burn' : ''}`} onPointerDown={handleGlobalClick} style={{
       width: '100vw', height: '100dvh', background: '#000', color: '#fff', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column'
     }}>
       <style>{`
-        * { box-sizing: border-box; font-family: 'Orbitron', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; font-family: 'Orbitron', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         .neon { text-shadow: 0 0 10px #00f2ff; color: #fff; }
         .win { color: #00ff88; text-shadow: 0 0 10px #00ff88; }
         .loss { color: #ff0055; text-shadow: 0 0 10px #ff0055; }
         .card { background: #0a0a0a; border: 1px solid #00f2ff; border-radius: 12px; padding: 15px; margin-bottom: 12px; }
         .btn { width: 100%; padding: 15px; border-radius: 8px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-        .btn:disabled { opacity: 0.5; filter: grayscale(1); }
+        .btn:disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
         .dollar { position: absolute; color: #00ff88; font-weight: 900; pointer-events: none; animation: pop 0.6s ease-out forwards; z-index: 999; font-size: 32px; }
         @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
         input { background: #000; border: 1px solid #00f2ff; color: #00f2ff; padding: 10px; border-radius: 8px; width: 100%; text-align: center; font-size: 16px; outline: none; }
@@ -195,7 +207,6 @@ export default function App() {
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-15, top: c.y-25}}>$</div>)}
 
-      {/* АДМИН ПАНЕЛЬ */}
       {showAdminLogin && (
         <div className="modal">
           <div className="card" style={{width:'100%'}}>
@@ -277,14 +288,14 @@ export default function App() {
                 </a>
                 <div style={{fontSize: 10, color: '#444', marginBottom: 10, fontWeight: 900}}>{T.terminal}</div>
                 {DEX.map(d => (
-                  <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
+                  <div key={d.name} className="card" onPointerDown={() => setSelectedDex(d.name)} style={{cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
                     <b>{d.name}</b><span className="win" style={{fontSize: 9}}>ONLINE</span>
                   </div>
                 ))}
               </div>
             ) : (
               <div>
-                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom: 15, fontSize: 11, cursor:'pointer'}}>← BACK</div>
+                <div onPointerDown={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom: 15, fontSize: 11, cursor:'pointer'}}>← BACK</div>
                 <div className="card" style={{background: '#050505'}}>
                   <div style={{display:'flex', gap:10, marginBottom: 12}}>
                     <div style={{flex:1}}><label style={{fontSize: 8, color: '#444'}}>{T.invest}</label><input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))}/></div>
@@ -303,12 +314,12 @@ export default function App() {
                         <div><div className="neon">{c.id}</div><div style={{fontSize: 10}}>${c.base}</div></div>
                         {isAct ? (
                           <button className="btn" style={{background:'#ff0055', color:'#fff', width:120}} 
-                            disabled={isProcessing} onClick={sellPos}>
+                            disabled={isProcessing} onPointerDown={sellPos}>
                             {netTimer ? `${T.sync} ${netTimer}s` : T.sell}
                           </button>
                         ) : (
                           <button className="btn" style={{background:'#00ff88', color:'#000', width:90}} 
-                            disabled={!!activePos || c.lvl > level} onClick={() => {
+                            disabled={!!activePos || c.lvl > level} onPointerDown={() => {
                             if (balance >= amount) { setBalance(b => b - amount); setActivePos({ id: c.id, buyDex: selectedDex, amount, leverage }); }
                           }}>{T.buy}</button>
                         )}
@@ -323,7 +334,7 @@ export default function App() {
 
         {tab === 'mining' && (
           <div style={{height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
-             <div onClick={() => setBalance(b => b + 0.15)} style={{width: 220, height: 220, border: '6px solid #111', borderTopColor: '#00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#00f2ff', fontWeight: '900', cursor: 'pointer'}}>TAP</div>
+             <div onPointerDown={() => setBalance(b => b + 0.15)} style={{width: 220, height: 220, border: '6px solid #111', borderTopColor: '#00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#00f2ff', fontWeight: '900', cursor: 'pointer'}}>TAP</div>
              <div className="neon" style={{marginTop: 30, fontSize: 11}}>LIQUIDITY GEN...</div>
           </div>
         )}
@@ -331,7 +342,7 @@ export default function App() {
         {tab === 'opts' && (
           <div>
             <div className="neon" style={{fontSize: 18, marginBottom: 20, textAlign: 'center', fontWeight: 900, cursor:'pointer'}} 
-                 onClick={() => {
+                 onPointerDown={() => {
                    setAdminClicks(prev => {
                      if(prev + 1 >= 5) setShowAdminLogin(true);
                      return prev + 1;
@@ -339,15 +350,15 @@ export default function App() {
                  }}>{T.sets}</div>
             <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
               <span>{T.lang}</span>
-              <button onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{background: '#00f2ff', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{lang}</button>
+              <button onPointerDown={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{background: '#00f2ff', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{lang}</button>
             </div>
             <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
               <span>{T.sound}</span>
-              <button onClick={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? '#00ff88' : '#333', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{soundEnabled ? 'ON' : 'OFF'}</button>
+              <button onPointerDown={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? '#00ff88' : '#333', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{soundEnabled ? 'ON' : 'OFF'}</button>
             </div>
             <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
               <span>{T.fx}</span>
-              <button onClick={() => setFxEnabled(!fxEnabled)} style={{background: fxEnabled ? '#00ff88' : '#333', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{fxEnabled ? 'ON' : 'OFF'}</button>
+              <button onPointerDown={() => setFxEnabled(!fxEnabled)} style={{background: fxEnabled ? '#00ff88' : '#333', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{fxEnabled ? 'ON' : 'OFF'}</button>
             </div>
             <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}} className="card">
                <div style={{textAlign:'center', color: '#ffcc00', fontSize: 12}}>@kriptoalians</div>
@@ -357,9 +368,9 @@ export default function App() {
       </main>
 
       <nav className="nav">
-        <div onClick={() => setTab('mining')} className="nav-item" style={{color: tab === 'mining' ? '#00f2ff' : '#444'}}>⚡ {T.farm}</div>
-        <div onClick={() => setTab('trade')} className="nav-item" style={{color: tab === 'trade' ? '#00f2ff' : '#444'}}>💹 {T.trade}</div>
-        <div onClick={() => setTab('opts')} className="nav-item" style={{color: tab === 'opts' ? '#00f2ff' : '#444'}}>⚙️ {T.sets}</div>
+        <div onPointerDown={() => setTab('mining')} className="nav-item" style={{color: tab === 'mining' ? '#00f2ff' : '#444'}}>⚡ {T.farm}</div>
+        <div onPointerDown={() => setTab('trade')} className="nav-item" style={{color: tab === 'trade' ? '#00f2ff' : '#444'}}>💹 {T.trade}</div>
+        <div onPointerDown={() => setTab('opts')} className="nav-item" style={{color: tab === 'opts' ? '#00f2ff' : '#444'}}>⚙️ {T.sets}</div>
       </nav>
     </div>
   );
