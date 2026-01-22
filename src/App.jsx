@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -33,13 +31,13 @@ export default function App() {
   const [signal, setSignal] = useState(null);
   const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem(`k_hist_${userId}`)) || []);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [lang, setLang] = useState('RU');
   const [toast, setToast] = useState(null);
   const [showAd, setShowAd] = useState(false);
 
-  // Расчет уровня и макс плеча
   const lvl = Math.floor(xp / 150) + 1;
   const progress = (xp % 150) / 1.5; 
-  const maxLev = lvl >= 5 ? 50 : 10; // Исправлено: теперь переменная определена
+  const maxLev = lvl >= 10 ? 100 : lvl >= 5 ? 50 : 10;
 
   const sndClick = useRef(new Audio('https://www.fesliyanstudios.com/play-mp3/6510'));
   const sndBell = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
@@ -75,7 +73,7 @@ export default function App() {
     if (tab === 'trade' && !signal) generateSignal();
     const itv = setInterval(() => { if(tab === 'trade') generateSignal() }, 25000);
     return () => clearInterval(itv);
-  }, [tab, lvl, signal]);
+  }, [tab, signal]);
 
   const closeTrade = (coinId) => {
     const p = activePositions[coinId];
@@ -88,15 +86,17 @@ export default function App() {
     
     setTimeout(() => {
       setBalance(b => b + Number(p.amt) + pnl);
-      if(isWin) {
-        setXp(x => x + 15); 
-        setWinCount(w => w + 1);
-      }
+      if(isWin) { setXp(x => x + 15); setWinCount(w => w + 1); }
       setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
       setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
-      setToast({ msg: isWin ? "+15 XP" : "LIQUIDATION", type: isWin ? 'win' : 'loss' });
+      setToast({ msg: isWin ? (lang === 'RU' ? "+15 ОПЫТ" : "+15 XP") : (lang === 'RU' ? "УБЫТОК" : "LOSS"), type: isWin ? 'win' : 'loss' });
     }, 2000);
   };
+
+  const t = {
+    RU: { mine: 'МАЙНИНГ', trade: 'БИРЖА', logs: 'ИСТОРИЯ', opts: 'ОПЦИИ', prof: 'ПРИБЫЛЬ', buy: 'КУПИТЬ', sell: 'ПРОДАТЬ', back: 'НАЗАД' },
+    EN: { mine: 'MINING', trade: 'EXCHANGE', logs: 'LOGS', opts: 'OPTS', prof: 'PROFIT', buy: 'BUY', sell: 'SELL', back: 'BACK' }
+  }[lang];
 
   return (
     <div className="app-main">
@@ -112,12 +112,10 @@ export default function App() {
         .content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
         .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 8px; }
         .dex-item { background: #0a0a0a; border: 1px solid #222; margin: 8px 10px; padding: 20px; border-radius: 12px; border-left: 5px solid; cursor: pointer; }
-        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 60px auto; cursor: pointer; transition: 0.1s; }
+        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; transition: 0.1s; box-shadow: 0 0 15px rgba(0,217,255,0.1); }
         .trade-terminal { display: flex; flex-direction: column; padding: 15px; background: #000; min-height: 100%; }
-        .input-sum { background: #111; border: 1px solid #333; color: var(--win); padding: 8px; width: 100px; border-radius: 6px; outline: none; }
-        .pair-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 0; border-bottom: 1px solid #111; }
-        .nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; }
-        .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 11px; font-weight: bold; cursor: pointer; }
+        .nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; cursor: pointer; }
         .nav-btn.active { color: var(--neon); }
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .ad-box { background: #111; border: 2px solid var(--win); padding: 30px; border-radius: 20px; text-align: center; }
@@ -126,9 +124,9 @@ export default function App() {
       {showAd && (
         <div className="modal">
           <div className="ad-box">
-            <h2 style={{color: 'var(--win)', marginTop: 0}}>ПРОФИЛЬ ПОДТВЕРЖДЕН</h2>
-            <p>Вы успешно закрыли 10 сделок. Теперь вы допущены в закрытое комьюнити.</p>
-            <button onClick={() => window.open('https://t.me/vladstelin78', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold', cursor:'pointer'}}>ВСТУПИТЬ В VIP</button>
+            <h2 style={{color: 'var(--win)', marginTop: 0}}>QUALIFIED</h2>
+            <p>{lang === 'RU' ? '10 сделок закрыто! Доступ в VIP открыт.' : '10 trades closed! VIP access granted.'}</p>
+            <button onClick={() => window.open('https://t.me/kriptoalians', '_blank')} style={{background: 'var(--win)', border:'none', padding:'16px', width:'100%', borderRadius:'10px', fontWeight:'bold', cursor:'pointer'}}>JOIN CHANNEL</button>
           </div>
         </div>
       )}
@@ -151,10 +149,14 @@ export default function App() {
                 {signal && (
                   <div className="signal-box">
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px'}}>
-                      <span style={{color:'var(--neon)'}}>СИГНАЛ: {signal.coin}</span>
+                      <span style={{color:'var(--neon)'}}>{signal.coin}</span>
                       <span style={{color:'var(--win)'}}>+{signal.bonus}%</span>
                     </div>
-                    <div style={{fontSize: '16px', fontWeight:'bold', margin:'8px 0'}}>{signal.buyDex} → {signal.sellDexName}</div>
+                    <div style={{fontSize: '16px', fontWeight:'bold', margin:'5px 0'}}>{signal.buyDex} → {signal.sellDexName}</div>
+                    {/* КАЛЬКУЛЯТОР ПРОФИТА */}
+                    <div style={{fontSize: '10px', color: '#555', borderTop: '1px solid #222', paddingTop: '5px'}}>
+                      {t.prof} (x{leverage}): <span style={{color: 'var(--win)'}}>+${((tradeAmount * leverage * signal.bonus) / 100).toFixed(2)}</span>
+                    </div>
                   </div>
                 )}
                 {EXCHANGES.map(d => (
@@ -165,31 +167,25 @@ export default function App() {
               </div>
             ) : (
               <div className="trade-terminal">
-                <button onClick={() => setSelectedDex(null)} style={{background:'#222', border:'none', color:'#fff', padding:'10px', borderRadius:'8px', alignSelf:'flex-start', marginBottom:'15px'}}>← НАЗАД</button>
+                <button onClick={() => setSelectedDex(null)} style={{background:'#222', border:'none', color:'#fff', padding:'10px', borderRadius:'8px', alignSelf:'flex-start', marginBottom:'15px'}}>{t.back}</button>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
-                  <span style={{fontSize:'12px'}}>СУММА:</span>
-                  <input type="number" className="input-sum" value={tradeAmount} onChange={e => setTradeAmount(Number(e.target.value))} />
+                  <span style={{fontSize:'12px'}}>AMT:</span>
+                  <input type="number" style={{background:'#111', border:'1px solid #333', color:'var(--win)', padding:'8px', width:'100px', borderRadius:'6px'}} value={tradeAmount} onChange={e => setTradeAmount(Number(e.target.value))} />
                 </div>
+                <div style={{fontSize:'11px', color:'#444', marginBottom:'5px'}}>LEVERAGE: x{leverage}</div>
                 <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(Number(e.target.value))} style={{width:'100%', marginBottom:'20px'}} />
                 {COINS_DATA.map(c => {
                   const pos = activePositions[c.id];
                   const locked = c.lvl > lvl;
                   return (
-                    <div key={c.id} className="pair-row" style={{opacity: locked ? 0.3 : 1}}>
+                    <div key={c.id} style={{display:'flex', justifyContent:'space-between', padding:'15px 0', borderBottom:'1px solid #111', opacity: locked ? 0.3 : 1}}>
                       <b>{c.id}/USDT</b>
                       {locked ? <span>🔒 L{c.lvl}</span> : 
                         <button 
-                          style={{background: pos ? 'var(--loss)' : 'var(--win)', color: '#000', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold'}}
-                          onClick={() => {
-                            if(pos) closeTrade(c.id);
-                            else {
-                              if(tradeAmount > balance) return;
-                              setBalance(b => b - tradeAmount);
-                              setActivePositions(p => ({ ...p, [c.id]: { amt: tradeAmount, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } }));
-                            }
-                          }}
+                          style={{background: pos ? 'var(--loss)' : 'var(--win)', color: '#000', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold', width:'100px'}}
+                          onClick={() => pos ? closeTrade(c.id) : (tradeAmount <= balance && setBalance(b => b - tradeAmount) && setActivePositions(p => ({ ...p, [c.id]: { amt: tradeAmount, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } })))}
                         >
-                          {pos ? 'SELL' : 'BUY'}
+                          {pos ? t.sell : t.buy}
                         </button>
                       }
                     </div>
@@ -211,7 +207,7 @@ export default function App() {
 
         {tab === 'awards' && (
           <div style={{padding:'20px'}}>
-            <h3 style={{fontSize: '20px'}}>HISTORY</h3>
+            <h3 style={{fontSize: '20px'}}>{t.logs}</h3>
             {history.map((h, i) => (
               <div key={i} style={{display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid #111'}}>
                 <span>{h.coin}</span>
@@ -220,12 +216,29 @@ export default function App() {
             ))}
           </div>
         )}
+
+        {tab === 'opts' && (
+          <div style={{padding:'20px'}}>
+            <h3 style={{fontSize: '20px'}}>{t.opts}</h3>
+            <button onClick={() => setSoundEnabled(!soundEnabled)} style={{width:'100%', padding:'15px', background:'#222', color:'#fff', border:'none', borderRadius:'10px', marginBottom:'10px'}}>
+              SOUND: {soundEnabled ? 'ON' : 'OFF'}
+            </button>
+            <button onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{width:'100%', padding:'15px', background:'#222', color:'#fff', border:'none', borderRadius:'10px', marginBottom:'20px'}}>
+              LANG: {lang}
+            </button>
+            <div style={{textAlign:'center', fontSize:'12px', color:'#444'}}>
+              Dev: <a href="https://t.me/vladstelin78" style={{color:'var(--neon)'}}>@vladstelin78</a><br/>
+              Creator: <a href="https://t.me/kriptoalians" style={{color:'var(--neon)'}}>@kriptoalians</a>
+            </div>
+          </div>
+        )}
       </div>
 
       <nav className="nav">
-        <button className={`nav-btn ${tab === 'mining' ? 'active' : ''}`} onClick={() => setTab('mining')}>MINE</button>
-        <button className={`nav-btn ${tab === 'trade' ? 'active' : ''}`} onClick={() => setTab('trade')}>EXCHANGE</button>
-        <button className={`nav-btn ${tab === 'awards' ? 'active' : ''}`} onClick={() => setTab('awards')}>LOGS</button>
+        <button className={`nav-btn ${tab === 'mining' ? 'active' : ''}`} onClick={() => setTab('mining')}>{t.mine}</button>
+        <button className={`nav-btn ${tab === 'trade' ? 'active' : ''}`} onClick={() => setTab('trade')}>{t.trade}</button>
+        <button className={`nav-btn ${tab === 'awards' ? 'active' : ''}`} onClick={() => setTab('awards')}>{t.logs}</button>
+        <button className={`nav-btn ${tab === 'opts' ? 'active' : ''}`} onClick={() => setTab('opts')}>{t.opts}</button>
       </nav>
     </div>
   );
