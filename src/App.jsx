@@ -42,6 +42,14 @@ export default function App() {
 
   const neededTrades = level === 1 ? 15 : level === 2 ? 35 : 75;
 
+  // ЛОГИКА ОГРАНИЧЕНИЯ ПЛЕЧА ПО УРОВНЮ
+  const getMaxLeverage = () => {
+    if (level === 1) return 10;
+    if (level === 2) return 25;
+    if (level === 3) return 50;
+    return 100;
+  };
+
   useEffect(() => {
     clickSound.current = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
     clickSound.current.volume = 0.05;
@@ -50,7 +58,6 @@ export default function App() {
     localStorage.setItem('st_prog', tradesInLevel);
   }, [balance, level, tradesInLevel]);
 
-  // Сигналы с профитом 3-4%
   useEffect(() => {
     let timer;
     if (tab === 'trade' && !signal && !activePos) {
@@ -61,12 +68,11 @@ export default function App() {
         const bDex = DEX[Math.floor(Math.random() * DEX.length)].name;
         let sDex = DEX[Math.floor(Math.random() * DEX.length)].name;
         while(sDex === bDex) sDex = DEX[Math.floor(Math.random() * DEX.length)].name;
-        
         setSignal({ 
             coin: coin.id, 
             buyDex: bDex, 
             sellDex: sDex, 
-            perc: (Math.random() * 1 + 3).toFixed(2) // СТРОГО 3.00% - 4.00%
+            perc: (Math.random() * 1 + 3).toFixed(2) 
         });
         setIsAnalyzing(false);
       }, 3000);
@@ -103,13 +109,11 @@ export default function App() {
           
           let pnl;
           if (win) {
-            // ПРОФИТ: 3-4% от объема
             pnl = (amount * leverage * (parseFloat(signal?.perc || 3.5) / 100));
             setTradesInLevel(t => (t + 1 >= neededTrades) ? 0 : t + 1);
             if (tradesInLevel + 1 >= neededTrades) setLevel(l => l + 1);
           } else {
-            // МИНУС: до 1.5% от объема
-            const lossPerc = (Math.random() * 0.5 + 1.0) / 100; // от 1% до 1.5%
+            const lossPerc = (Math.random() * 0.5 + 1.0) / 100; 
             pnl = -(amount * leverage * lossPerc);
           }
 
@@ -123,9 +127,8 @@ export default function App() {
     }, 1000);
   };
 
-  // Данные для калькулятора (прогноз)
   const estProfit = (amount * leverage * (parseFloat(signal?.perc || 3.5) / 100)).toFixed(2);
-  const estLoss = (amount * leverage * 0.015).toFixed(2); // Показываем макс. риск 1.5%
+  const estLoss = (amount * leverage * 0.015).toFixed(2);
 
   return (
     <div onPointerDown={handleGlobalClick} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', position:'relative'}}>
@@ -165,7 +168,7 @@ export default function App() {
         <div className="neon" style={{fontSize:28, fontWeight:'bold'}}>${balance.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
         <div style={{display:'flex', justifyContent:'space-between', fontSize:10, color:'#444', marginTop:5}}>
           <span>LVL {level}</span>
-          <span>EXP: {tradesInLevel}/{neededTrades}</span>
+          <span>MAX LEV: x{getMaxLeverage()}</span>
         </div>
       </header>
 
@@ -196,12 +199,22 @@ export default function App() {
                 <div className="card" style={{background:'#050505'}}>
                     <div style={{display:'flex', gap:10, marginBottom:10}}>
                         <div style={{flex:1}}><label style={{fontSize:9, color:'#444'}}>INVEST ($)</label><input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))} /></div>
-                        <div style={{flex:1}}><label style={{fontSize:9, color:'#444'}}>LEVERAGE</label><input type="number" value={leverage} onChange={e=>setLeverage(Number(e.target.value))} /></div>
+                        <div style={{flex:1}}>
+                            <label style={{fontSize:9, color:'#444'}}>LEVERAGE (Max x{getMaxLeverage()})</label>
+                            <input 
+                              type="number" 
+                              value={leverage} 
+                              onChange={e => {
+                                let val = Number(e.target.value);
+                                if (val > getMaxLeverage()) val = getMaxLeverage();
+                                setLeverage(val);
+                              }} 
+                            />
+                        </div>
                     </div>
-                    {/* ОБНОВЛЕННЫЙ КАЛЬКУЛЯТОР */}
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:11, padding:'5px 0', borderTop:'1px solid #1a1a1a'}}>
-                        <span style={{color:'#00ff88'}}>PROFIT (3-4%): +${estProfit}</span>
-                        <span style={{color:'#ff0055'}}>LOSS (1.5%): -${estLoss}</span>
+                        <span style={{color:'#00ff88'}}>PROFIT: +${estProfit}</span>
+                        <span style={{color:'#ff0055'}}>RISK: -${estLoss}</span>
                     </div>
                 </div>
 
