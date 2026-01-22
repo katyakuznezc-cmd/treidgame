@@ -1,198 +1,203 @@
 import React, { useState, useEffect } from 'react';
 
-// Список реальных токенов для выбора
-const TOKEN_LIST = [
-  { id: 'USDT', name: 'Tether USD', img: 'https://cryptologos.cc/logos/tether-usdt-logo.png', price: 1 },
-  { id: 'SOL', name: 'Solana', img: 'https://cryptologos.cc/logos/solana-sol-logo.png', price: 145 },
-  { id: 'ETH', name: 'Ethereum', img: 'https://cryptologos.cc/logos/ethereum-eth-logo.png', price: 2600 },
-  { id: 'CRO', name: 'Cronos', img: 'https://cryptologos.cc/logos/cronos-cro-logo.png', price: 0.16 },
-  { id: 'BNB', name: 'BNB', img: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', price: 610 }
+// Константы для имитации реальных данных
+const TOKENS = [
+  { id: 'SOL', name: 'Solana', price: 145, img: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
+  { id: 'ETH', name: 'Ethereum', price: 2600, img: 'https://cryptologos.cc/logos/ethereum-eth-logo.png' },
+  { id: 'USDT', name: 'Tether', price: 1, img: 'https://cryptologos.cc/logos/tether-usdt-logo.png' }
 ];
 
-export default function RealArbitrageApp() {
-  // Состояния кошелька
-  const [balance, setBalance] = useState(2500.00); // Баланс в USDT
-  const [inventory, setInventory] = useState({ coin: null, amount: 0 }); // Что сейчас в кошельке
-  
-  // Состояния интерфейса
+export default function App() {
+  const [balance, setBalance] = useState(2000.00); // USDT
+  const [holdings, setHoldings] = useState({ id: null, amount: 0 }); // Купленный актив
   const [activeDex, setActiveDex] = useState(null);
-  const [amountIn, setAmountIn] = useState('');
-  const [selectedToken, setSelectedToken] = useState(TOKEN_LIST[1]); // По умолчанию SOL
-  const [showTokenList, setShowTokenList] = useState(false);
-  
-  // Состояния сигнала
+  const [val, setVal] = useState('');
   const [signal, setSignal] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [txStep, setTxStep] = useState('idle');
 
-  // Состояния транзакции
-  const [txStatus, setTxStatus] = useState('idle'); // idle, pending, success
-
-  // 1. ГЕНЕРАЦИЯ РЕАЛЬНОГО СИГНАЛА
+  // Генератор сигналов
   useEffect(() => {
     if (!signal) {
-      const coin = TOKEN_LIST[Math.floor(Math.random() * (TOKEN_LIST.length - 1)) + 1];
-      const dexs = ['UNISWAP', 'RAYDIUM', 'PANCAKE', 'CRODEX'];
-      const buyDex = dexs[Math.floor(Math.random() * 4)];
-      let sellDex = dexs[Math.floor(Math.random() * 4)];
-      while (sellDex === buyDex) sellDex = dexs[Math.floor(Math.random() * 4)];
-
-      setSignal({ coin: coin.id, buyAt: buyDex, sellAt: sellDex, profit: (Math.random() * 6 + 4).toFixed(2) });
-      setTimeLeft(60); // 60 секунд на сделку
+      const dexs = ['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'];
+      setSignal({
+        coin: 'SOL',
+        buy: dexs[Math.floor(Math.random() * 2)],
+        sell: dexs[Math.floor(Math.random() * 2) + 2],
+        profit: (Math.random() * 5 + 3).toFixed(2)
+      });
     }
   }, [signal]);
 
-  // 2. ТАЙМЕР СИГНАЛА
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setInterval(() => setTimeLeft(t => t - 1), 1000);
-      return () => clearInterval(timer);
-    } else if (signal) {
-      setSignal(null); // Сигнал протух
-    }
-  }, [timeLeft, signal]);
+  // Глобальная логика обмена (Buy/Sell)
+  const handleSwap = () => {
+    if (!val || val <= 0) return;
+    setTxStep('confirm');
+  };
 
-  // 3. ЛОГИКА ПОКУПКИ / ПРОДАЖИ
-  const handleTrade = () => {
-    if (!amountIn || Number(amountIn) <= 0) return;
-    setTxStatus('pending');
-
+  const finalConfirm = () => {
+    setTxStep('processing');
     setTimeout(() => {
-      // Если мы ПОКУПАЕМ (в кошельке пусто)
-      if (inventory.amount === 0) {
-        const boughtAmount = Number(amountIn) / selectedToken.price;
-        setBalance(prev => prev - Number(amountIn));
-        setInventory({ coin: selectedToken.id, amount: boughtAmount });
-      } 
-      // Если мы ПРОДАЕМ (в кошельке есть монета)
-      else {
-        const isCorrectDex = activeDex === signal?.sellAt;
-        const baseValue = inventory.amount * selectedToken.price;
-        const finalProfit = isCorrectDex ? (baseValue * (1 + signal.profit/100)) : (baseValue * 0.7);
-        
-        setBalance(prev => prev + finalProfit);
-        setInventory({ coin: null, amount: 0 });
+      if (!holdings.id) {
+        // ПОКУПКА
+        const amount = Number(val) / 145;
+        setBalance(prev => prev - Number(val));
+        setHoldings({ id: 'SOL', amount });
+      } else {
+        // ПРОДАЖА
+        const isWin = activeDex === signal?.sell;
+        const profitMult = isWin ? (1 + signal.profit / 100) : 0.7;
+        setBalance(prev => prev + (holdings.amount * 145 * profitMult));
+        setHoldings({ id: null, amount: 0 });
       }
-      
-      setTxStatus('success');
-      setTimeout(() => { setTxStatus('idle'); setAmountIn(''); }, 1500);
+      setTxStep('idle');
+      setVal('');
     }, 2000);
   };
 
-  // --- UI КОМПОНЕНТ: ВЫБОР ТОКЕНА (Оригинальный список) ---
-  const TokenSelector = () => (
-    <div style={{ position: 'absolute', inset: 0, background: '#111', zIndex: 2000, padding: 20, animation: 'fadeIn 0.2s' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-        <b>Выберите токен</b>
-        <span onClick={() => setShowTokenList(false)}>✕</span>
+  // --- 1. КЛОН UNISWAP (Светлая тема, розовый акцент) ---
+  const UniswapUI = () => (
+    <div style={{ background: '#FFF', height: '100%', color: '#000', fontFamily: '"Inter", sans-serif' }}>
+      <div style={{ padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: 24 }}>🦄</span>
+        <div style={{ background: '#F5F6FC', padding: '6px 12px', borderRadius: 12, color: '#FF007A', fontWeight: 'bold', fontSize: 13 }}>0x78...3c</div>
       </div>
-      <input placeholder="Поиск по имени или адресу" style={{ width: '100%', padding: 12, background: '#222', border: '1px solid #333', borderRadius: 12, color: '#fff', marginBottom: 20 }} />
-      {TOKEN_LIST.map(token => (
-        <div key={token.id} onClick={() => { setSelectedToken(token); setShowTokenList(false); }} style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '12px 0', borderBottom: '1px solid #222' }}>
-          <img src={token.img} width="32" height="32" style={{ borderRadius: '50%' }} />
-          <div>
-            <div style={{ fontWeight: 'bold' }}>{token.id}</div>
-            <div style={{ fontSize: 12, opacity: 0.5 }}>{token.name}</div>
+      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40, paddingInline: 10 }}>
+        <div style={{ width: '100%', maxWidth: 420, background: '#FFF', border: '1px solid #D9D9D9', borderRadius: 24, padding: 8, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px' }}><b>Обмен</b> <span>⚙️</span></div>
+          <div style={{ background: '#F9F9F9', padding: 16, borderRadius: 16, marginBottom: 4 }}>
+            <div style={{ fontSize: 13, opacity: 0.5 }}>{holdings.id ? 'Вы продаете' : 'Вы платите'}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+              <input type="number" value={holdings.id ? holdings.amount.toFixed(4) : val} onChange={e => setVal(e.target.value)} placeholder="0" style={{ background: 'none', border: 'none', fontSize: 32, outline: 'none', width: '60%' }} />
+              <div style={{ background: '#FFF', border: '1px solid #D9D9D9', padding: '4px 10px', borderRadius: 16, fontWeight: 'bold' }}>{holdings.id || 'USDT'} ▾</div>
+            </div>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '-14px 0', zIndex: 2, position: 'relative' }}>
+            <div style={{ background: '#F9F9F9', border: '4px solid #FFF', borderRadius: 10, padding: 4 }}>↓</div>
+          </div>
+          <div style={{ background: '#F9F9F9', padding: 16, borderRadius: 16, marginTop: 4, marginBottom: 12 }}>
+            <div style={{ fontSize: 13, opacity: 0.5 }}>Вы получаете</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+              <div style={{ fontSize: 32, color: '#888' }}>{holdings.id ? (holdings.amount * 145).toFixed(2) : (val / 145).toFixed(4)}</div>
+              <div style={{ background: '#FF007A', color: '#FFF', padding: '6px 14px', borderRadius: 16, fontWeight: 'bold', fontSize: 14 }}>{holdings.id ? 'USDT' : 'SOL'} ▾</div>
+            </div>
+          </div>
+          <button onClick={handleSwap} style={{ width: '100%', padding: 16, background: 'rgba(255, 0, 122, 0.1)', color: '#FF007A', border: 'none', borderRadius: 20, fontWeight: 'bold', fontSize: 18 }}>
+            {holdings.id ? 'Продать' : 'Купить'}
+          </button>
         </div>
-      ))}
+      </div>
+    </div>
+  );
+
+  // --- 2. КЛОН RAYDIUM (Темная тема, Solana стиль) ---
+  const RaydiumUI = () => (
+    <div style={{ background: '#0c0d21', height: '100%', color: '#FFF', fontFamily: 'monospace' }}>
+      <div style={{ padding: 15, borderBottom: '1px solid #1a1b36', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ color: '#39F2AF', fontWeight: 'bold', fontSize: 18 }}>RAYDIUM</div>
+        <div style={{ background: '#1a1b36', padding: '6px 12px', borderRadius: 10, color: '#39F2AF', fontSize: 12 }}>Connect</div>
+      </div>
+      <div style={{ padding: 20 }}>
+        <div style={{ background: 'rgba(20, 22, 46, 0.8)', padding: 20, borderRadius: 24, border: '1px solid #1a1b36', backdropFilter: 'blur(10px)' }}>
+          <div style={{ display: 'flex', gap: 20, marginBottom: 20, fontSize: 13 }}>
+            <span style={{ color: '#39F2AF', borderBottom: '2px solid #39F2AF', paddingBottom: 5 }}>Swap</span>
+            <span style={{ opacity: 0.5 }}>Liquidity</span>
+          </div>
+          <div style={{ background: '#050614', padding: 16, borderRadius: 16, border: '1px solid #1a1b36' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, opacity: 0.4 }}><span>From</span> <span>Баланс: {holdings.id ? holdings.amount.toFixed(2) : balance.toFixed(2)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+              <input type="number" value={holdings.id ? holdings.amount.toFixed(4) : val} onChange={e => setVal(e.target.value)} style={{ background: 'none', border: 'none', color: '#FFF', fontSize: 26, outline: 'none', width: '50%' }} placeholder="0.0" />
+              <div style={{ background: '#1a1b36', padding: '6px 12px', borderRadius: 12, fontSize: 14 }}>{holdings.id || 'USDT'} ▾</div>
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', margin: '12px 0' }}><span style={{ background: '#1a1b36', borderRadius: '50%', padding: 8 }}>↓</span></div>
+          <div style={{ background: '#050614', padding: 16, borderRadius: 16, border: '1px solid #1a1b36', marginBottom: 24 }}>
+            <div style={{ fontSize: 11, opacity: 0.4 }}>To (Estimated)</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
+              <div style={{ fontSize: 26 }}>{holdings.id ? (holdings.amount * 145).toFixed(2) : (val / 145).toFixed(4)}</div>
+              <div style={{ background: '#39F2AF', color: '#000', padding: '6px 12px', borderRadius: 12, fontWeight: 'bold', fontSize: 14 }}>{holdings.id ? 'USDT' : 'SOL'} ▾</div>
+            </div>
+          </div>
+          <button onClick={handleSwap} style={{ width: '100%', padding: 18, background: '#39F2AF', color: '#000', border: 'none', borderRadius: 12, fontWeight: '900', fontSize: 16, letterSpacing: 1 }}>
+            {holdings.id ? 'CONFIRM SELL' : 'SWAP TOKENS'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 
   return (
-    <div style={{ width: '100vw', height: '100dvh', background: '#000', color: '#fff', fontFamily: 'Inter, sans-serif', overflow: 'hidden' }}>
-      {showTokenList && <TokenSelector />}
-
-      {/* ГЛАВНЫЙ ЭКРАН (HUB) */}
+    <div style={{ width: '100vw', height: '100dvh', background: '#000', position: 'relative', overflow: 'hidden' }}>
       {!activeDex ? (
-        <div style={{ padding: 20 }}>
-          <header style={{ textAlign: 'center', margin: '30px 0' }}>
-            <h1 style={{ fontSize: 40, margin: 0 }}>${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h1>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 10 }}>
-              {inventory.amount > 0 && <span style={{ background: '#39f2af', color: '#000', padding: '2px 8px', borderRadius: 6, fontSize: 12 }}>В кошельке: {inventory.amount.toFixed(4)} {inventory.coin}</span>}
-            </div>
+        <div style={{ padding: 25, color: '#FFF' }}>
+          <header style={{ textAlign: 'center', margin: '40px 0' }}>
+            <h1 style={{ fontSize: 48, fontWeight: 900 }}>${balance.toLocaleString()}</h1>
+            {holdings.amount > 0 && <div style={{ color: '#39F2AF', fontSize: 14 }}>В ПОРТФЕЛЕ: {holdings.amount.toFixed(3)} SOL</div>}
           </header>
 
-          {/* ЖИВОЙ СИГНАЛ */}
-          <div style={{ background: '#111', padding: 20, borderRadius: 24, border: '1px solid #222', position: 'relative' }}>
+          <div style={{ background: '#111', padding: 20, borderRadius: 24, border: '1px solid #222', marginBottom: 30 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#00ff88', fontSize: 10, fontWeight: 'bold' }}>
+               <div style={{ width: 8, height: 8, background: '#00ff88', borderRadius: '50%' }}></div> LIVE SIGNAL
+            </div>
             {signal ? (
-              <>
-                <div style={{ position: 'absolute', top: 15, right: 15, color: timeLeft < 15 ? '#ff4444' : '#39f2af', fontWeight: 'bold' }}>00:{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</div>
-                <div style={{ color: '#888', fontSize: 12, marginBottom: 5 }}>АРБИТРАЖНАЯ СВЯЗКА:</div>
-                <div style={{ fontSize: 18, fontWeight: 'bold' }}>1. Купи {signal.coin} на <span style={{ color: '#ff007a' }}>{signal.buyAt}</span></div>
-                <div style={{ fontSize: 18, fontWeight: 'bold' }}>2. Продай на <span style={{ color: '#39f2af' }}>{signal.sellAt}</span></div>
-                <div style={{ marginTop: 10, padding: '8px', background: 'rgba(57, 242, 175, 0.1)', borderRadius: 10, color: '#39f2af', textAlign: 'center', fontWeight: 'bold' }}>ПРОФИТ: +{signal.profit}%</div>
-              </>
-            ) : "Поиск аномалий на биржах..."}
+              <div style={{ marginTop: 10 }}>
+                <div style={{ fontSize: 18, fontWeight: 'bold' }}>КУПИ НА <span style={{ color: '#FF007A' }}>{signal.buy}</span></div>
+                <div style={{ fontSize: 18, fontWeight: 'bold' }}>ПРОДАЙ НА <span style={{ color: '#39F2AF' }}>{signal.sell}</span></div>
+                <div style={{ marginTop: 8, color: '#00ff88', fontWeight: 'bold' }}>ПРОФИТ: +{signal.profit}%</div>
+              </div>
+            ) : "Scanning pools..."}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginTop: 25 }}>
-            {['UNISWAP', 'RAYDIUM', 'PANCAKE', 'CRODEX'].map(id => (
-              <button key={id} onClick={() => setActiveDex(id)} style={{ background: '#1a1a1a', border: '1px solid #333', padding: 25, borderRadius: 20, color: '#fff', fontWeight: 'bold' }}>{id}</button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+            {['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'].map(dex => (
+              <button key={dex} onClick={() => setActiveDex(dex)} style={{ background: '#1a1a1a', border: '1px solid #333', padding: 25, borderRadius: 20, color: '#FFF', fontWeight: 'bold' }}>{dex}</button>
             ))}
+          </div>
+          
+          <div style={{ position: 'absolute', bottom: 30, left: 0, right: 0, textAlign: 'center' }}>
+            <a href="https://t.me/kriptoalians" style={{ color: '#333', textDecoration: 'none', fontSize: 11 }}>CREATORS @KRIPTOALIANS</a>
           </div>
         </div>
       ) : (
-        /* РЕАЛЬНЫЙ ИНТЕРФЕЙС БИРЖИ */
-        <div style={{ height: '100%', background: activeDex === 'UNISWAP' ? '#fff' : '#0c0d21', color: activeDex === 'UNISWAP' ? '#000' : '#fff' }}>
-           <div style={{ padding: 15, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(128,128,128,0.1)' }}>
-             <b style={{ color: activeDex === 'RAYDIUM' ? '#39f2af' : (activeDex === 'UNISWAP' ? '#ff007a' : 'inherit') }}>{activeDex}</b>
-             <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: 'inherit' }}>Выход</button>
-           </div>
-
-           <div style={{ padding: 20, display: 'flex', justifyContent: 'center' }}>
-             <div style={{ width: '100%', maxWidth: 400, background: activeDex === 'UNISWAP' ? '#f5f6fc' : '#14162e', borderRadius: 24, padding: 15 }}>
-                
-                {/* ВВОД */}
-                <div style={{ background: activeDex === 'UNISWAP' ? '#fff' : '#050614', padding: 15, borderRadius: 16 }}>
-                  <div style={{ fontSize: 12, opacity: 0.5 }}>{inventory.amount === 0 ? 'Вы платите' : 'Вы продаете'}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                    <input 
-                      type="number" 
-                      value={inventory.amount === 0 ? amountIn : inventory.amount} 
-                      onChange={e => setAmountIn(e.target.value)}
-                      disabled={inventory.amount > 0}
-                      style={{ background: 'none', border: 'none', fontSize: 24, color: 'inherit', width: '60%', outline: 'none' }} 
-                    />
-                    <button onClick={() => setShowTokenList(true)} style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '5px 10px', borderRadius: 12, color: 'inherit', fontWeight: 'bold' }}>
-                      {inventory.amount === 0 ? 'USDT' : inventory.coin} ▾
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'center', margin: '10px 0' }}>↓</div>
-
-                {/* ВЫВОД */}
-                <div style={{ background: activeDex === 'UNISWAP' ? '#fff' : '#050614', padding: 15, borderRadius: 16, marginBottom: 20 }}>
-                   <div style={{ fontSize: 12, opacity: 0.5 }}>Вы получите</div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                      <div style={{ fontSize: 24 }}>
-                        {inventory.amount === 0 ? (amountIn / selectedToken.price).toFixed(4) : (inventory.amount * selectedToken.price).toFixed(2)}
-                      </div>
-                      <button onClick={() => setShowTokenList(true)} style={{ background: activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af', border: 'none', padding: '5px 10px', borderRadius: 12, color: '#000', fontWeight: 'bold' }}>
-                        {inventory.amount === 0 ? selectedToken.id : 'USDT'} ▾
-                      </button>
-                   </div>
-                </div>
-
-                <button onClick={handleTrade} style={{ 
-                  width: '100%', padding: 18, borderRadius: 16, border: 'none', fontWeight: 'bold', fontSize: 18,
-                  background: activeDex === 'UNISWAP' ? '#ff007a15' : '#39f2af',
-                  color: activeDex === 'UNISWAP' ? '#ff007a' : '#000'
-                }}>
-                  {txStatus === 'pending' ? 'Обработка...' : (inventory.amount === 0 ? 'Купить' : 'Продать')}
-                </button>
-             </div>
-           </div>
+        <div style={{ height: '100%' }}>
+          <button onClick={() => setActiveDex(null)} style={{ position: 'absolute', top: 15, right: 15, zIndex: 1000, background: 'rgba(0,0,0,0.5)', color: '#FFF', border: 'none', padding: '6px 12px', borderRadius: 8 }}>ЗАКРЫТЬ</button>
+          {activeDex === 'UNISWAP' && <UniswapUI />}
+          {activeDex === 'RAYDIUM' && <RaydiumUI />}
+          {['PANCAKE', '1INCH'].includes(activeDex) && (
+            <div style={{ padding: 40, color: '#FFF', textAlign: 'center' }}>
+              <h2>{activeDex} Interface</h2>
+              <button onClick={handleSwap} style={{ width: '100%', padding: 20, background: '#39F2AF', border: 'none', borderRadius: 15, color: '#000', fontWeight: 'bold', marginTop: 20 }}>
+                {holdings.id ? 'SELL' : 'BUY'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ЭКРАН ТРАНЗАКЦИИ */}
-      {txStatus === 'pending' && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 5000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 50, height: 50, border: '4px solid #333', borderTopColor: '#39f2af', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <h3 style={{ marginTop: 20 }}>Отправка в блокчейн...</h3>
+      {/* Экраны состояний */}
+      {txStep === 'confirm' && (
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'flex-end' }}>
+          <div style={{ background: '#1c1c1e', width: '100%', padding: 25, borderRadius: '24px 24px 0 0', color: '#FFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}><b>Подтверждение</b> <span onClick={() => setTxStep('idle')}>✕</span></div>
+            <div style={{ background: '#2c2c2e', padding: 15, borderRadius: 12, marginBottom: 20 }}>
+               <div style={{ fontSize: 12, opacity: 0.5 }}>Комиссия сети (Gas)</div>
+               <div style={{ color: '#00ff88' }}>$1.42</div>
+            </div>
+            <button onClick={finalConfirm} style={{ width: '100%', padding: 16, background: '#34c759', border: 'none', borderRadius: 12, fontWeight: 'bold' }}>ПОДПИСАТЬ ТРАНЗАКЦИЮ</button>
+          </div>
         </div>
       )}
+
+      {txStep === 'processing' && (
+        <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 10001, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+           <div style={{ width: 50, height: 50, border: '3px solid #333', borderTopColor: '#39f2af', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+           <h3 style={{ marginTop: 20 }}>Выполнение обмена...</h3>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        input[type="number"]::-webkit-inner-spin-button { display: none; }
+      `}</style>
     </div>
   );
 }
