@@ -1,3 +1,5 @@
+JavaScript
+
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -51,7 +53,6 @@ export default function App() {
     localStorage.setItem('st_prog', tradesInLevel);
   }, [balance, level, tradesInLevel]);
 
-  // Логика сигналов
   useEffect(() => {
     let timer;
     if (tab === 'trade' && !signal && !activePos) {
@@ -93,11 +94,9 @@ export default function App() {
       setNetTimer(p => {
         if (p <= 1) {
           clearInterval(itv);
-          // ЛОГИКА МАТЕМАТИКИ: Проверка правильности биржи
           const isCorrect = signal && activePos.id === signal.coin && activePos.buyDex === signal.buyDex && selectedDex === signal.sellDex;
           const winChance = isCorrect ? 0.85 : 0.15;
           const win = Math.random() < winChance;
-          
           let pnl;
           if (win) {
             pnl = amount * leverage * (Math.random() * 0.02 + 0.01);
@@ -107,13 +106,9 @@ export default function App() {
             pnl = -(amount * leverage * 0.03);
             setIsBurning(true); setTimeout(() => setIsBurning(false), 800);
           }
-
           setBalance(b => Math.max(0, b + amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
-          setActivePos(null);
-          setSignal(null);
-          setIsProcessing(false);
-          hardLock.current = false;
+          setActivePos(null); setSignal(null); setIsProcessing(false); hardLock.current = false;
           return null;
         }
         return p - 1;
@@ -122,37 +117,25 @@ export default function App() {
   };
 
   return (
-    <div onPointerDown={handleGlobalClick} className={isBurning ? 'burn-effect' : ''} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'Orbitron, sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', position:'relative'}}>
+    <div onPointerDown={handleGlobalClick} className={isBurning ? 'burn' : ''} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'Orbitron, sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', position:'relative'}}>
       <style>{`
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         .btn { width:100%; padding:15px; border-radius:10px; border:none; font-weight:bold; cursor:pointer; text-transform:uppercase; }
         .card { background:#0a0a0a; border:1px solid #00f2ff; border-radius:12px; padding:15px; margin-bottom:10px; }
-        .neon-text { color: #00f2ff; text-shadow: 0 0 10px #00f2ff; }
+        .neon { color: #00f2ff; text-shadow: 0 0 10px #00f2ff; }
         .dollar { position: absolute; color: #00ff88; font-weight: 900; pointer-events: none; animation: pop 0.6s forwards; zIndex: 999; font-size: 28px; }
         @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
-        .burn-effect { animation: burn 0.4s infinite; }
-        @keyframes burn { 0% { box-shadow: inset 0 0 50px #ff0000; } 50% { box-shadow: inset 0 0 100px #ff0055; } 100% { box-shadow: inset 0 0 50px #ff0000; } }
+        .burn { animation: burn 0.4s infinite; }
+        @keyframes burn { 0%, 100% { box-shadow: inset 0 0 50px #ff0000; } 50% { box-shadow: inset 0 0 100px #ff0055; } }
         input { background:#000; border:1px solid #00f2ff; color:#00f2ff; padding:8px; border-radius:5px; width:100%; text-align:center; outline:none; }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-10, top: c.y-20}}>$</div>)}
 
-      {/* MODAL RESULT */}
-      {result && (
-        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
-            <div className="card" style={{width:'100%', textAlign:'center', borderColor: result.win ? '#00ff88' : '#ff0055'}}>
-                <h2 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'PROFIT' : 'LOSS'}</h2>
-                <h1 className="neon-text">{result.win ? '+' : '-'}${result.val}</h1>
-                <button className="btn" style={{background:'#fff', color:'#000'}} onClick={()=>setResult(null)}>OK</button>
-            </div>
-        </div>
-      )}
-
-      {/* ADMIN PANEL */}
       {showAdm && (
         <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.95)', zIndex:10000, padding:20, display:'flex', flexDirection:'column', justifyContent:'center'}}>
           <div className="card">
-            <h3 className="neon-text">ADMIN PANEL</h3>
+            <h3 className="neon">ADMIN PANEL</h3>
             <input type="number" placeholder="SET BALANCE" value={newBalInp} onChange={e=>setNewBalInp(e.target.value)} />
             <button className="btn" style={{background:'#00ff88', color:'#000', marginTop:10}} onClick={() => { setBalance(Number(newBalInp)); setShowAdm(false); }}>APPLY</button>
             <button className="btn" style={{background:'#333', marginTop:5}} onClick={() => setShowAdm(false)}>CLOSE</button>
@@ -160,8 +143,18 @@ export default function App() {
         </div>
       )}
 
+      {result && (
+        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+            <div className="card" style={{width:'100%', textAlign:'center', borderColor: result.win ? '#00ff88' : '#ff0055'}}>
+                <h2 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'PROFIT' : 'LOSS'}</h2>
+                <h1 className="neon">{result.win ? '+' : '-'}${result.val}</h1>
+                <button className="btn" style={{background:'#fff', color:'#000'}} onClick={()=>setResult(null)}>OK</button>
+            </div>
+        </div>
+      )}
+
       <header style={{padding:20, borderBottom:'1px solid #1a1a1a'}}>
-        <div className="neon-text" style={{fontSize:28, fontWeight:'bold'}}>${balance.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
+        <div className="neon" style={{fontSize:28, fontWeight:'bold'}}>${balance.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
         <div style={{display:'flex', justifyContent:'space-between', fontSize:10, marginTop:5}}>
           <span>LVL {level}</span>
           <span>EXP: {tradesInLevel}/{neededTrades}</span>
@@ -172,13 +165,20 @@ export default function App() {
       <main style={{flex:1, overflowY:'auto', padding:20}}>
         {tab === 'trade' && (
           <>
+            {/* БАННЕР VIP */}
+            {!activePos && (
+              <div className="card" style={{borderColor: '#ffcc00', background: 'linear-gradient(45deg, #0a0a0a, #1a1500)'}}>
+                <div style={{fontSize:10, color:'#ffcc00', fontWeight:'bold'}}>VIP АКАДЕМИЯ</div>
+                <div style={{fontSize:12, marginTop:5}}>Менеджер: @vladstelin78</div>
+              </div>
+            )}
+
             {!selectedDex ? (
               <div>
-                <div className="card" style={{textAlign:'center', borderColor:'#ffcc00'}}>
-                   {isAnalyzing ? <span className="neon-text">АНАЛИЗ РЫНКА...</span> : 
+                <div className="card" style={{textAlign:'center', borderColor:'#00f2ff'}}>
+                   {isAnalyzing ? <span className="neon">АНАЛИЗ РЫНКА...</span> : 
                    <div>СИГНАЛ: <span style={{color:'#00ff88'}}>{signal.coin} +{signal.perc}%</span><br/><small>{signal.buyDex} → {signal.sellDex}</small></div>}
                 </div>
-                <p style={{fontSize:10, color:'#444'}}>ВЫБЕРИТЕ ТЕРМИНАЛ ПРОДАЖИ:</p>
                 {DEX.map(d => (
                   <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer'}}>
                     {d.name} <span style={{float:'right', color:'#00ff88', fontSize:9}}>READY</span>
@@ -187,17 +187,11 @@ export default function App() {
               </div>
             ) : (
               <div>
-                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom:10, fontSize:12, cursor:'pointer'}}>← К КЕРМИНАЛАМ</div>
+                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom:10, fontSize:12, cursor:'pointer'}}>← К ТЕРМИНАЛАМ</div>
                 <div className="card" style={{background:'#050505'}}>
                     <div style={{display:'flex', gap:10}}>
-                        <div style={{flex:1}}>
-                            <label style={{fontSize:9, color:'#444'}}>СУММА ($)</label>
-                            <input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))} />
-                        </div>
-                        <div style={{flex:1}}>
-                            <label style={{fontSize:9, color:'#444'}}>ПЛЕЧО</label>
-                            <input type="number" value={leverage} onChange={e=>setLeverage(Number(e.target.value))} />
-                        </div>
+                        <div style={{flex:1}}><label style={{fontSize:9}}>ИНВЕСТ ($)</label><input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))} /></div>
+                        <div style={{flex:1}}><label style={{fontSize:9}}>ПЛЕЧО</label><input type="number" value={leverage} onChange={e=>setLeverage(Number(e.target.value))} /></div>
                     </div>
                 </div>
                 {COINS_DATA.map(c => {
@@ -207,11 +201,8 @@ export default function App() {
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <span>{c.id} <br/><small style={{color:'#444'}}>${c.base}</small></span>
                         {isActive ? (
-                          isProcessing ? (
-                            <div style={{color:'#00f2ff', fontSize:11, fontWeight:'bold'}}>{netTimer}s SYNC...</div>
-                          ) : (
-                            <button className="btn" style={{background:'#ff0055', width:120}} onPointerDown={sellPos}>ПРОДАТЬ</button>
-                          )
+                          isProcessing ? <div className="neon" style={{fontSize:11}}>{netTimer}s SYNC...</div> :
+                          <button className="btn" style={{background:'#ff0055', width:120}} onPointerDown={sellPos}>ПРОДАТЬ</button>
                         ) : (
                           <button className="btn" style={{background:'#00ff88', color:'#000', width:100}} disabled={!!activePos || c.lvl > level} onClick={() => {
                             if(balance >= amount) { setBalance(b => b - amount); setActivePos({id: c.id, buyDex: selectedDex}); }
@@ -229,7 +220,7 @@ export default function App() {
         {tab === 'mining' && (
           <div style={{height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
              <div onClick={() => setBalance(b => b + 0.10)} style={{width: 220, height: 220, border: '8px solid #111', borderTopColor: '#00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#00f2ff', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 30px rgba(0,242,255,0.2)'}}>TAP</div>
-             <p className="neon-text" style={{marginTop:30}}>MINING LIQUIDITY...</p>
+             <p className="neon" style={{marginTop:30}}>MINING...</p>
           </div>
         )}
 
@@ -238,13 +229,16 @@ export default function App() {
             <h2 onPointerDown={() => {
               if(admCount + 1 >= 5) setShowAdm(true);
               else setAdmCount(admCount + 1);
-            }} className="neon-text" style={{textAlign:'center', cursor:'pointer'}}>ОПЦИИ</h2>
+            }} className="neon" style={{textAlign:'center', cursor:'pointer', marginBottom:20}}>ОПЦИИ</h2>
+            
             <div className="card" onClick={() => setSoundEnabled(!soundEnabled)} style={{display:'flex', justifyContent:'space-between', cursor:'pointer'}}>
                 <span>ЗВУК</span> <span>{soundEnabled ? 'ON' : 'OFF'}</span>
             </div>
-            <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}} className="card">
-               <div style={{textAlign:'center', color: '#ffcc00'}}>CREATED BY @kriptoalians</div>
-            </a>
+
+            <div className="card" onClick={() => window.open('https://t.me/kriptoalians')} style={{cursor:'pointer', textAlign:'center', borderColor:'#ffcc00'}}>
+               <div style={{fontSize:10, color:'#666', marginBottom:5}}>CREATOR:</div>
+               <div style={{color:'#ffcc00', fontWeight:'bold'}}>@kriptoalians</div>
+            </div>
           </div>
         )}
       </main>
