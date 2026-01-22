@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -75,27 +77,34 @@ export default function App() {
     return () => clearInterval(itv);
   }, [tab, signal]);
 
-  const closeTrade = (coinId) => {
-    const p = activePositions[coinId];
-    if (!p) return;
-    const isWin = signal && p.signalId === signal.id && signal.sellDexId === selectedDex;
-    const pnl = (Number(p.amt) * ((isWin ? Number(p.bonus) : -20) * Number(p.lev)) / 100);
-    
-    setPendingTrades(prev => ({ ...prev, [coinId]: true }));
-    setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
-    
-    setTimeout(() => {
-      setBalance(b => b + Number(p.amt) + pnl);
-      if(isWin) { setXp(x => x + 15); setWinCount(w => w + 1); }
-      setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
-      setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
-      setToast({ msg: isWin ? (lang === 'RU' ? "+15 ОПЫТ" : "+15 XP") : (lang === 'RU' ? "УБЫТОК" : "LOSS"), type: isWin ? 'win' : 'loss' });
-    }, 2000);
+  const handleAction = (coinId) => {
+    const pos = activePositions[coinId];
+    if (pos) {
+      // ЗАКРЫТИЕ СДЕЛКИ
+      const isWin = signal && pos.signalId === signal.id && signal.sellDexId === selectedDex;
+      const pnl = (Number(pos.amt) * ((isWin ? Number(pos.bonus) : -20) * Number(pos.lev)) / 100);
+      
+      setPendingTrades(prev => ({ ...prev, [coinId]: true }));
+      setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
+      
+      setTimeout(() => {
+        setBalance(b => b + Number(pos.amt) + pnl);
+        if(isWin) { setXp(x => x + 15); setWinCount(w => w + 1); }
+        setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
+        setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
+        setToast({ msg: isWin ? (lang === 'RU' ? "+15 ОПЫТ" : "+15 XP") : (lang === 'RU' ? "УБЫТОК" : "LOSS"), type: isWin ? 'win' : 'loss' });
+      }, 1500);
+    } else {
+      // ОТКРЫТИЕ СДЕЛКИ
+      if(tradeAmount > balance || tradeAmount <= 0) return setToast({msg: 'LOW BALANCE', type: 'loss'});
+      setBalance(b => b - tradeAmount);
+      setActivePositions(p => ({ ...p, [coinId]: { amt: tradeAmount, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } }));
+    }
   };
 
   const t = {
-    RU: { mine: 'МАЙНИНГ', trade: 'БИРЖА', logs: 'ИСТОРИЯ', opts: 'ОПЦИИ', prof: 'ПРИБЫЛЬ', buy: 'КУПИТЬ', sell: 'ПРОДАТЬ', back: 'НАЗАД' },
-    EN: { mine: 'MINING', trade: 'EXCHANGE', logs: 'LOGS', opts: 'OPTS', prof: 'PROFIT', buy: 'BUY', sell: 'SELL', back: 'BACK' }
+    RU: { mine: 'МАЙНИНГ', trade: 'БИРЖА', logs: 'ИСТОРИЯ', opts: 'ОПЦИИ', prof: 'ПРИБЫЛЬ', buy: 'КУПИТЬ', sell: 'ЗАКРЫТЬ', back: 'НАЗАД' },
+    EN: { mine: 'MINING', trade: 'EXCHANGE', logs: 'LOGS', opts: 'OPTS', prof: 'PROFIT', buy: 'BUY', sell: 'CLOSE', back: 'BACK' }
   }[lang];
 
   return (
@@ -112,13 +121,13 @@ export default function App() {
         .content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
         .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 8px; }
         .dex-item { background: #0a0a0a; border: 1px solid #222; margin: 8px 10px; padding: 20px; border-radius: 12px; border-left: 5px solid; cursor: pointer; }
-        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; transition: 0.1s; box-shadow: 0 0 15px rgba(0,217,255,0.1); }
-        .trade-terminal { display: flex; flex-direction: column; padding: 15px; background: #000; min-height: 100%; }
+        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; box-shadow: 0 0 15px rgba(0,217,255,0.1); }
         .nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; padding-bottom: env(safe-area-inset-bottom); }
         .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; cursor: pointer; }
         .nav-btn.active { color: var(--neon); }
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .ad-box { background: #111; border: 2px solid var(--win); padding: 30px; border-radius: 20px; text-align: center; }
+        .calc-badge { font-size: 9px; background: #222; padding: 2px 6px; border-radius: 4px; color: var(--win); font-weight: bold; }
       `}</style>
 
       {showAd && (
@@ -153,10 +162,6 @@ export default function App() {
                       <span style={{color:'var(--win)'}}>+{signal.bonus}%</span>
                     </div>
                     <div style={{fontSize: '16px', fontWeight:'bold', margin:'5px 0'}}>{signal.buyDex} → {signal.sellDexName}</div>
-                    {/* КАЛЬКУЛЯТОР ПРОФИТА */}
-                    <div style={{fontSize: '10px', color: '#555', borderTop: '1px solid #222', paddingTop: '5px'}}>
-                      {t.prof} (x{leverage}): <span style={{color: 'var(--win)'}}>+${((tradeAmount * leverage * signal.bonus) / 100).toFixed(2)}</span>
-                    </div>
                   </div>
                 )}
                 {EXCHANGES.map(d => (
@@ -166,7 +171,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <div className="trade-terminal">
+              <div style={{display:'flex', flexDirection:'column', padding:'15px'}}>
                 <button onClick={() => setSelectedDex(null)} style={{background:'#222', border:'none', color:'#fff', padding:'10px', borderRadius:'8px', alignSelf:'flex-start', marginBottom:'15px'}}>{t.back}</button>
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px'}}>
                   <span style={{fontSize:'12px'}}>AMT:</span>
@@ -174,16 +179,27 @@ export default function App() {
                 </div>
                 <div style={{fontSize:'11px', color:'#444', marginBottom:'5px'}}>LEVERAGE: x{leverage}</div>
                 <input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(Number(e.target.value))} style={{width:'100%', marginBottom:'20px'}} />
+                
                 {COINS_DATA.map(c => {
                   const pos = activePositions[c.id];
                   const locked = c.lvl > lvl;
+                  const estProfit = ((tradeAmount * leverage * (signal?.bonus || 0)) / 100).toFixed(2);
+
                   return (
-                    <div key={c.id} style={{display:'flex', justifyContent:'space-between', padding:'15px 0', borderBottom:'1px solid #111', opacity: locked ? 0.3 : 1}}>
-                      <b>{c.id}/USDT</b>
+                    <div key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px 0', borderBottom:'1px solid #111', opacity: locked ? 0.3 : 1}}>
+                      <div>
+                        <div style={{fontWeight:'bold'}}>{c.id}/USDT</div>
+                        {!locked && !pos && signal?.coin === c.id && (
+                          <div className="calc-badge">+{estProfit}$ PROFIT</div>
+                        )}
+                        {pos && <div style={{fontSize:'9px', color:'var(--win)'}}>OPENED</div>}
+                      </div>
+                      
                       {locked ? <span>🔒 L{c.lvl}</span> : 
+                        pendingTrades[c.id] ? <span>...</span> :
                         <button 
-                          style={{background: pos ? 'var(--loss)' : 'var(--win)', color: '#000', border:'none', padding:'10px 20px', borderRadius:'8px', fontWeight:'bold', width:'100px'}}
-                          onClick={() => pos ? closeTrade(c.id) : (tradeAmount <= balance && setBalance(b => b - tradeAmount) && setActivePositions(p => ({ ...p, [c.id]: { amt: tradeAmount, lev: leverage, dex: selectedDex, signalId: signal?.id, bonus: signal?.bonus } })))}
+                          style={{background: pos ? 'var(--loss)' : 'var(--win)', color: '#000', border:'none', padding:'10px 15px', borderRadius:'8px', fontWeight:'bold', minWidth:'90px'}}
+                          onClick={() => handleAction(c.id)}
                         >
                           {pos ? t.sell : t.buy}
                         </button>
