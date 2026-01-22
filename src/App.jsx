@@ -21,7 +21,7 @@ const STRINGS = {
     invest: "СУММА ($)", lev: "ПЛЕЧО", profit: "ПРОФИТ", risk: "РИСК",
     buy: "КУПИТЬ", sell: "ПРОДАТЬ", sync: "СИНХРОНИЗАЦИЯ", 
     lang: "ЯЗЫК", sound: "ЗВУК", fx: "ЭФФЕКТЫ ($)",
-    tutorial: ["Добро пожаловать! На вкладке ФАРМ добывай начальный капитал.", "В ТРЕЙДЕ следи за сигналами: покупай на одной бирже, продавай на другой.", "Повышай уровень, чтобы разблокировать новые монеты и плечо!"],
+    tutorial: ["Добро пожаловать! На вкладке ФАРМ добывай капитал.", "В ТРЕЙДЕ следи за сигналами: покупай на одной бирже, продавай на другой.", "Даже по сигналу рынок может пойти в минус — будь осторожен!"],
     next: "ДАЛЕЕ", start: "ПОНЯЛ!"
   },
   EN: {
@@ -30,7 +30,7 @@ const STRINGS = {
     invest: "INVEST ($)", lev: "LEVERAGE", profit: "PROFIT", risk: "RISK",
     buy: "BUY", sell: "SELL", sync: "SYNCING", 
     lang: "LANG", sound: "SOUND", fx: "CLICK FX ($)",
-    tutorial: ["Welcome! Use FARM tab to get your starting capital.", "In TRADE follow signals: buy on one exchange, sell on another.", "Level up to unlock new coins and higher leverage!"],
+    tutorial: ["Welcome! Use FARM tab to get your capital.", "In TRADE follow signals: buy on one DEX, sell on another.", "Even with a signal, the market can go down — be careful!"],
     next: "NEXT", start: "GOT IT!"
   }
 };
@@ -62,7 +62,6 @@ export default function App() {
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('cfg_snd') !== 'false');
   const [fxEnabled, setFxEnabled] = useState(() => localStorage.getItem('cfg_fx') !== 'false');
   
-  // ОБУЧЕНИЕ
   const [showTut, setShowTut] = useState(() => !localStorage.getItem('st_tut_done'));
   const [tutStep, setTutStep] = useState(0);
 
@@ -89,6 +88,7 @@ export default function App() {
     } else { setDisplayBalance(balance); }
   }, [balance, displayBalance]);
 
+  // Генерация нового сигнала (без повторов)
   useEffect(() => {
     let timer;
     if (tab === 'trade' && !signal && !activePos) {
@@ -122,25 +122,31 @@ export default function App() {
     }
   };
 
+  // ТА САМАЯ ФУНКЦИЯ ПРОДАЖИ С НОВЫМ ШАНСОМ 72%
   const sellPos = () => {
     if (isProcessing) return;
     setIsProcessing(true);
     setNetTimer(8);
+    
     const itv = setInterval(() => {
       setNetTimer(p => {
         if (p <= 1) {
           clearInterval(itv);
           const isCorrect = signal && activePos.id === signal.coin && activePos.buyDex === signal.buyDex && selectedDex === signal.sellDex;
-          const win = Math.random() < (isCorrect ? 0.9 : 0.2);
+          
+          // Шанс 72% если по сигналу, иначе 20%
+          const winChance = isCorrect ? 0.72 : 0.20; 
+          const win = Math.random() < winChance;
+          
           let pnl;
           if (win) {
             pnl = activePos.amount * activePos.leverage * (Math.random() * 0.015 + 0.015);
             setTradesInLevel(t => (t + 1 >= neededTrades) ? 0 : t + 1);
             if (tradesInLevel + 1 >= neededTrades) setLevel(l => l + 1);
           } else {
-            pnl = -(activePos.amount * activePos.leverage * (Math.random() * 0.01 + 0.005));
+            pnl = -(activePos.amount * activePos.leverage * (Math.random() * 0.015 + 0.01));
             setIsBurning(true); setTimeout(() => setIsBurning(false), 800);
-            setTradesInLevel(t => Math.max(0, t - 1));
+            setTradesInLevel(t => Math.max(0, t - 1)); 
           }
           setBalance(b => Math.max(0, b + activePos.amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
@@ -176,7 +182,6 @@ export default function App() {
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-15, top: c.y-25}}>$</div>)}
 
-      {/* ОБУЧЕНИЕ */}
       {showTut && (
         <div className="tut-overlay">
           <div className="card" style={{textAlign:'center', width:'100%'}}>
@@ -192,7 +197,6 @@ export default function App() {
         </div>
       )}
 
-      {/* РЕЗУЛЬТАТ СДЕЛКИ */}
       {result && (
         <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.95)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
           <div className="card" style={{borderColor: result.win ? '#00ff88' : '#ff0055', width: '100%', textAlign: 'center'}}>
