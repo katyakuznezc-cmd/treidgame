@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -57,6 +55,14 @@ export default function App() {
     }
   }, [balance, xp, winCount, history, lvl, userId]);
 
+  // Скрытие уведомления через 5 секунд
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const generateSignal = () => {
     const avail = COINS_DATA.filter(c => c.lvl <= lvl);
     const coin = avail[Math.floor(Math.random() * avail.length)];
@@ -80,7 +86,7 @@ export default function App() {
   const handleAction = (coinId) => {
     const pos = activePositions[coinId];
     if (pos) {
-      // ЗАКРЫТИЕ СДЕЛКИ
+      // ЗАКРЫТИЕ СДЕЛКИ (10 секунд)
       const isWin = signal && pos.signalId === signal.id && signal.sellDexId === selectedDex;
       const pnl = (Number(pos.amt) * ((isWin ? Number(pos.bonus) : -20) * Number(pos.lev)) / 100);
       
@@ -92,8 +98,15 @@ export default function App() {
         if(isWin) { setXp(x => x + 15); setWinCount(w => w + 1); }
         setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
         setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
-        setToast({ msg: isWin ? (lang === 'RU' ? "+15 ОПЫТ" : "+15 XP") : (lang === 'RU' ? "УБЫТОК" : "LOSS"), type: isWin ? 'win' : 'loss' });
-      }, 1500);
+        
+        // Уведомление по центру
+        setToast({ 
+            msg: isWin 
+                ? (lang === 'RU' ? `ПРИБЫЛЬ: +$${pnl.toFixed(2)}` : `PROFIT: +$${pnl.toFixed(2)}`) 
+                : (lang === 'RU' ? `УБЫТОК: -$${Math.abs(pnl).toFixed(2)}` : `LOSS: -$${Math.abs(pnl).toFixed(2)}`), 
+            type: isWin ? 'win' : 'loss' 
+        });
+      }, 10000); // 10 секунд
     } else {
       // ОТКРЫТИЕ СДЕЛКИ
       if(tradeAmount > balance || tradeAmount <= 0) return setToast({msg: 'LOW BALANCE', type: 'loss'});
@@ -113,7 +126,7 @@ export default function App() {
         :root { --win: #00ff88; --loss: #ff3366; --neon: #00d9ff; --panel: #121214; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; background: #000; color: #eee; font-family: sans-serif; overflow: hidden; }
-        .app-main { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #000; }
+        .app-main { height: 100vh; width: 100vw; display: flex; flex-direction: column; background: #000; position: relative; }
         .header { padding: 15px; background: var(--panel); border-bottom: 1px solid #222; }
         .balance { color: var(--win); font-size: 24px; font-weight: 800; }
         .xp-bar { height: 4px; background: #222; margin-top: 10px; border-radius: 2px; }
@@ -121,10 +134,21 @@ export default function App() {
         .content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
         .signal-box { background: #00121a; border: 1px solid var(--neon); margin: 10px; padding: 12px; border-radius: 8px; }
         .dex-item { background: #0a0a0a; border: 1px solid #222; margin: 8px 10px; padding: 20px; border-radius: 12px; border-left: 5px solid; cursor: pointer; }
-        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; box-shadow: 0 0 15px rgba(0,217,255,0.1); }
+        .sphere { width: 140px; height: 140px; border: 3px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 40px auto; cursor: pointer; box-shadow: 0 0 15px rgba(0,217,255,0.1); transition: 0.1s; }
+        .sphere:active { transform: scale(0.9); }
         .nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; padding-bottom: env(safe-area-inset-bottom); }
         .nav-btn { flex: 1; background: none; border: none; color: #444; font-size: 10px; font-weight: bold; cursor: pointer; }
         .nav-btn.active { color: var(--neon); }
+        
+        /* ЦЕНТРАЛЬНОЕ УВЕДОМЛЕНИЕ */
+        .center-toast { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            padding: 30px; border-radius: 20px; z-index: 10000; text-align: center;
+            min-width: 250px; animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 40px rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1);
+        }
+        @keyframes pop { from { transform: translate(-50%, -50%) scale(0.5); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
         .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .ad-box { background: #111; border: 2px solid var(--win); padding: 30px; border-radius: 20px; text-align: center; }
         .calc-badge { font-size: 9px; background: #222; padding: 2px 6px; border-radius: 4px; color: var(--win); font-weight: bold; }
@@ -140,7 +164,21 @@ export default function App() {
         </div>
       )}
 
-      {toast && <div style={{position:'fixed', top:'20px', left:'50%', transform:'translateX(-50%)', padding:'12px 25px', borderRadius:'8px', zIndex:10000, fontWeight:'bold', background: toast.type==='win'?'var(--win)':'var(--loss)', color:'#000'}}>{toast.msg}</div>}
+      {/* УВЕДОМЛЕНИЕ ПО ЦЕНТРУ */}
+      {toast && (
+        <div className="center-toast" style={{
+            background: toast.type === 'win' ? 'var(--win)' : 'var(--loss)',
+            color: '#000'
+        }}>
+            <div style={{fontSize: '12px', opacity: 0.7, marginBottom: '5px', fontWeight: 'bold'}}>
+                {toast.type === 'win' ? 'SUCCESS' : 'FAILED'}
+            </div>
+            <div style={{fontSize: '22px', fontWeight: '900'}}>{toast.msg}</div>
+            <div style={{fontSize: '10px', marginTop: '10px', opacity: 0.6}}>
+                {lang === 'RU' ? 'Закроется через 5 сек' : 'Closing in 5s'}
+            </div>
+        </div>
+      )}
 
       <header className="header">
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
@@ -192,11 +230,11 @@ export default function App() {
                         {!locked && !pos && signal?.coin === c.id && (
                           <div className="calc-badge">+{estProfit}$ PROFIT</div>
                         )}
-                        {pos && <div style={{fontSize:'9px', color:'var(--win)'}}>OPENED</div>}
+                        {pos && <div style={{fontSize:'9px', color:'var(--win)'}}>PROCESSING... (10s)</div>}
                       </div>
                       
                       {locked ? <span>🔒 L{c.lvl}</span> : 
-                        pendingTrades[c.id] ? <span>...</span> :
+                        pendingTrades[c.id] ? <span style={{fontSize: '10px'}}>⏳ ...</span> :
                         <button 
                           style={{background: pos ? 'var(--loss)' : 'var(--win)', color: '#000', border:'none', padding:'10px 15px', borderRadius:'8px', fontWeight:'bold', minWidth:'90px'}}
                           onClick={() => handleAction(c.id)}
