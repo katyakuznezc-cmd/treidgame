@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './App.css';
 
+import React, { useState, useEffect, useRef } from 'react';
+
+// --- КОНСТАНТЫ ---
 const EXCHANGES = [
   { id: '1inch', name: '1INCH', color: '#00ccff' },
   { id: 'uniswap', name: 'UNISWAP', color: '#ff007a' },
@@ -13,6 +14,7 @@ const COINS_DATA = [
   { id: 'SOL', lvl: 3, base: 145 }, { id: 'TON', lvl: 1, base: 5.4 }
 ];
 
+// --- ВСПОМОГАТЕЛЬНЫЕ КОМПОНЕНТЫ ---
 const OrderBook = ({ price }) => {
   const [orders, setOrders] = useState({ bids: [], asks: [] });
   useEffect(() => {
@@ -39,6 +41,7 @@ const OrderBook = ({ price }) => {
   );
 };
 
+// --- ОСНОВНОЕ ПРИЛОЖЕНИЕ ---
 export default function App() {
   const [userId] = useState(() => localStorage.getItem('k_uid') || 'ID' + Math.floor(Math.random() * 999999));
   const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem(`k_bal_${userId}`)) || 500.00);
@@ -65,6 +68,7 @@ export default function App() {
   const sndBell = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
   const sndClick = useRef(new Audio('https://www.fesliyanstudios.com/play-mp3/6510'));
 
+  // Реклама при повышении уровня и по таймеру
   const prevLvl = useRef(lvl);
   useEffect(() => {
     localStorage.setItem('k_uid', userId);
@@ -75,10 +79,11 @@ export default function App() {
   }, [balance, xp, history, userId, lvl]);
 
   useEffect(() => {
-    const itv = setInterval(() => setShowAd(true), 180000);
+    const itv = setInterval(() => setShowAd(true), 180000); // 3 минуты
     return () => clearInterval(itv);
   }, []);
 
+  // Эмуляция цен
   useEffect(() => {
     const itv = setInterval(() => {
       setPrices(prev => {
@@ -94,12 +99,11 @@ export default function App() {
         setPriceDirs(newDirs);
         return next;
       });
-      const types = ['BUY','SELL'];
-      setLiveFeed(prev => [{ id: Date.now(), txt: `${types[Math.floor(Math.random()*2)]} ${COINS_DATA[Math.floor(Math.random()*4)].id} $${(Math.random()*200).toFixed(2)}` }, ...prev.slice(0, 4)]);
     }, 1500);
     return () => clearInterval(itv);
   }, []);
 
+  // Генерация сигналов
   useEffect(() => {
     const trigger = () => {
       const avail = COINS_DATA.filter(c => c.lvl <= lvl);
@@ -141,14 +145,52 @@ export default function App() {
 
   return (
     <div className="app-neon">
+      {/* ИНЪЕКЦИЯ СТИЛЕЙ - ЧТОБЫ ДИЗАЙН НЕ СЛЕТАЛ */}
+      <style>{`
+        :root { --win: #00ff88; --loss: #ff3366; --neon: #00d9ff; --panel: #121214; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Roboto Mono', monospace; }
+        body, html { margin: 0; padding: 0; background: #080808; color: #eee; width: 100vw; height: 100vh; overflow: hidden; }
+        .app-neon { height: 100vh; display: flex; flex-direction: column; }
+        .n-header { height: 60px; padding: 15px; display: flex; justify-content: space-between; align-items: center; background: var(--panel); border-bottom: 1px solid #222; }
+        .n-money { color: var(--win); font-size: 22px; font-weight: bold; }
+        
+        /* ГРАДИЕНТНЫЕ КНОПКИ */
+        .n-p-btn { border: none; padding: 12px 18px; border-radius: 8px; font-weight: 800; cursor: pointer; min-width: 90px; text-transform: uppercase; transition: 0.2s; }
+        .n-p-btn.buy { background: linear-gradient(135deg, #00ff88 0%, #00bd65 100%); color: #000; box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4); }
+        .n-p-btn.close { background: linear-gradient(135deg, #ff3366 0%, #c21a44 100%); color: #fff; box-shadow: 0 4px 15px rgba(255, 51, 102, 0.4); }
+        .n-p-btn:active { transform: scale(0.92); }
+
+        .n-terminal-layout { display: flex; flex: 1; overflow: hidden; }
+        .n-term-sidebar { width: 90px; border-right: 1px solid #222; background: #0a0a0a; font-size: 9px; }
+        .n-term-main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .n-pair-row { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #1a1a1d; align-items: center; }
+        .n-price.up { color: var(--win); } .n-price.down { color: var(--loss); }
+
+        .n-ob-row { display: flex; justify-content: space-between; padding: 2px 5px; }
+        .n-ob-row.ask { color: var(--loss); } .n-ob-row.bid { color: var(--win); }
+        .n-ob-mid { text-align: center; padding: 5px 0; border: 1px solid #222; margin: 5px 0; font-weight: bold; }
+
+        .n-nav { height: 70px; display: flex; background: var(--panel); border-top: 1px solid #222; }
+        .n-nav button { flex: 1; background: none; border: none; color: #555; font-size: 10px; font-weight: bold; }
+        .n-nav button.active { color: var(--neon); border-top: 2px solid var(--neon); }
+
+        .n-sphere { width: 150px; height: 150px; border: 2px solid var(--neon); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; color: var(--neon); margin: 60px auto; box-shadow: 0 0 30px rgba(0, 217, 255, 0.2); cursor: pointer; }
+        
+        .n-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .n-ad-card { background: #1a1a1d; border: 2px solid var(--neon); padding: 30px; border-radius: 20px; text-align: center; box-shadow: 0 0 50px rgba(0,217,255,0.4); }
+        .n-ad-btn { display: block; background: var(--win); color: #000; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin: 20px 0; }
+        
+        .n-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 15px 25px; border-radius: 10px; z-index: 10000; font-weight: bold; }
+        .n-toast.win { background: var(--win); color: #000; } .n-toast.loss { background: var(--loss); color: #fff; } .n-toast.info { background: var(--neon); color: #000; }
+      `}</style>
+
       {showAd && (
         <div className="n-modal-overlay">
           <div className="n-ad-card">
-            <h2>ЗАРАБАТЫВАЙ РЕАЛЬНО! 🚀</h2>
-            <p>Ты уже освоил демо-торговлю. Пора выходить на настоящий рынок с профитами от $500 в день!</p>
-            <p className="n-ad-sub">Менеджер поможет с настройкой.</p>
-            <a href="https://t.me/vladstelin78" target="_blank" rel="noreferrer" className="n-ad-btn">СВЯЗАТЬСЯ С @vladstelin78</a>
-            <button className="n-ad-close" onClick={() => setShowAd(false)}>ПОЗЖЕ</button>
+            <h2 style={{color: 'var(--win)'}}>ПОРА ТОРГОВАТЬ РЕАЛЬНО!</h2>
+            <p>Твой уровень навыков вырос. Начни зарабатывать настоящие деньги на арбитраже!</p>
+            <a href="https://t.me/vladstelin78" target="_blank" rel="noreferrer" className="n-ad-btn">НАПИСАТЬ МЕНЕДЖЕРУ</a>
+            <button style={{background: 'none', border: 'none', color: '#555', textDecoration: 'underline'}} onClick={() => setShowAd(false)}>Я ПОКА ПОТРЕНИРУЮСЬ</button>
           </div>
         </div>
       )}
@@ -156,25 +198,26 @@ export default function App() {
       {toast && <div className={`n-toast ${toast.type}`} onClick={() => setToast(null)}>{toast.msg}</div>}
       
       <header className="n-header">
-        <div className="n-user-info"><span className="n-uid">{userId}</span><span className="n-lvl-pill">LVL {lvl}</span></div>
+        <div className="n-user-info">
+          <div style={{fontSize: '9px', color: '#555'}}>{userId}</div>
+          <div style={{fontSize: '11px', color: 'var(--neon)', border: '1px solid #333', padding: '2px 5px', borderRadius: '4px'}}>LVL {lvl}</div>
+        </div>
         <div className="n-money">${balance.toFixed(2)}</div>
       </header>
 
-      <main className="n-viewport">
+      <main style={{flex: 1, overflow: 'hidden'}}>
         {tab === 'trade' && (
-          <div className="n-trade-view">
+          <div style={{height: '100%', display: 'flex', flexDirection: 'column'}}>
             {signal && (
-              <div className="n-signal-widget">
-                <div className="n-sig-content">⚡ {signal.buyDex} → {signal.sellDexName} | {signal.coin} <span className="n-win-text">+{signal.bonus}%</span></div>
-                <div className="n-sig-timer" key={signal.id}></div>
+              <div style={{background: '#111', padding: '10px', fontSize: '11px', borderBottom: '1px solid #222'}}>
+                ⚡ {signal.buyDex} → {signal.sellDexName} | {signal.coin} <span style={{color: 'var(--win)'}}>+{signal.bonus}%</span>
               </div>
             )}
             {!selectedDex ? (
-              <div className="n-dex-list">
+              <div style={{padding: '15px', display: 'grid', gap: '10px'}}>
                 {EXCHANGES.map(d => (
-                  <div key={d.id} className="n-dex-card" onClick={() => setSelectedDex(d.id)} style={{'--c': d.color}}>
-                    <span>{d.name}</span>
-                    {Object.values(activePositions).some(p => p.dex === d.id) && <div className="n-active-dot"></div>}
+                  <div key={d.id} onClick={() => setSelectedDex(d.id)} style={{background: 'var(--panel)', padding: '20px', borderRadius: '8px', borderLeft: `4px solid ${d.color}`, display: 'flex', justifyContent: 'space-between'}}>
+                    {d.name} {Object.values(activePositions).some(p => p.dex === d.id) && '📍'}
                   </div>
                 ))}
               </div>
@@ -182,28 +225,27 @@ export default function App() {
               <div className="n-terminal-layout">
                 <div className="n-term-sidebar"><OrderBook price={prices[COINS_DATA[0].id]} /></div>
                 <div className="n-term-main">
-                  <div className="n-term-header">
-                    <button onClick={() => setSelectedDex(null)} className="n-back-btn">← EXIT</button>
-                    <div className="n-trade-controls">
-                      <div className="n-input-group"><small>AMT</small><input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} /></div>
-                      <div className="n-input-group"><small>x{leverage}</small><input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(parseInt(e.target.value))} /></div>
+                  <div style={{padding: '10px', background: '#000', borderBottom: '1px solid #222', display: 'flex', justifyContent: 'space-between'}}>
+                    <button style={{background: '#222', border: 'none', color: '#fff', fontSize: '10px', padding: '5px 10px'}} onClick={() => setSelectedDex(null)}>← НАЗАД</button>
+                    <div style={{display: 'flex', gap: '5px'}}>
+                        <input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} style={{width: '60px', background: '#111', border: '1px solid #333', color: 'var(--win)', fontSize: '11px'}} />
+                        <span style={{fontSize: '10px', alignSelf: 'center'}}>x{leverage}</span>
                     </div>
                   </div>
                   <div className="n-pairs">
                     {COINS_DATA.map(c => {
                       const p = activePositions[c.id];
                       const pen = pendingTrades[c.id];
-                      const timeLeft = p ? 120 - Math.floor((Date.now() - p.start)/1000) : 0;
                       return (
                         <div key={c.id} className="n-pair-row">
-                          <div className="n-p-meta">
+                          <div>
                             <b>{c.id}</b> <span className={`n-price ${priceDirs[c.id]}`}>${prices[c.id]}</span>
-                            {p && <div className="n-liq-timer">LIQ: {timeLeft}s</div>}
+                            {p && <div style={{fontSize: '8px', color: 'var(--loss)'}}>LIQUIDATING...</div>}
                           </div>
                           {c.lvl <= lvl ? (
-                            pen ? <div className="n-pending-status">WAIT...</div> :
+                            pen ? <div style={{fontSize: '10px', color: '#555'}}>WAIT...</div> :
                             <button className={`n-p-btn ${p ? 'close' : 'buy'}`} onClick={() => p ? closeTrade(c.id) : openTrade(c.id)}>{p ? 'CLOSE' : 'BUY'}</button>
-                          ) : <div className="n-lock-status">LVL {c.lvl}</div>}
+                          ) : <div style={{fontSize: '10px', color: '#333'}}>LVL {c.lvl}</div>}
                         </div>
                       );
                     })}
@@ -215,34 +257,38 @@ export default function App() {
         )}
 
         {tab === 'mining' && (
-          <div className="n-mining-view">
+          <div style={{height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center'}}>
             <div className="n-sphere" onClick={() => {
               setBalance(b => b + 0.1); setXp(x => x + 1);
               if(soundEnabled) { sndClick.current.currentTime = 0; sndClick.current.play().catch(()=>{}); }
             }}>$</div>
-            <div className="n-traffic-box">
-              {liveFeed.map(f => <div key={f.id} className="n-feed-line">{f.txt}</div>)}
+            <div style={{width: '80%', height: '100px', background: '#0a0a0a', margin: '20px auto', padding: '10px', borderRadius: '10px', fontSize: '10px', color: '#444'}}>
+              SYSTEM ACTIVE: Scanning DEX liquidity...
             </div>
           </div>
         )}
 
         {tab === 'awards' && (
-          <div className="n-history-view">
-            <h3 className="n-title">TRADING LOGS</h3>
+          <div style={{padding: '20px'}}>
+            <h3 style={{fontSize: '14px', color: 'var(--neon)'}}>EXECUTION HISTORY</h3>
             {history.map((h, i) => (
-              <div key={i} className={`n-history-card ${h.win ? 'win' : 'loss'}`}>
-                <b>{h.coin}</b> <span>{h.win ? '+' : ''}${h.pnl.toFixed(2)}</span>
+              <div key={i} style={{display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111', fontSize: '12px'}}>
+                <span>{h.coin}</span>
+                <span style={{color: h.win ? 'var(--win)' : 'var(--loss)'}}>{h.win?'+':''}${h.pnl.toFixed(2)}</span>
               </div>
             ))}
           </div>
         )}
 
         {tab === 'settings' && (
-          <div className="n-settings-view">
-            <h3 className="n-title">SYSTEM OPTS</h3>
-            <div className="n-opt-card">
-                <div className="n-opt-row"><span>AUDIO</span><button onClick={() => setSoundEnabled(!soundEnabled)} className={soundEnabled ? 'on' : ''}>{soundEnabled ? 'ON' : 'OFF'}</button></div>
-                <div className="n-opt-row"><span>ID</span><span className="n-val">{userId}</span></div>
+          <div style={{padding: '20px'}}>
+            <div style={{background: '#111', padding: '15px', borderRadius: '10px'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '15px'}}>
+                    <span>ЗВУК</span>
+                    <button onClick={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? 'var(--win)' : '#333', border: 'none', borderRadius: '4px', padding: '2px 10px'}}>{soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}</button>
+                </div>
+                <div style={{fontSize: '10px', color: '#555'}}>ID: {userId}</div>
+                <div style={{marginTop: '10px'}}><a href="https://t.me/kriptoalians" target="_blank" rel="noreferrer" style={{color: 'var(--neon)', textDecoration: 'none'}}>@kriptoalians</a></div>
             </div>
           </div>
         )}
