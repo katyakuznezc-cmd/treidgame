@@ -21,6 +21,7 @@ export default function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('st_bal')) || 1000.00);
   const [level, setLevel] = useState(() => Number(localStorage.getItem('st_lvl')) || 1);
   const [tradesInLevel, setTradesInLevel] = useState(() => Number(localStorage.getItem('st_prog')) || 0);
+  const [totalTrades, setTotalTrades] = useState(() => Number(localStorage.getItem('st_total')) || 0);
   const [tab, setTab] = useState('trade');
   const [selectedDex, setSelectedDex] = useState(null);
   const [amount, setAmount] = useState(100);
@@ -34,13 +35,11 @@ export default function App() {
   const [lvlUpModal, setLvlUpModal] = useState(false);
   const [clicks, setClicks] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [isShaking, setIsShaking] = useState(false);
 
   const clickSound = useRef(null);
-
-  // СЛОЖНОСТЬ: Количество необходимых сделок растет с каждым уровнем
   const getNeededTrades = (lvl) => lvl * 5;
   const neededTrades = getNeededTrades(level);
-
   const getMaxLev = () => Math.min(level * 10, 100);
 
   const calcProfit = () => {
@@ -52,11 +51,12 @@ export default function App() {
     localStorage.setItem('st_bal', balance.toFixed(2));
     localStorage.setItem('st_lvl', level);
     localStorage.setItem('st_prog', tradesInLevel);
+    localStorage.setItem('st_total', totalTrades);
     if (!clickSound.current) {
       clickSound.current = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
       clickSound.current.volume = 0.05;
     }
-  }, [balance, level, tradesInLevel]);
+  }, [balance, level, tradesInLevel, totalTrades]);
 
   useEffect(() => {
     if (tab === 'trade' && !signal && !activeTrade && !isSyncing) {
@@ -67,10 +67,14 @@ export default function App() {
         const bDex = DEX[Math.floor(Math.random() * DEX.length)].name;
         let sDex = DEX[Math.floor(Math.random() * DEX.length)].name;
         while(sDex === bDex) sDex = DEX[Math.floor(Math.random() * DEX.length)].name;
-        setSignal({
-          coin: coin.id, buyDex: bDex, sellDex: sDex,
-          perc: (Math.random() * (4.5 - 2.5) + 2.5).toFixed(2)
-        });
+        
+        // Шанс на "ОБВАЛ РЫНКА" (10%)
+        const isCrash = Math.random() < 0.10;
+        const perc = isCrash 
+            ? (Math.random() * (60 - 40) + 40).toFixed(2) 
+            : (Math.random() * (4.5 - 2.5) + 2.5).toFixed(2);
+        
+        setSignal({ coin: coin.id, buyDex: bDex, sellDex: sDex, perc, isCrash });
         setIsAnalyzing(false);
       }, 3000);
       return () => clearTimeout(timer);
@@ -99,8 +103,13 @@ export default function App() {
 
   const finalizeTrade = () => {
     const isCorrectDex = selectedDex === signal.sellDex;
-    const isWin = isCorrectDex && Math.random() < 0.92;
+    // Если обвал рынка, шанс на успех ниже (60% против 92%)
+    const winChance = signal.isCrash ? 0.60 : 0.92;
+    const isWin = isCorrectDex && Math.random() < winChance;
     let pnl;
+    
+    setTotalTrades(t => t + 1);
+
     if (isWin) {
       pnl = parseFloat(calcProfit());
       const nextProg = tradesInLevel + 1;
@@ -108,20 +117,23 @@ export default function App() {
         setLevel(l => l + 1); setTradesInLevel(0); setLvlUpModal(true);
       } else { setTradesInLevel(nextProg); }
     } else {
-      pnl = -(activeTrade.amount * activeTrade.leverage * (isCorrectDex ? 0.02 : 0.08));
+      pnl = -(activeTrade.amount * activeTrade.leverage * (isCorrectDex ? 0.05 : 0.15));
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
     }
+    
     setBalance(b => b + activeTrade.amount + pnl);
-    setResult({ win: isWin, val: Math.abs(pnl).toFixed(2), reason: !isCorrectDex ? "WRONG DEX" : "" });
+    setResult({ win: isWin, val: Math.abs(pnl).toFixed(2), isCrash: signal?.isCrash });
     setIsSyncing(false); setActiveTrade(null); setSignal(null); setSelectedDex(null);
   };
 
   const handleGlobalClick = (e) => {
     if (soundEnabled && clickSound.current) {
-      clickSound.current.currentTime = 0;
-      clickSound.current.play().catch(() => {});
+        clickSound.current.currentTime = 0;
+        clickSound.current.play().catch(() => {});
     }
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) || 0;
-    const y = (e.clientY || (e.touches && e.touches[0].clientY)) || 0;
+    const x = e.clientX || (e.touches && e.touches[0].clientX);
+    const y = e.clientY || (e.touches && e.touches[0].clientY);
     if (x) {
       const id = Date.now();
       setClicks(prev => [...prev, { id, x, y }]);
@@ -130,13 +142,21 @@ export default function App() {
   };
 
   return (
-    <div onPointerDown={handleGlobalClick} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', position:'relative'}}>
+    <div onPointerDown={handleGlobalClick} className={`${isShaking ? 'shake-effect' : ''} ${signal?.isCrash ? 'crash-bg' : ''}`} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', position:'relative', transition: 'background 0.5s'}}>
       <style>{`
         .card { background:#0a0a0a; border:1px solid #00f2ff; border-radius:12px; padding:12px; margin-bottom:10px; }
         .neon { color:#00f2ff; text-shadow:0 0 10px #00f2ff; }
         .btn { width:100%; padding:15px; border-radius:10px; border:none; font-weight:bold; cursor:pointer; text-transform:uppercase; transition: 0.2s; }
         .dollar { position: absolute; color: #00ff88; font-weight: 900; pointer-events: none; animation: pop 0.6s forwards; z-index: 9999; font-size: 28px; }
         @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
+        
+        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(3px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(3px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(1px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
+        .shake-effect { animation: shake 0.5s; }
+        
+        .crash-bg { background: radial-gradient(circle, #200 0%, #000 100%) !important; }
+        .crash-card { border-color: #ff0000 !important; box-shadow: 0 0 15px #ff0000; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.7; } }
+
         input { background: #000; border: 1px solid #333; color: #00f2ff; padding: 10px; border-radius: 8px; text-align: center; width:100%; font-size: 16px; outline:none; }
         .coin-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; border-bottom: 1px solid #111; }
         .progress-container { width: 100%; height: 8px; background: #111; border-radius: 4px; overflow: hidden; margin-top: 6px; border: 1px solid #222; }
@@ -145,15 +165,15 @@ export default function App() {
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-10, top: c.y-20}}>$</div>)}
 
-      <header style={{padding:15, borderBottom:'1px solid #1a1a1a', background: '#050505'}}>
+      <header style={{padding:15, borderBottom:'1px solid #1a1a1a', background: 'transparent'}}>
         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div className="neon" style={{fontSize:24, fontWeight:'bold'}}>${balance.toLocaleString(undefined, {minimumFractionDigits:2})}</div>
             <div style={{background:'#00f2ff', color:'#000', padding:'3px 10px', borderRadius:12, fontSize:10, fontWeight:'900'}}>LVL {level}</div>
         </div>
         <div style={{marginTop:12}}>
             <div style={{display:'flex', justifyContent:'space-between', fontSize:10, fontWeight:'bold', marginBottom:4}}>
-                <span style={{color:'#aaa'}}>ПРОГРЕСС (СЛОЖНОСТЬ: {neededTrades})</span>
-                <span className="neon">{tradesInLevel} / {neededTrades} СДЕЛОК</span>
+                <span style={{color:'#aaa'}}>ПРОГРЕСС</span>
+                <span className="neon">{tradesInLevel} / {neededTrades} TRADES</span>
             </div>
             <div className="progress-container">
                 <div className="progress-fill" style={{width: `${(tradesInLevel/neededTrades)*100}%`}}></div>
@@ -164,41 +184,38 @@ export default function App() {
       <main style={{flex:1, overflowY:'auto', padding:15, paddingBottom:80}}>
         {tab === 'trade' && (
           <>
-            <div className="card" onClick={() => openLink('https://t.me/vladstelin78')} style={{borderColor: '#ffcc00', background: 'rgba(255,204,0,0.1)', textAlign:'center', cursor:'pointer', padding: 8}}>
-              <div style={{fontSize:11, color:'#ffcc00', fontWeight:'bold'}}>SUPPORT: @vladstelin78</div>
-            </div>
-
-            <div className="card" style={{textAlign:'center', minHeight: 80, display:'flex', alignItems:'center', justifyContent:'center', background: '#080808'}}>
-                {isAnalyzing ? <div className="neon">АНАЛИЗ...</div> : 
+            <div className={`card ${signal?.isCrash ? 'crash-card' : ''}`} style={{textAlign:'center', minHeight: 90, display:'flex', alignItems:'center', justifyContent:'center', background: '#080808'}}>
+                {isAnalyzing ? <div className="neon" style={{fontSize:12}}>ПОИСК ОКНА...</div> : 
                 signal ? (<div>
-                    <div style={{fontSize:18, fontWeight:'bold', color:'#00ff88'}}>{signal.coin} <span style={{fontSize:12}}>+{signal.perc}%</span></div>
-                    <div style={{fontSize:11, color:'#aaa'}}>{signal.buyDex} → {signal.sellDex}</div>
-                </div>) : <div style={{color:'#444'}}>WAITING...</div>}
+                    {signal.isCrash && <div style={{fontSize:10, color:'#ff0000', fontWeight:'bold', marginBottom:4}}>⚠️ ОБВАЛ РЫНКА (ВЫСОКИЙ РИСК) ⚠️</div>}
+                    <div style={{fontSize:20, fontWeight:'bold', color: signal.isCrash ? '#ff0000' : '#00ff88'}}>{signal.coin} <span style={{fontSize:14}}>+{signal.perc}%</span></div>
+                    <div style={{fontSize:11, color:'#aaa', marginTop:4}}>{signal.buyDex} → {signal.sellDex}</div>
+                </div>) : <div style={{color:'#444'}}>АНАЛИЗ...</div>}
             </div>
 
             {!selectedDex ? (
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
                 {DEX.map(d => (
-                   <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer', margin:0, textAlign:'center', padding:'20px 10px'}}>
+                   <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{cursor:'pointer', margin:0, textAlign:'center', padding:'25px 10px'}}>
                       <div style={{fontSize:14, fontWeight:'bold'}}>{d.name}</div>
-                      <div style={{fontSize:8, color:'#00ff88'}}>ACTIVE</div>
+                      <div style={{fontSize:8, color:'#00ff88', marginTop:5}}>LIVE</div>
                    </div>
                 ))}
               </div>
             ) : (
               <div>
-                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom:12, fontSize:12, cursor:'pointer'}}>← К БИРЖАМ</div>
+                <div onClick={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom:12, fontSize:12, cursor:'pointer'}}>← БИРЖИ</div>
                 
                 <div className="card" style={{background: '#000'}}>
                   <div style={{display:'flex', gap:10, marginBottom:10}}>
-                    <div style={{flex:1}}><small style={{fontSize:9, color:'#555'}}>СУММА</small><input type="number" disabled={activeTrade} value={amount} onChange={e=>setAmount(Number(e.target.value))} /></div>
+                    <div style={{flex:1}}><small style={{fontSize:9, color:'#555'}}>СУММА $</small><input type="number" disabled={activeTrade} value={amount} onChange={e=>setAmount(Number(e.target.value))} /></div>
                     <div style={{flex:1}}><small style={{fontSize:9, color:'#555'}}>ПЛЕЧО (MAX x{getMaxLev()})</small><input type="number" disabled={activeTrade} value={leverage} onChange={e=>{
                       let v = Number(e.target.value); if(v > getMaxLev()) v = getMaxLev(); setLeverage(v);
                     }} /></div>
                   </div>
                   <div style={{display:'flex', justifyContent:'space-between', padding: '0 5px'}}>
-                      <div style={{fontSize:10, color:'#aaa'}}>КАЛЬКУЛЯТОР ПРИБЫЛИ:</div>
-                      <div style={{fontSize:10, color:'#00ff88', fontWeight:'bold'}}>+${calcProfit()}</div>
+                      <div style={{fontSize:10, color:'#aaa'}}>ОЖИДАЕМЫЙ ПРОФИТ:</div>
+                      <div style={{fontSize:11, color: signal?.isCrash ? '#ff0000' : '#00ff88', fontWeight:'bold'}}>+${calcProfit()}</div>
                   </div>
                 </div>
 
@@ -206,7 +223,7 @@ export default function App() {
                   {COINS_DATA.map(c => {
                     const isLocked = c.lvl > level;
                     return (
-                      <div key={c.id} className={`coin-row ${isLocked ? 'locked-row' : ''}`} style={{opacity: isLocked ? 0.2 : 1}}>
+                      <div key={c.id} className="coin-row" style={{opacity: isLocked ? 0.2 : 1}}>
                         <div style={{flex:1}}>
                           <div style={{fontWeight:'bold', fontSize:14}}>{c.id}</div>
                           <div style={{fontSize:11, color: '#00f2ff'}}>${c.base.toFixed(2)}</div>
@@ -218,7 +235,7 @@ export default function App() {
                             </button>
                           ) : (
                             <button className="btn" 
-                              style={{padding: '10px', background: isLocked ? '#111' : '#00ff88', color: '#000', fontSize: 10}} 
+                              style={{padding: '10px', background: isLocked ? '#111' : (signal?.isCrash ? '#ff0000' : '#00ff88'), color: isLocked ? '#555' : '#000', fontSize: 10}} 
                               disabled={isLocked || activeTrade} onClick={() => buyCoin(c.id)}>
                               {isLocked ? `🔒 LVL ${c.lvl}` : 'BUY'}
                             </button>
@@ -236,6 +253,10 @@ export default function App() {
         {tab === 'mining' && <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}><div onClick={() => setBalance(b => b + 0.25)} style={{width: 220, height: 220, border: '8px solid #00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#00f2ff', cursor:'pointer', fontWeight:'900'}}>TAP</div></div>}
         
         {tab === 'opts' && <div>
+            <div className="card">
+                <div style={{fontSize:10, color:'#555', marginBottom:10, textTransform:'uppercase'}}>Статистика</div>
+                <div style={{display:'flex', justifyContent:'space-between', fontSize:14}}><span>Всего сделок:</span> <span className="neon">{totalTrades}</span></div>
+            </div>
             <div className="card" onClick={() => setSoundEnabled(!soundEnabled)} style={{cursor:'pointer'}}>ЗВУК: {soundEnabled ? 'ВКЛ' : 'ВЫКЛ'}</div>
             <div className="card" onClick={() => openLink('https://t.me/kriptoalians')} style={{color:'#00f2ff', textAlign:'center', cursor:'pointer'}}>КАНАЛ: @KRIPTOALIANS</div>
         </div>}
@@ -254,8 +275,8 @@ export default function App() {
         <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.95)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
             <div className="card" style={{width:'100%', textAlign:'center', borderColor:'#00f2ff', padding:40}}>
                 <h1 className="neon" style={{fontSize:28}}>LEVEL UP!</h1>
-                <p style={{color:'#aaa', fontSize:14, marginTop:10}}>Сложность растет! Для следующего уровня нужно {getNeededTrades(level + 1)} сделок.</p>
-                <button className="btn" style={{background:'#00f2ff', color:'#000', marginTop:20}} onClick={()=>setLvlUpModal(false)}>ПРИНЯТЬ ВЫЗОВ</button>
+                <p style={{color:'#aaa', fontSize:14, marginTop:10}}>Сложность выросла! Макисмальное плечо x{getMaxLev()}</p>
+                <button className="btn" style={{background:'#00f2ff', color:'#000', marginTop:20}} onClick={()=>setLvlUpModal(false)}>ОК</button>
             </div>
         </div>
       )}
@@ -263,9 +284,9 @@ export default function App() {
       {result && (
         <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
             <div className="card" style={{width:'100%', textAlign:'center', borderColor: result.win ? '#00ff88' : '#ff0055', background:'#000'}}>
-                <h2 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'SUCCESS' : 'LOSS'}</h2>
+                <h2 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'УСПЕХ' : 'ПРОВАЛ'}</h2>
                 <h1 className="neon" style={{fontSize:36, margin:'10px 0'}}>${result.val}</h1>
-                <button className="btn" style={{background:'#fff', color:'#000'}} onClick={()=>setResult(null)}>OK</button>
+                <button className="btn" style={{background:'#fff', color:'#000'}} onClick={()=>setResult(null)}>ЗАКРЫТЬ</button>
             </div>
         </div>
       )}
