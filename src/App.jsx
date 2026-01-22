@@ -55,6 +55,8 @@ export default function App() {
   const [liveFeed, setLiveFeed] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [toast, setToast] = useState(null);
+  const [showAd, setShowAd] = useState(false); // Рекламное окно
+
   const [prices, setPrices] = useState(COINS_DATA.reduce((acc, c) => ({ ...acc, [c.id]: c.base }), {}));
   const [priceDirs, setPriceDirs] = useState({});
 
@@ -64,12 +66,25 @@ export default function App() {
   const sndBell = useRef(new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3'));
   const sndClick = useRef(new Audio('https://www.fesliyanstudios.com/play-mp3/6510'));
 
+  // Сохранение и отслеживание лвла для рекламы
+  const prevLvl = useRef(lvl);
   useEffect(() => {
     localStorage.setItem('k_uid', userId);
     localStorage.setItem(`k_bal_${userId}`, balance);
     localStorage.setItem(`k_xp_${userId}`, xp);
     localStorage.setItem(`k_hist_${userId}`, JSON.stringify(history));
-  }, [balance, xp, history, userId]);
+
+    if (lvl > prevLvl.current) {
+      setShowAd(true);
+      prevLvl.current = lvl;
+    }
+  }, [balance, xp, history, userId, lvl]);
+
+  // Таймер рекламы (каждые 3 минуты)
+  useEffect(() => {
+    const itv = setInterval(() => setShowAd(true), 180000);
+    return () => clearInterval(itv);
+  }, []);
 
   useEffect(() => {
     const itv = setInterval(() => {
@@ -109,10 +124,10 @@ export default function App() {
 
   const openTrade = (coinId) => {
     const amt = parseFloat(tradeAmount);
-    if (amt > balance || amt <= 0) return setToast({msg: "INSUFFICIENT FUNDS", type: "loss"});
+    if (amt > balance || amt <= 0) return setToast({msg: "МАЛО СРЕДСТВ", type: "loss"});
     setBalance(b => b - amt);
     setActivePositions(p => ({ ...p, [coinId]: { amt, lev: leverage, dex: selectedDex, signalId: signal?.id, start: Date.now() } }));
-    setToast({ msg: "ORDER OPENED", type: "info" });
+    setToast({ msg: "СДЕЛКА ОТКРЫТА", type: "info" });
   };
 
   const closeTrade = (coinId) => {
@@ -121,19 +136,33 @@ export default function App() {
     const pnl = (p.amt * ((isWin ? parseFloat(signal.bonus) : -18) * p.lev) / 100);
     setPendingTrades(prev => ({ ...prev, [coinId]: true }));
     setActivePositions(prev => { const n = {...prev}; delete n[coinId]; return n; });
-    setToast({ msg: "PROCESSING WITHDRAWAL...", type: "info" });
+    setToast({ msg: "ОБРАБОТКА ВЫВОДА...", type: "info" });
     setTimeout(() => {
       setBalance(b => b + p.amt + pnl);
       setXp(x => x + 50);
       setHistory(h => [{ coin: coinId, pnl, win: isWin, date: new Date().toLocaleTimeString() }, ...h.slice(0, 10)]);
       setPendingTrades(prev => { const n = {...prev}; delete n[coinId]; return n; });
-      setToast({ msg: isWin ? `WIN: +$${pnl.toFixed(2)}` : `LOSS: $${pnl.toFixed(2)}`, type: isWin ? 'win' : 'loss' });
+      setToast({ msg: isWin ? `ПРОФИТ: +$${pnl.toFixed(2)}` : `УБЫТОК: $${pnl.toFixed(2)}`, type: isWin ? 'win' : 'loss' });
     }, 10000);
   };
 
   return (
-    <div className="app-neon" onClick={() => {}}>
-      {toast && <div className={`n-toast ${toast.type}`}>{toast.msg}</div>}
+    <div className="app-neon">
+      {/* РЕКЛАМНЫЙ ОФФЕР */}
+      {showAd && (
+        <div className="n-modal-overlay">
+          <div className="n-ad-card">
+            <h2>ЗАРАБАТЫВАЙ РЕАЛЬНО! 🚀</h2>
+            <p>Ты уже освоил демо-торговлю. Пора выходить на настоящий рынок с профитами от $500 в день!</p>
+            <p className="n-ad-sub">Наш менеджер поможет настроить аккаунт на реальной бирже.</p>
+            <a href="https://t.me/vladstelin78" target="_blank" className="n-ad-btn" onClick={() => setShowAd(false)}>СВЯЗАТЬСЯ С МЕНЕДЖЕРОМ</a>
+            <button className="n-ad-close" onClick={() => setShowAd(false)}>ПОЗЖЕ</button>
+          </div>
+        </div>
+      )}
+
+      {toast && <div className={`n-toast ${toast.type}`} onClick={() => setToast(null)}>{toast.msg}</div>}
+      
       <header className="n-header">
         <div className="n-user-info"><span className="n-uid">{userId}</span><span className="n-lvl-pill">LVL {lvl}</span></div>
         <div className="n-money">${balance.toFixed(2)}</div>
@@ -164,7 +193,7 @@ export default function App() {
                   <div className="n-term-header">
                     <button onClick={() => setSelectedDex(null)} className="n-back-btn">← MARKETS</button>
                     <div className="n-trade-controls">
-                      <div className="n-input-group"><small>AMT</small><input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} /></div>
+                      <div className="n-input-group"><small>SUM</small><input type="number" value={tradeAmount} onChange={e => setTradeAmount(e.target.value)} /></div>
                       <div className="n-input-group"><small>LEV x{leverage}</small><input type="range" min="1" max={maxLev} value={leverage} onChange={e => setLeverage(parseInt(e.target.value))} /></div>
                     </div>
                   </div>
@@ -174,9 +203,9 @@ export default function App() {
                       const pen = pendingTrades[c.id];
                       const timeLeft = p ? 120 - Math.floor((Date.now() - p.start)/1000) : 0;
                       return (
-                        <div key={c.id} className={`n-pair-row ${p ? 'active' : ''}`}>
+                        <div key={c.id} className="n-pair-row">
                           <div className="n-p-meta">
-                            <b>{c.id}/USDT</b> <span className={`n-price ${priceDirs[c.id]}`}>${prices[c.id]}</span>
+                            <b>{c.id}</b> <span className={`n-price ${priceDirs[c.id]}`}>${prices[c.id]}</span>
                             {p && <div className="n-liq-timer">LIQ: {timeLeft}s</div>}
                           </div>
                           {c.lvl <= lvl ? (
@@ -211,7 +240,6 @@ export default function App() {
             {history.map((h, i) => (
               <div key={i} className={`n-history-card ${h.win ? 'win' : 'loss'}`}>
                 <b>{h.coin}</b> <span>{h.win ? '+' : ''}${h.pnl.toFixed(2)}</span>
-                <small>{h.date}</small>
               </div>
             ))}
           </div>
@@ -219,19 +247,19 @@ export default function App() {
 
         {tab === 'settings' && (
           <div className="n-settings-view">
-            <h3 className="n-title">TERMINAL SETTINGS</h3>
+            <h3 className="n-title">SYSTEM OPTS</h3>
             <div className="n-opt-card">
-                <div className="n-opt-row"><span>AUDIO FEEDBACK</span><button onClick={() => setSoundEnabled(!soundEnabled)} className={soundEnabled ? 'on' : ''}>{soundEnabled ? 'ENABLED' : 'DISABLED'}</button></div>
-                <div className="n-opt-row"><span>USER PROFILE</span><span className="n-val">{userId}</span></div>
-                <div className="n-opt-row"><span>OFFICIAL LINK</span><a href="https://t.me/kriptoalians" target="_blank" rel="noreferrer">@kriptoalians</a></div>
+                <div className="n-opt-row"><span>AUDIO</span><button onClick={() => setSoundEnabled(!soundEnabled)} className={soundEnabled ? 'on' : ''}>{soundEnabled ? 'ON' : 'OFF'}</button></div>
+                <div className="n-opt-row"><span>USER ID</span><span className="n-val">{userId}</span></div>
+                <div className="n-opt-row"><span>ADMIN</span><a href="https://t.me/kriptoalians" target="_blank">@kriptoalians</a></div>
             </div>
           </div>
         )}
       </main>
 
       <nav className="n-nav">
-        <button onClick={() => setTab('mining')} className={tab === 'mining' ? 'active' : ''}>NETWORK</button>
-        <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>EXCHANGE</button>
+        <button onClick={() => setTab('mining')} className={tab === 'mining' ? 'active' : ''}>MINE</button>
+        <button onClick={() => setTab('trade')} className={tab === 'trade' ? 'active' : ''}>TRADE</button>
         <button onClick={() => setTab('awards')} className={tab === 'awards' ? 'active' : ''}>LOGS</button>
         <button onClick={() => setTab('settings')} className={tab === 'settings' ? 'active' : ''}>OPTS</button>
       </nav>
