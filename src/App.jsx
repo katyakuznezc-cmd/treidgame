@@ -55,8 +55,16 @@ export default function App() {
   const [netTimer, setNetTimer] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ЖЕСТКИЙ ЗАМОК ДЛЯ ТЕЛЕГРАМА
+  // СИСТЕМА ЗАМКОВ (ANTI-MULTI-TAP)
   const lockRef = useRef(false);
+  const lastClickRef = useRef(0);
+
+  // АДМИНКА
+  const [adminClicks, setAdminClicks] = useState(0);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPass, setAdminPass] = useState('');
+  const [newBal, setNewBal] = useState('');
 
   const [signal, setSignal] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -127,11 +135,13 @@ export default function App() {
   };
 
   const sellPos = () => {
-    // Если замок закрыт - моментальный выход, даже если кнопка нажалась
-    if (lockRef.current || isProcessing) return;
+    const now = Date.now();
+    // ЗАЩИТА: не чаще раза в 2 сек + проверка замков
+    if (now - lastClickRef.current < 2000 || lockRef.current || isProcessing) return;
     
-    lockRef.current = true; // Закрываем замок на уровне ссылки
-    setIsProcessing(true);  // Закрываем замок на уровне состояния
+    lastClickRef.current = now;
+    lockRef.current = true;
+    setIsProcessing(true);
     
     setNetTimer(8);
     const itv = setInterval(() => {
@@ -153,12 +163,8 @@ export default function App() {
           }
           setBalance(b => Math.max(0, b + activePos.amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
-          
-          // Сброс всего для новой сделки
-          setActivePos(null); 
-          setSignal(null); 
-          setIsProcessing(false);
-          lockRef.current = false; // Открываем замок только в самом конце
+          setActivePos(null); setSignal(null); setIsProcessing(false);
+          lockRef.current = false;
           return null;
         }
         return p - 1;
@@ -184,12 +190,41 @@ export default function App() {
         .nav { height: 75px; background: #050505; border-top: 1px solid #222; display: flex; width: 100%; }
         .nav-item { flex:1; display:flex; flex-direction: column; align-items:center; justify-content:center; font-size: 9px; font-weight: 900; }
         .st-offer { border: 1px solid #ffcc00; background: rgba(255,204,0,0.05); padding: 15px; border-radius: 12px; text-decoration: none; display: block; margin: 10px 0; text-align: center; }
+        .modal { position:absolute; inset:0; background:rgba(0,0,0,0.95); z-index:9000; display:flex; align-items:center; justifyContent:center; padding:20px; }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-15, top: c.y-25}}>$</div>)}
 
+      {/* АДМИН ПАНЕЛЬ */}
+      {showAdminLogin && (
+        <div className="modal">
+          <div className="card" style={{width:'100%'}}>
+            <h3>ADMIN ACCESS</h3>
+            <input type="password" placeholder="CODE" value={adminPass} onChange={e=>setAdminPass(e.target.value)} />
+            <button className="btn" style={{marginTop:10, background:'#00f2ff'}} onClick={()=>{
+              if(adminPass === '2026') { setIsAdmin(true); setShowAdminLogin(false); }
+              else { setAdminClicks(0); setShowAdminLogin(false); setAdminPass(''); }
+            }}>ENTER</button>
+          </div>
+        </div>
+      )}
+
+      {isAdmin && (
+        <div className="modal">
+          <div className="card" style={{width:'100%'}}>
+            <h3 className="win">CONTROL PANEL</h3>
+            <label>SET BALANCE ($)</label>
+            <input type="number" value={newBal} onChange={e=>setNewBal(e.target.value)} placeholder="0.00" />
+            <button className="btn" style={{marginTop:10, background:'#00ff88'}} onClick={()=>{
+              setBalance(Number(newBal)); setIsAdmin(false); setAdminClicks(0);
+            }}>APPLY</button>
+            <button className="btn" style={{marginTop:10, background:'#333', color:'#fff'}} onClick={()=>setIsAdmin(false)}>CLOSE</button>
+          </div>
+        </div>
+      )}
+
       {showTut && (
-        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', zIndex:5000, display:'flex', alignItems:'center', justifyContent:'center', padding:30}}>
+        <div className="modal" style={{zIndex:9999}}>
           <div className="card" style={{textAlign:'center', width:'100%'}}>
             <h3 className="neon">ARBITRAGE PRO</h3>
             <p style={{fontSize:14, margin:'20px 0', lineHeight:'1.5'}}>{T.tutorial[tutStep]}</p>
@@ -202,7 +237,7 @@ export default function App() {
       )}
 
       {result && (
-        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.95)', zIndex:2000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+        <div className="modal" style={{zIndex:2000}}>
           <div className="card" style={{borderColor: result.win ? '#00ff88' : '#ff0055', width: '100%', textAlign: 'center'}}>
             <h2 className={result.win ? 'win' : 'loss'}>{result.win ? 'WIN' : 'LOSS'}</h2>
             <h1 className="neon" style={{fontSize: 42}}>{result.win ? '+' : '-'}${result.val}</h1>
@@ -295,7 +330,13 @@ export default function App() {
 
         {tab === 'opts' && (
           <div>
-            <div className="neon" style={{fontSize: 18, marginBottom: 20, textAlign: 'center', fontWeight: 900}}>{T.sets}</div>
+            <div className="neon" style={{fontSize: 18, marginBottom: 20, textAlign: 'center', fontWeight: 900, cursor:'pointer'}} 
+                 onClick={() => {
+                   setAdminClicks(prev => {
+                     if(prev + 1 >= 5) setShowAdminLogin(true);
+                     return prev + 1;
+                   })
+                 }}>{T.sets}</div>
             <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
               <span>{T.lang}</span>
               <button onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{background: '#00f2ff', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{lang}</button>
