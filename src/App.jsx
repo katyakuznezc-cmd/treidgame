@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -55,11 +57,11 @@ export default function App() {
   const [netTimer, setNetTimer] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ФИЗИЧЕСКИЕ ЗАМКИ
-  const isGlobalLocked = useRef(false);
-  const lastCallTime = useRef(0);
+  // ФОРСИРОВАННЫЙ ЗАМОК ДЛЯ TG
+  const tgLock = useRef(false);
 
-  const [adminClicks, setAdminClicks] = useState(0);
+  // АДМИНКА
+  const [adminCounter, setAdminCounter] = useState(0);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPass, setAdminPass] = useState('');
@@ -133,24 +135,12 @@ export default function App() {
     }
   };
 
-  // ФИНАЛЬНЫЙ ФИКС МУЛЬТИТАПА
-  const sellPos = (e) => {
-    if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
+  // ФАТАЛЬНЫЙ ФИКС ПРОДАЖИ
+  const sellPos = () => {
+    if (tgLock.current || isProcessing) return;
     
-    const now = Date.now();
-    // 1. Проверка по времени (минимум 1.5 сек между кликами)
-    if (now - lastCallTime.current < 1500) return;
-    
-    // 2. Проверка жесткого реф-замка
-    if (isGlobalLocked.current || isProcessing) return;
-
-    // СТАВИМ ЗАМКИ
-    lastCallTime.current = now;
-    isGlobalLocked.current = true;
-    setIsProcessing(true);
+    tgLock.current = true; // Мгновенный физический замок
+    setIsProcessing(true); // Убираем кнопку из рендера
     
     setNetTimer(8);
     const itv = setInterval(() => {
@@ -176,7 +166,7 @@ export default function App() {
           setActivePos(null); 
           setSignal(null); 
           setIsProcessing(false);
-          isGlobalLocked.current = false; // Открываем только в конце
+          tgLock.current = false; // Открываем только для следующей сделки
           return null;
         }
         return p - 1;
@@ -188,6 +178,9 @@ export default function App() {
     <div className={`app ${isBurning ? 'burn' : ''}`} onPointerDown={handleGlobalClick} style={{
       width: '100vw', height: '100dvh', background: '#000', color: '#fff', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column'
     }}>
+      {/* МЕТА ТЕГ ПРОТИВ МУЛЬТИТАПА */}
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      
       <style>{`
         * { box-sizing: border-box; font-family: 'Orbitron', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         .neon { text-shadow: 0 0 10px #00f2ff; color: #fff; }
@@ -195,27 +188,28 @@ export default function App() {
         .loss { color: #ff0055; text-shadow: 0 0 10px #ff0055; }
         .card { background: #0a0a0a; border: 1px solid #00f2ff; border-radius: 12px; padding: 15px; margin-bottom: 12px; }
         .btn { width: 100%; padding: 15px; border-radius: 8px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-        .btn:disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+        .btn-sync { width: 100%; padding: 15px; border-radius: 8px; background: #1a1a1a; color: #444; text-align: center; font-size: 12px; border: 1px solid #333; }
         .dollar { position: absolute; color: #00ff88; font-weight: 900; pointer-events: none; animation: pop 0.6s ease-out forwards; z-index: 999; font-size: 32px; }
         @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
         input { background: #000; border: 1px solid #00f2ff; color: #00f2ff; padding: 10px; border-radius: 8px; width: 100%; text-align: center; font-size: 16px; outline: none; }
         .nav { height: 75px; background: #050505; border-top: 1px solid #222; display: flex; width: 100%; }
         .nav-item { flex:1; display:flex; flex-direction: column; align-items:center; justify-content:center; font-size: 9px; font-weight: 900; }
         .st-offer { border: 1px solid #ffcc00; background: rgba(255,204,0,0.05); padding: 15px; border-radius: 12px; text-decoration: none; display: block; margin: 10px 0; text-align: center; }
-        .modal { position:absolute; inset:0; background:rgba(0,0,0,0.95); z-index:9000; display:flex; align-items:center; justifyContent:center; padding:20px; }
+        .modal { position:absolute; inset:0; background:rgba(0,0,0,0.98); z-index:9999; display:flex; align-items:center; justifyContent:center; padding:20px; }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-15, top: c.y-25}}>$</div>)}
 
+      {/* АДМИНКА */}
       {showAdminLogin && (
         <div className="modal">
           <div className="card" style={{width:'100%'}}>
-            <h3>ADMIN ACCESS</h3>
-            <input type="password" placeholder="CODE" value={adminPass} onChange={e=>setAdminPass(e.target.value)} />
+            <h3 className="neon">SECURITY CHECK</h3>
+            <input type="password" placeholder="ENTER CODE" value={adminPass} onChange={e=>setAdminPass(e.target.value)} />
             <button className="btn" style={{marginTop:10, background:'#00f2ff'}} onClick={()=>{
               if(adminPass === '2026') { setIsAdmin(true); setShowAdminLogin(false); }
-              else { setAdminClicks(0); setShowAdminLogin(false); setAdminPass(''); }
-            }}>ENTER</button>
+              else { setAdminCounter(0); setShowAdminLogin(false); setAdminPass(''); }
+            }}>ACCESS</button>
           </div>
         </div>
       )}
@@ -223,19 +217,19 @@ export default function App() {
       {isAdmin && (
         <div className="modal">
           <div className="card" style={{width:'100%'}}>
-            <h3 className="win">CONTROL PANEL</h3>
-            <label>SET BALANCE ($)</label>
+            <h3 className="win">GOD MODE</h3>
+            <label>NEW BALANCE ($)</label>
             <input type="number" value={newBal} onChange={e=>setNewBal(e.target.value)} placeholder="0.00" />
             <button className="btn" style={{marginTop:10, background:'#00ff88'}} onClick={()=>{
-              setBalance(Number(newBal)); setIsAdmin(false); setAdminClicks(0);
-            }}>APPLY</button>
-            <button className="btn" style={{marginTop:10, background:'#333', color:'#fff'}} onClick={()=>setIsAdmin(false)}>CLOSE</button>
+              setBalance(Number(newBal)); setIsAdmin(false); setAdminCounter(0);
+            }}>SET CASH</button>
+            <button className="btn" style={{marginTop:10, background:'#333', color:'#fff'}} onClick={()=>setIsAdmin(false)}>EXIT</button>
           </div>
         </div>
       )}
 
       {showTut && (
-        <div className="modal" style={{zIndex:9999}}>
+        <div className="modal">
           <div className="card" style={{textAlign:'center', width:'100%'}}>
             <h3 className="neon">ARBITRAGE PRO</h3>
             <p style={{fontSize:14, margin:'20px 0', lineHeight:'1.5'}}>{T.tutorial[tutStep]}</p>
@@ -301,10 +295,6 @@ export default function App() {
                     <div style={{flex:1}}><label style={{fontSize: 8, color: '#444'}}>{T.invest}</label><input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))}/></div>
                     <div style={{flex:1}}><label style={{fontSize: 8, color: '#444'}}>{T.lev}</label><input type="number" value={leverage} onChange={e=>setLeverage(Math.min(maxLev, Number(e.target.value)))}/></div>
                   </div>
-                  <div style={{display:'flex', justifyContent:'space-between', fontSize: 9, fontWeight: 900}}>
-                    <span>{T.profit}: <span className="win">+${potentialWin}</span></span>
-                    <span>{T.risk}: <span className="loss">-${potentialLoss}</span></span>
-                  </div>
                 </div>
                 {COINS_DATA.map(c => {
                   const isAct = activePos?.id === c.id;
@@ -313,10 +303,14 @@ export default function App() {
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <div><div className="neon">{c.id}</div><div style={{fontSize: 10}}>${c.base}</div></div>
                         {isAct ? (
-                          <button className="btn" style={{background:'#ff0055', color:'#fff', width:120}} 
-                            disabled={isProcessing} onPointerDown={sellPos}>
-                            {netTimer ? `${T.sync} ${netTimer}s` : T.sell}
-                          </button>
+                          // ЕСЛИ ИДЕТ ПРОЦЕСС - КНОПКИ НЕТ ВООБЩЕ
+                          isProcessing ? (
+                            <div className="btn-sync">{T.sync} {netTimer}s</div>
+                          ) : (
+                            <button className="btn" style={{background:'#ff0055', color:'#fff', width:120}} onPointerDown={sellPos}>
+                                {T.sell}
+                            </button>
+                          )
                         ) : (
                           <button className="btn" style={{background:'#00ff88', color:'#000', width:90}} 
                             disabled={!!activePos || c.lvl > level} onPointerDown={() => {
@@ -343,10 +337,10 @@ export default function App() {
           <div>
             <div className="neon" style={{fontSize: 18, marginBottom: 20, textAlign: 'center', fontWeight: 900, cursor:'pointer'}} 
                  onPointerDown={() => {
-                   setAdminClicks(prev => {
-                     if(prev + 1 >= 5) setShowAdminLogin(true);
-                     return prev + 1;
-                   })
+                   setAdminCounter(p => {
+                     if (p + 1 >= 5) setShowAdminLogin(true);
+                     return p + 1;
+                   });
                  }}>{T.sets}</div>
             <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
               <span>{T.lang}</span>
