@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef } from 'react';
 
 const COINS_DATA = [
@@ -57,15 +55,15 @@ export default function App() {
   const [netTimer, setNetTimer] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // ФОРСИРОВАННЫЙ ЗАМОК ДЛЯ TG
-  const tgLock = useRef(false);
+  // РЕФЫ ДЛЯ МОМЕНТАЛЬНОЙ БЛОКИРОВКИ
+  const clickLock = useRef(false);
 
   // АДМИНКА
-  const [adminCounter, setAdminCounter] = useState(0);
-  const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminPass, setAdminPass] = useState('');
-  const [newBal, setNewBal] = useState('');
+  const [admCount, setAdmCount] = useState(0);
+  const [showAdmInp, setShowAdmInp] = useState(false);
+  const [isAdmMode, setIsAdmMode] = useState(false);
+  const [admPass, setAdmPass] = useState('');
+  const [setBalVal, setSetBalVal] = useState('');
 
   const [signal, setSignal] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -135,12 +133,12 @@ export default function App() {
     }
   };
 
-  // ФАТАЛЬНЫЙ ФИКС ПРОДАЖИ
-  const sellPos = () => {
-    if (tgLock.current || isProcessing) return;
+  const sellPos = (e) => {
+    if (e) e.stopPropagation();
+    if (clickLock.current || isProcessing) return;
     
-    tgLock.current = true; // Мгновенный физический замок
-    setIsProcessing(true); // Убираем кнопку из рендера
+    clickLock.current = true; 
+    setIsProcessing(true); 
     
     setNetTimer(8);
     const itv = setInterval(() => {
@@ -166,7 +164,7 @@ export default function App() {
           setActivePos(null); 
           setSignal(null); 
           setIsProcessing(false);
-          tgLock.current = false; // Открываем только для следующей сделки
+          clickLock.current = false; 
           return null;
         }
         return p - 1;
@@ -178,9 +176,6 @@ export default function App() {
     <div className={`app ${isBurning ? 'burn' : ''}`} onPointerDown={handleGlobalClick} style={{
       width: '100vw', height: '100dvh', background: '#000', color: '#fff', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column'
     }}>
-      {/* МЕТА ТЕГ ПРОТИВ МУЛЬТИТАПА */}
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-      
       <style>{`
         * { box-sizing: border-box; font-family: 'Orbitron', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         .neon { text-shadow: 0 0 10px #00f2ff; color: #fff; }
@@ -188,42 +183,40 @@ export default function App() {
         .loss { color: #ff0055; text-shadow: 0 0 10px #ff0055; }
         .card { background: #0a0a0a; border: 1px solid #00f2ff; border-radius: 12px; padding: 15px; margin-bottom: 12px; }
         .btn { width: 100%; padding: 15px; border-radius: 8px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
-        .btn-sync { width: 100%; padding: 15px; border-radius: 8px; background: #1a1a1a; color: #444; text-align: center; font-size: 12px; border: 1px solid #333; }
+        .btn-locked { width: 100%; padding: 15px; border-radius: 8px; background: #111; color: #333; text-align: center; border: 1px solid #222; font-size: 10px; }
         .dollar { position: absolute; color: #00ff88; font-weight: 900; pointer-events: none; animation: pop 0.6s ease-out forwards; z-index: 999; font-size: 32px; }
         @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
-        input { background: #000; border: 1px solid #00f2ff; color: #00f2ff; padding: 10px; border-radius: 8px; width: 100%; text-align: center; font-size: 16px; outline: none; }
+        input { background: #000; border: 1px solid #00f2ff; color: #00f2ff; padding: 10px; border-radius: 8px; width: 100%; text-align: center; outline: none; }
         .nav { height: 75px; background: #050505; border-top: 1px solid #222; display: flex; width: 100%; }
         .nav-item { flex:1; display:flex; flex-direction: column; align-items:center; justify-content:center; font-size: 9px; font-weight: 900; }
-        .st-offer { border: 1px solid #ffcc00; background: rgba(255,204,0,0.05); padding: 15px; border-radius: 12px; text-decoration: none; display: block; margin: 10px 0; text-align: center; }
         .modal { position:absolute; inset:0; background:rgba(0,0,0,0.98); z-index:9999; display:flex; align-items:center; justifyContent:center; padding:20px; }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-15, top: c.y-25}}>$</div>)}
 
       {/* АДМИНКА */}
-      {showAdminLogin && (
+      {showAdmInp && (
         <div className="modal">
           <div className="card" style={{width:'100%'}}>
-            <h3 className="neon">SECURITY CHECK</h3>
-            <input type="password" placeholder="ENTER CODE" value={adminPass} onChange={e=>setAdminPass(e.target.value)} />
+            <h3>AUTH</h3>
+            <input type="password" value={admPass} onChange={e=>setAdmPass(e.target.value)} />
             <button className="btn" style={{marginTop:10, background:'#00f2ff'}} onClick={()=>{
-              if(adminPass === '2026') { setIsAdmin(true); setShowAdminLogin(false); }
-              else { setAdminCounter(0); setShowAdminLogin(false); setAdminPass(''); }
-            }}>ACCESS</button>
+              if(admPass === '2026') { setIsAdmMode(true); setShowAdmInp(false); }
+              else { setAdmCount(0); setShowAdmInp(false); }
+            }}>OK</button>
           </div>
         </div>
       )}
 
-      {isAdmin && (
+      {isAdmMode && (
         <div className="modal">
           <div className="card" style={{width:'100%'}}>
             <h3 className="win">GOD MODE</h3>
-            <label>NEW BALANCE ($)</label>
-            <input type="number" value={newBal} onChange={e=>setNewBal(e.target.value)} placeholder="0.00" />
+            <input type="number" value={setBalVal} onChange={e=>setSetBalVal(e.target.value)} placeholder="BALANCE" />
             <button className="btn" style={{marginTop:10, background:'#00ff88'}} onClick={()=>{
-              setBalance(Number(newBal)); setIsAdmin(false); setAdminCounter(0);
-            }}>SET CASH</button>
-            <button className="btn" style={{marginTop:10, background:'#333', color:'#fff'}} onClick={()=>setIsAdmin(false)}>EXIT</button>
+              setBalance(Number(setBalVal)); setIsAdmMode(false); setAdmCount(0);
+            }}>SET</button>
+            <button className="btn" style={{marginTop:10, background:'#333'}} onClick={()=>setIsAdmMode(false)}>CLOSE</button>
           </div>
         </div>
       )}
@@ -232,8 +225,8 @@ export default function App() {
         <div className="modal">
           <div className="card" style={{textAlign:'center', width:'100%'}}>
             <h3 className="neon">ARBITRAGE PRO</h3>
-            <p style={{fontSize:14, margin:'20px 0', lineHeight:'1.5'}}>{T.tutorial[tutStep]}</p>
-            <button className="btn" style={{background:'#00f2ff', color:'#000'}} onClick={() => {
+            <p style={{fontSize:14, margin:'20px 0'}}>{T.tutorial[tutStep]}</p>
+            <button className="btn" style={{background:'#00f2ff'}} onClick={() => {
               if (tutStep < T.tutorial.length - 1) setTutStep(s => s + 1);
               else { setShowTut(false); localStorage.setItem('st_tut_done', 'true'); }
             }}>{tutStep < T.tutorial.length - 1 ? T.next : T.start}</button>
@@ -276,11 +269,7 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <a href="https://t.me/vladstelin78" className="st-offer">
-                  <div style={{color: '#ffcc00', fontSize: 10, fontWeight: 900, marginBottom: 5}}>{T.vip_title}</div>
-                  <div style={{color: '#fff', fontSize: 12}}>{T.vip_msg}</div>
-                </a>
-                <div style={{fontSize: 10, color: '#444', marginBottom: 10, fontWeight: 900}}>{T.terminal}</div>
+                <div style={{fontSize: 10, color: '#444', marginBottom: 10}}>{T.terminal}</div>
                 {DEX.map(d => (
                   <div key={d.name} className="card" onPointerDown={() => setSelectedDex(d.name)} style={{cursor:'pointer', display:'flex', justifyContent:'space-between'}}>
                     <b>{d.name}</b><span className="win" style={{fontSize: 9}}>ONLINE</span>
@@ -291,9 +280,9 @@ export default function App() {
               <div>
                 <div onPointerDown={() => setSelectedDex(null)} style={{color:'#00f2ff', marginBottom: 15, fontSize: 11, cursor:'pointer'}}>← BACK</div>
                 <div className="card" style={{background: '#050505'}}>
-                  <div style={{display:'flex', gap:10, marginBottom: 12}}>
-                    <div style={{flex:1}}><label style={{fontSize: 8, color: '#444'}}>{T.invest}</label><input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))}/></div>
-                    <div style={{flex:1}}><label style={{fontSize: 8, color: '#444'}}>{T.lev}</label><input type="number" value={leverage} onChange={e=>setLeverage(Math.min(maxLev, Number(e.target.value)))}/></div>
+                  <div style={{display:'flex', gap:10}}>
+                    <div style={{flex:1}}><label style={{fontSize: 8}}>{T.invest}</label><input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))}/></div>
+                    <div style={{flex:1}}><label style={{fontSize: 8}}>{T.lev}</label><input type="number" value={leverage} onChange={e=>setLeverage(Math.min(maxLev, Number(e.target.value)))}/></div>
                   </div>
                 </div>
                 {COINS_DATA.map(c => {
@@ -303,13 +292,10 @@ export default function App() {
                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                         <div><div className="neon">{c.id}</div><div style={{fontSize: 10}}>${c.base}</div></div>
                         {isAct ? (
-                          // ЕСЛИ ИДЕТ ПРОЦЕСС - КНОПКИ НЕТ ВООБЩЕ
                           isProcessing ? (
-                            <div className="btn-sync">{T.sync} {netTimer}s</div>
+                            <div className="btn-locked">{T.sync} {netTimer}s</div>
                           ) : (
-                            <button className="btn" style={{background:'#ff0055', color:'#fff', width:120}} onPointerDown={sellPos}>
-                                {T.sell}
-                            </button>
+                            <button className="btn" style={{background:'#ff0055', width:120}} onPointerDown={sellPos}>{T.sell}</button>
                           )
                         ) : (
                           <button className="btn" style={{background:'#00ff88', color:'#000', width:90}} 
@@ -328,35 +314,32 @@ export default function App() {
 
         {tab === 'mining' && (
           <div style={{height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
-             <div onPointerDown={() => setBalance(b => b + 0.15)} style={{width: 220, height: 220, border: '6px solid #111', borderTopColor: '#00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#00f2ff', fontWeight: '900', cursor: 'pointer'}}>TAP</div>
-             <div className="neon" style={{marginTop: 30, fontSize: 11}}>LIQUIDITY GEN...</div>
+             <div onPointerDown={() => setBalance(b => b + 0.15)} style={{width: 200, height: 200, border: '6px solid #111', borderTopColor: '#00f2ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40, color: '#00f2ff', fontWeight: '900'}}>TAP</div>
           </div>
         )}
 
         {tab === 'opts' && (
           <div>
-            <div className="neon" style={{fontSize: 18, marginBottom: 20, textAlign: 'center', fontWeight: 900, cursor:'pointer'}} 
+            <div className="neon" style={{fontSize: 22, padding: 20, textAlign: 'center'}} 
                  onPointerDown={() => {
-                   setAdminCounter(p => {
-                     if (p + 1 >= 5) setShowAdminLogin(true);
+                   setAdmCount(p => {
+                     if (p + 1 >= 5) setShowAdmInp(true);
                      return p + 1;
                    });
                  }}>{T.sets}</div>
-            <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
+            <div className="card" style={{display:'flex', justifyContent:'space-between'}}>
               <span>{T.lang}</span>
-              <button onPointerDown={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{background: '#00f2ff', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{lang}</button>
+              <button onPointerDown={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{background: '#00f2ff', border:'none', padding: 8, borderRadius: 5}}>{lang}</button>
             </div>
-            <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
+            <div className="card" style={{display:'flex', justifyContent:'space-between'}}>
               <span>{T.sound}</span>
-              <button onPointerDown={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? '#00ff88' : '#333', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{soundEnabled ? 'ON' : 'OFF'}</button>
+              <button onPointerDown={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? '#00ff88' : '#333', border:'none', padding: 8, borderRadius: 5}}>{soundEnabled ? 'ON' : 'OFF'}</button>
             </div>
-            <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
+            <div className="card" style={{display:'flex', justifyContent:'space-between'}}>
               <span>{T.fx}</span>
-              <button onPointerDown={() => setFxEnabled(!fxEnabled)} style={{background: fxEnabled ? '#00ff88' : '#333', border:'none', padding:'8px', borderRadius:6, width: 70, fontWeight: 900}}>{fxEnabled ? 'ON' : 'OFF'}</button>
+              <button onPointerDown={() => setFxEnabled(!fxEnabled)} style={{background: fxEnabled ? '#00ff88' : '#333', border:'none', padding: 8, borderRadius: 5}}>{fxEnabled ? 'ON' : 'OFF'}</button>
             </div>
-            <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}} className="card">
-               <div style={{textAlign:'center', color: '#ffcc00', fontSize: 12}}>@kriptoalians</div>
-            </a>
+            <a href="https://t.me/kriptoalians" className="card" style={{display:'block', textAlign:'center', color:'#ffcc00', textDecoration:'none'}}>@kriptoalians</a>
           </div>
         )}
       </main>
