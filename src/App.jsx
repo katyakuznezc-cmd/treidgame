@@ -12,10 +12,6 @@ const DEX = [
   { id: 'PANCAKE', name: 'PANCAKE' }, { id: 'RAYDIUM', name: 'RAYDIUM' }
 ];
 
-const VIP_ALERTS = [
-  "VIP: Арбитраж BTC +$2,100", "VIP: Пользователь ID-9921 повысил уровень", "VIP: Вывод $450 через TON завершен", "ВНИМАНИЕ: Продажа на той же бирже блокирует ликвидность на 90с!"
-];
-
 export default function App() {
   const [balance, setBalance] = useState(() => parseFloat(localStorage.getItem('bal')) || 1000.00);
   const [displayBalance, setDisplayBalance] = useState(balance);
@@ -27,7 +23,7 @@ export default function App() {
   const [selectedDex, setSelectedDex] = useState(null);
   const [amount, setAmount] = useState(100);
   const [leverage, setLeverage] = useState(5); 
-  const [activePos, setActivePos] = useState(null); // { id, dex, isSignal, startTime }
+  const [activePos, setActivePos] = useState(null); // { id, buyDex, startTime }
   const [netTimer, setNetTimer] = useState(null);
   const [signal, setSignal] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -38,7 +34,7 @@ export default function App() {
 
   const maxLev = level === 1 ? 5 : level === 2 ? 20 : level === 3 ? 50 : 100;
 
-  // Анимация баланса
+  // Бегущие цифры
   useEffect(() => {
     if (Math.abs(displayBalance - balance) > 0.1) {
       const diff = balance - displayBalance;
@@ -53,7 +49,7 @@ export default function App() {
     localStorage.setItem('trades', tradesInLevel);
   }, [balance, level, tradesInLevel]);
 
-  // Сигналы
+  // Генерация сигналов
   useEffect(() => {
     let timer;
     if (tab === 'trade' && !signal && !activePos) {
@@ -78,7 +74,7 @@ export default function App() {
       setBalance(b => b - amount);
       setActivePos({ 
         id: coinId, 
-        dex: selectedDex || (fromSignal ? signal.buyDex : 'SIGNAL'), 
+        buyDex: fromSignal ? signal.buyDex : selectedDex, 
         isSignal: fromSignal,
         startTime: Date.now() 
       });
@@ -86,25 +82,23 @@ export default function App() {
   };
 
   const handleSell = () => {
-    const now = Date.now();
-    const timePassed = (now - activePos.startTime) / 1000;
-    const sameDex = selectedDex === activePos.dex;
+    const isSameDex = selectedDex === activePos.buyDex;
+    const timePassed = (Date.now() - activePos.startTime) / 1000;
 
-    // Логика штрафа за одну и ту же биржу
-    if (sameDex && timePassed < 90) {
-      // Принудительный проигрыш
-      setNetTimer(3); 
+    // Если пытается продать на той же бирже раньше 90 сек
+    if (isSameDex && timePassed < 90) {
+      setNetTimer(3);
       const itv = setInterval(() => {
         setNetTimer(p => {
           if (p <= 1) {
             clearInterval(itv);
-            const lossVal = amount * 0.8; // Теряет 80% от ставки
-            setBalance(b => Math.max(0, b + (amount - lossVal)));
-            setResult({ win: false, val: lossVal.toFixed(2), msg: "ОШИБКА: ОДНА БИРЖА (ШТРАФ)" });
+            const loss = amount * 0.9; // Почти полная потеря
+            setBalance(b => b + (amount - loss));
+            setResult({ win: false, val: loss.toFixed(2), msg: "ANTI-FARM: SAME EXCHANGE PENALTY" });
             setIsBurning(true);
             setTimeout(() => setIsBurning(false), 1500);
             setActivePos(null);
-            if (activePos?.isSignal) setSignal(null);
+            if (activePos.isSignal) setSignal(null);
             return null;
           }
           return p - 1;
@@ -113,7 +107,7 @@ export default function App() {
       return;
     }
 
-    // Стандартная продажа (Арбитраж)
+    // Обычный арбитраж (разные биржи или прошло 90с)
     setNetTimer(10);
     const itv = setInterval(() => {
       setNetTimer(p => {
@@ -131,7 +125,7 @@ export default function App() {
           setBalance(b => Math.max(0, b + amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
           setActivePos(null);
-          if (activePos?.isSignal) setSignal(null);
+          if (activePos.isSignal) setSignal(null);
           setTradesInLevel(t => t + 1);
           return null;
         }
@@ -146,13 +140,6 @@ export default function App() {
       audio.volume = 0.05;
       audio.play().catch(() => {});
     }
-    const x = e.clientX || (e.touches && e.touches[0].clientX);
-    const y = e.clientY || (e.touches && e.touches[0].clientY);
-    if (x && y) {
-      const id = Date.now();
-      setClicks(prev => [...prev, { id, x, y }]);
-      setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 800);
-    }
   };
 
   return (
@@ -164,49 +151,33 @@ export default function App() {
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', monospace; user-select: none; }
         .app { width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column; position: relative; }
         .burn-active { animation: shake 0.2s infinite; }
-        .burn-active::after { content: ''; position: absolute; inset: 0; background: rgba(255, 0, 0, 0.3); z-index: 20000; pointer-events: none; }
-        @keyframes shake { 0% { transform: translate(3px, 3px); } 50% { transform: translate(-3px, -3px); } 100% { transform: translate(0,0); } }
-        .ticker-box { background: #1a1500; color: var(--vip); font-size: 11px; padding: 8px; overflow: hidden; white-space: nowrap; border-bottom: 1px solid var(--vip); }
-        .ticker { display: inline-block; animation: ticker 25s linear infinite; font-weight: bold; }
-        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 12px; }
+        .burn-active::after { content: ''; position: absolute; inset: 0; background: rgba(255, 0, 0, 0.4); z-index: 20000; pointer-events: none; }
+        @keyframes shake { 0% { transform: translate(4px, 4px); } 50% { transform: translate(-4px, -4px); } 100% { transform: translate(0,0); } }
+        .card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 15px; border-radius: 12px; margin-bottom: 12px; position: relative; overflow: hidden; }
         .btn { width: 100%; padding: 15px; border-radius: 10px; border: none; font-weight: 900; cursor: pointer; text-transform: uppercase; }
         .btn:disabled { opacity: 0.1; }
-        .dollar { position: absolute; color: var(--w); font-weight: 900; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 9999; font-size: 28px; }
-        @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-140px); } }
-        .modal { position: absolute; inset: 0; background: rgba(0,0,0,0.98); z-index: 15000; display: flex; align-items: center; justify-content: center; padding: 25px; }
+        .nav { position: absolute; bottom: 0; width: 100%; height: 75px; background: #050505; border-top: 1px solid #1a1a1a; display: flex; }
+        .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #444; }
+        .tab.active { color: var(--n); }
+        .warning-text { color: var(--l); font-size: 8px; font-weight: bold; margin-bottom: 4px; display: block; text-align: right; }
+        .same-dex-lock { position: absolute; top: 0; left: 0; height: 2px; background: var(--l); transition: linear; }
       `}</style>
 
-      {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-10, top: c.y-20}}>$</div>)}
-
       {result && (
-        <div className="modal">
-          <div className="card" style={{borderColor: result.win ? 'var(--w)' : 'var(--l)', textAlign: 'center', width: '90%', padding: '40px 20px'}}>
-            <h2 style={{color: result.win ? 'var(--w)' : 'var(--l)', fontSize: 28}}>{result.msg || (result.win ? 'УСПЕШНО' : 'УБЫТОК')}</h2>
-            <h1 style={{fontSize: 42, margin: '15px 0'}}>{result.win ? '+' : '-'}${Number(result.val).toLocaleString()}</h1>
-            <button className="btn" style={{background: '#fff', color: '#000'}} onClick={() => setResult(null)}>В ТЕРМИНАЛ</button>
+        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.95)', zIndex:15000, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}>
+          <div className="card" style={{borderColor: result.win ? 'var(--w)' : 'var(--l)', textAlign: 'center', width: '100%'}}>
+            <h2 style={{color: result.win ? 'var(--w)' : 'var(--l)'}}>{result.msg || (result.win ? 'SUCCESS' : 'LOSS')}</h2>
+            <h1 style={{fontSize: 42, margin: '20px 0'}}>${Number(result.val).toLocaleString()}</h1>
+            <button className="btn" style={{background: '#fff', color: '#000'}} onClick={() => setResult(null)}>DONE</button>
           </div>
         </div>
       )}
 
       <div className="app">
-        <div className="ticker-box"><div className="ticker">{VIP_ALERTS.join("  •  ")}</div></div>
-
         <header style={{padding: '20px 15px', background: '#050505', borderBottom: '1px solid #111'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-            <div>
-               <div style={{fontSize: 32, fontWeight: 900, color: isBurning ? 'var(--l)' : '#fff'}}>
-                 ${displayBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-               </div>
-               <div style={{fontSize: 10, color: '#444'}}>{userId}</div>
-            </div>
-            <div style={{textAlign: 'right'}}>
-              <div style={{color: 'var(--n)', fontWeight: 'bold'}}>LVL {level}</div>
-              <div style={{fontSize: 9, color: '#444'}}>MAX {maxLev}x</div>
-            </div>
-          </div>
-          <div style={{width:'100%', height:3, background:'#111', marginTop:15, borderRadius:2}}>
-            <div style={{width:`${(tradesInLevel / (10 + (level - 1) * 5)) * 100}%`, height:'100%', background:'var(--n)', boxShadow:'0 0 10px var(--n)'}} />
+          <div style={{display: 'flex', justifyContent: 'space-between'}}>
+            <div style={{fontSize: 32, fontWeight: 900}}>${displayBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div style={{textAlign: 'right'}}><div style={{color: 'var(--n)', fontWeight: 'bold'}}>LVL {level}</div></div>
           </div>
         </header>
 
@@ -215,22 +186,23 @@ export default function App() {
             <>
               {!selectedDex ? (
                 <div>
-                  <div className="card" style={{border: '1px solid var(--vip)', background: '#0a0a00', opacity: (activePos && !activePos.isSignal) ? 0.3 : 1}}>
-                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--vip)', fontSize: 11}}>ПОИСК СВЯЗОК...</div> : 
+                  <div className="card" style={{border: '1px solid var(--vip)', opacity: (activePos && !activePos.isSignal) ? 0.3 : 1}}>
+                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--vip)'}}>SCANNING MARKET...</div> : 
                     <div>
                       <div style={{display:'flex', justifyContent:'space-between'}}><b>{signal.coin}/USDT</b><b style={{color:'var(--w)'}}>+{signal.perc}%</b></div>
-                      <div style={{fontSize: 10, color: '#888', marginTop: 5}}>КУПИТЬ: {signal.buyDex} → ПРОДАТЬ: {signal.sellDex}</div>
+                      <div style={{fontSize: 10, color: '#666'}}>BUY: {signal.buyDex} → SELL: {signal.sellDex}</div>
                       {activePos?.isSignal ? (
-                        <button className="btn" style={{background: 'var(--l)', color: '#fff', marginTop: 15}} onClick={handleSell}>{netTimer ? `СИНХРОНИЗАЦИЯ ${netTimer}с` : 'ЗАКРЫТЬ СВЯЗКУ'}</button>
+                        <button className="btn" style={{background: 'var(--l)', color: '#fff', marginTop: 15}} onClick={handleSell}>{netTimer ? `SYNCING ${netTimer}s` : 'CLOSE DEAL'}</button>
                       ) : (
-                        <button className="btn" style={{background: 'var(--vip)', color: '#000', marginTop: 15}} disabled={!!activePos} onClick={() => handleOpenPosition(signal.coin, true)}>ИСПОЛЬЗОВАТЬ СИГНАЛ</button>
+                        <button className="btn" style={{background: 'var(--vip)', color: '#000', marginTop: 15}} disabled={!!activePos} onClick={() => handleOpenPosition(signal.coin, true)}>EXECUTE SIGNAL</button>
                       )}
                     </div>}
                   </div>
-                  <div style={{fontSize: 10, color: '#444', margin: '15px 0 10px 5px'}}>ДОСТУПНЫЕ БИРЖИ:</div>
-                  <div style={{opacity: activePos?.isSignal ? 0.2 : 1, pointerEvents: activePos?.isSignal ? 'none' : 'auto'}}>
+                  
+                  <div style={{fontSize: 10, color: '#444', margin: '15px 5px'}}>MANUAL ARBITRAGE:</div>
+                  <div style={{opacity: activePos?.isSignal ? 0.2 : 1}}>
                     {DEX.map(d => (
-                      <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{display:'flex', justifyContent:'space-between', cursor: 'pointer'}}>
+                      <div key={d.name} className="card" onClick={() => !activePos?.isSignal && setSelectedDex(d.name)} style={{display:'flex', justifyContent:'space-between'}}>
                         <b>{d.name}</b><span style={{color:'var(--w)', fontSize:10}}>ONLINE</span>
                       </div>
                     ))}
@@ -238,32 +210,33 @@ export default function App() {
                 </div>
               ) : (
                 <div>
-                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'#444', marginBottom: 15}}>← НАЗАД К СПИСКУ</button>
-                  <div className="card">
-                    <div style={{display:'flex', gap:10}}>
-                      <div style={{flex:1}}><label style={{fontSize:9}}>INVEST $</label><input type="number" value={amount} onChange={(e)=>setAmount(Number(e.target.value))}/></div>
-                      <div style={{flex:1}}><label style={{fontSize:9}}>LEVERAGE</label><input type="number" value={leverage} onChange={(e)=>{let v=parseInt(e.target.value)||0; setLeverage(v>maxLev?maxLev:v)}}/></div>
-                    </div>
-                  </div>
-
+                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'#444', marginBottom: 15}}>← TERMINAL</button>
+                  
                   {COINS_DATA.map(c => {
-                    const lock = c.lvl > level;
                     const isThisActive = activePos?.id === c.id;
-                    const isSameDex = activePos?.dex === selectedDex;
+                    const isSameDex = activePos?.buyDex === selectedDex;
+                    const timePassed = isThisActive ? (Date.now() - activePos.startTime) / 1000 : 0;
+                    const lockProgress = Math.min((timePassed / 90) * 100, 100);
 
                     return (
-                      <div key={c.id} className="card" style={{opacity: lock ? 0.2 : 1, display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                        <div><b>{c.id}</b><div style={{fontSize:10, color:'var(--n)'}}>${c.base}</div></div>
-                        {lock ? <span>LOCKED</span> : (
-                          isThisActive ? (
+                      <div key={c.id} className="card" style={{opacity: (c.lvl > level) ? 0.2 : 1}}>
+                        {isThisActive && isSameDex && timePassed < 90 && <div className="same-dex-lock" style={{width: `${100 - lockProgress}%`}} />}
+                        
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                          <div><b>{c.id}</b><div style={{fontSize:10, color:'var(--n)'}}>${c.base}</div></div>
+                          {isThisActive ? (
                             <div style={{textAlign: 'right'}}>
-                              {isSameDex && <div style={{fontSize: 8, color: 'var(--l)', marginBottom: 5}}>ОДНА БИРЖА! (ШТРАФ)</div>}
-                              <button className="btn" style={{background:'var(--l)', width:120, color:'#fff'}} onClick={handleSell}>{netTimer ? `WAIT ${netTimer}s` : 'SELL'}</button>
+                              {isSameDex && timePassed < 90 && <span className="warning-text">LOCKED: SAME DEX ({Math.ceil(90 - timePassed)}s)</span>}
+                              <button className="btn" 
+                                      style={{background: isSameDex && timePassed < 90 ? '#220000' : 'var(--l)', width: 140, color: '#fff'}} 
+                                      onClick={handleSell}>
+                                {netTimer ? `WAIT ${netTimer}s` : (isSameDex && timePassed < 90 ? 'FORCE SELL' : 'SELL')}
+                              </button>
                             </div>
                           ) : (
                             <button className="btn" style={{background:'var(--w)', width:110, color: '#000'}} disabled={!!activePos} onClick={() => handleOpenPosition(c.id, false)}>BUY</button>
-                          )
-                        )}
+                          )}
+                        </div>
                       </div>
                     )
                   })}
@@ -277,19 +250,12 @@ export default function App() {
                <div onClick={() => setBalance(b => b + 0.1)} style={{width: 200, height: 200, border: '6px solid var(--n)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 50, color: 'var(--n)', fontWeight: '900', cursor: 'pointer'}}>TAP</div>
             </div>
           )}
-
-          {tab === 'opts' && (
-            <div style={{padding: 10}}>
-              <a href="https://t.me/kriptoalians" style={{textDecoration:'none'}}><div className="card" style={{textAlign:'center', color: 'var(--vip)', border: '1px solid var(--vip)'}}>SUPPORT @KRIPTOALIANS</div></a>
-              <button onClick={() => {localStorage.clear(); window.location.reload();}} className="btn" style={{background: '#111', color: 'var(--l)', border: '1px solid var(--l)', marginTop: 20}}>RESET ALL</button>
-            </div>
-          )}
         </main>
 
         <nav className="nav">
           <div onClick={() => setTab('mining')} className={`tab ${tab === 'mining' ? 'active' : ''}`}><b>MINING</b></div>
-          <div onClick={() => setTab('trade')} className={`tab ${tab === 'trade' ? 'active' : ''}`}><b>TERMINAL</b></div>
-          <div onClick={() => setTab('opts')} className={`tab ${tab === 'opts' ? 'active' : ''}`}><b>SYSTEM</b></div>
+          <div onClick={() => setTab('trade')} className={`tab ${tab === 'trade' ? 'active' : ''}`}><b>TRADE</b></div>
+          <div onClick={() => setTab('opts')} className={`tab ${tab === 'opts' ? 'active' : ''}`}><b>OPTS</b></div>
         </nav>
       </div>
     </div>
