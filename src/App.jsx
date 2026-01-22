@@ -1,78 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const COINS_DATA = [
-  { id: 'TON', base: 5.42, lvl: 1 }, { id: 'DOGE', base: 0.15, lvl: 1 },
-  { id: 'NEAR', base: 6.12, lvl: 1 }, { id: 'TRX', base: 0.11, lvl: 2 },
-  { id: 'SOL', base: 145.30, lvl: 3 }, { id: 'ETH', base: 2640, lvl: 4 },
-  { id: 'XRP', base: 0.62, lvl: 5 }, { id: 'ADA', base: 0.45, lvl: 6 },
-  { id: 'AVAX', base: 34.20, lvl: 7 }, { id: 'BNB', base: 590, lvl: 8 },
-  { id: 'PEPE', base: 0.000008, lvl: 9 }, { id: 'BTC', base: 96200, lvl: 10 }
+const COINS = [
+  { id: 'SOL', price: 145.2 }, { id: 'TON', price: 5.4 }, { id: 'ETH', price: 2640 }, { id: 'BTC', price: 96000 }
 ];
-
-const DEX_CONFIGS = {
-  'UNISWAP': { bg: '#190a24', accent: '#ff007a', card: '#212429', btn: '#ff007a', title: 'Uniswap Interface' },
-  'PANCAKE': { bg: '#08060b', accent: '#1fc7d4', card: '#27262c', btn: '#1fc7d4', title: 'PancakeSwap' },
-  'RAYDIUM': { bg: '#0c0d21', accent: '#39f2af', card: 'rgba(20,22,46,0.8)', btn: '#39f2af', title: 'Raydium (Solana)' },
-  '1INCH': { bg: '#060e17', accent: '#2b6aff', card: '#111d2c', btn: '#2b6aff', title: '1inch Aggregator' }
-};
 
 export default function App() {
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('st_bal')) || 1000.00);
-  const [level, setLevel] = useState(() => Number(localStorage.getItem('st_lvl')) || 1);
-  const [totalTrades, setTotalTrades] = useState(() => Number(localStorage.getItem('st_total')) || 0);
-  const [tab, setTab] = useState('trade');
   const [selectedDex, setSelectedDex] = useState(null);
   const [amount, setAmount] = useState(100);
-  const [leverage, setLeverage] = useState(5);
-  const [activeTrade, setActiveTrade] = useState(null); 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [syncTimer, setSyncTimer] = useState(0);
+  const [activeTrade, setActiveTrade] = useState(null);
   const [signal, setSignal] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
-  const [result, setResult] = useState(null);
   const [clicks, setClicks] = useState([]);
-  const [isShaking, setIsShaking] = useState(false);
-
-  const clickSound = useRef(null);
-  const showCrash = signal?.isCrash && !selectedDex && tab === 'trade';
+  const [step, setStep] = useState(1); // 1 - ввод данных, 2 - подтверждение (Approve/Confirm)
 
   useEffect(() => {
-    localStorage.setItem('st_bal', balance.toFixed(2));
-    localStorage.setItem('st_total', totalTrades);
-    if (!clickSound.current) {
-        clickSound.current = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
-        clickSound.current.volume = 0.05;
-    }
-  }, [balance, totalTrades]);
-
-  useEffect(() => {
-    if (tab === 'trade' && !signal && !activeTrade) {
-      setIsAnalyzing(true);
+    if (!signal && !activeTrade) {
       const timer = setTimeout(() => {
-        const avail = COINS_DATA.filter(c => c.lvl <= level);
-        const coin = avail[Math.floor(Math.random() * avail.length)];
-        const bDex = Object.keys(DEX_CONFIGS)[Math.floor(Math.random() * 4)];
-        let sDex = Object.keys(DEX_CONFIGS)[Math.floor(Math.random() * 4)];
-        while(sDex === bDex) sDex = Object.keys(DEX_CONFIGS)[Math.floor(Math.random() * 4)];
-        setSignal({ coin: coin.id, buyDex: bDex, sellDex: sDex, perc: (Math.random() * 5 + 2).toFixed(2), isCrash: Math.random() < 0.15 });
-        setIsAnalyzing(false);
-      }, 2500);
+        const coin = COINS[Math.floor(Math.random() * COINS.length)];
+        const target = ['RAYDIUM', 'UNISWAP', 'PANCAKE', '1INCH'][Math.floor(Math.random() * 4)];
+        setSignal({ coin: coin.id, sellDex: target, perc: (Math.random() * 4 + 2).toFixed(2) });
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [tab, signal, activeTrade, level]);
+  }, [signal, activeTrade]);
 
-  const finalizeTrade = () => {
-    const isWin = selectedDex === signal.sellDex && Math.random() < 0.9;
-    let pnl = isWin ? (amount * leverage * (parseFloat(signal.perc)/100)) : -(amount * leverage * 0.1);
-    if (!isWin) { setIsShaking(true); setTimeout(()=>setIsShaking(false), 500); }
-    setBalance(b => b + amount + pnl);
-    setTotalTrades(t => t + 1);
-    setResult({ win: isWin, val: Math.abs(pnl).toFixed(2) });
-    setActiveTrade(null); setSignal(null); setSelectedDex(null); setIsSyncing(false);
+  const executeSwap = () => {
+    if (balance < amount) return;
+    setBalance(b => b - amount);
+    setActiveTrade(true);
+    setTimeout(() => {
+      const isWin = selectedDex === signal?.sellDex;
+      const profit = isWin ? (amount * (parseFloat(signal.perc) / 100)) : -(amount * 0.20);
+      setBalance(b => b + amount + profit);
+      setActiveTrade(null); setSignal(null); setSelectedDex(null); setStep(1);
+    }, 3000);
   };
 
   const handleGlobalClick = (e) => {
-    if (clickSound.current) { clickSound.current.currentTime = 0; clickSound.current.play().catch(()=>{}); }
     const x = e.clientX || e.touches?.[0].clientX;
     const y = e.clientY || e.touches?.[0].clientY;
     if (x) {
@@ -82,157 +46,143 @@ export default function App() {
     }
   };
 
-  const currentTheme = selectedDex ? DEX_CONFIGS[selectedDex] : { bg: '#000', accent: '#00f2ff' };
+  // --- 1INCH UI (Aggregator Style) ---
+  const OneInchUI = () => (
+    <div style={{background: '#060e17', height: '100%', padding: 15, color: '#fff', fontFamily: 'Inter, sans-serif'}}>
+      <div style={{display:'flex', justifyContent:'space-between', marginBottom:20}}>
+        <b style={{color:'#2b6aff'}}>1INCH Aggregator</b>
+        <span onClick={()=>setSelectedDex(null)}>✕</span>
+      </div>
+      <div style={{background: '#111d2c', padding: 16, borderRadius: 16, border: '1px solid #1e2d3d'}}>
+        <div style={{marginBottom: 10, fontSize: 12, opacity: 0.6}}>You sell</div>
+        <div style={{display:'flex', justifyContent:'space-between', background: '#0a141d', padding: 12, borderRadius: 12}}>
+          <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{background:'none', border:'none', color:'#fff', fontSize: 20, width: '60%', outline:'none'}} />
+          <button style={{background:'#2b6aff', border:'none', borderRadius: 8, color:'#fff', padding:'5px 10px'}}>USDT ▾</button>
+        </div>
+        <div style={{textAlign:'center', margin: '10px 0'}}>⇅</div>
+        <div style={{marginBottom: 20, fontSize: 12, opacity: 0.6}}>You buy</div>
+        <div style={{display:'flex', justifyContent:'space-between', background: '#0a141d', padding: 12, borderRadius: 12}}>
+          <div style={{fontSize: 20}}>{signal?.coin || 'ETH'}</div>
+          <button style={{background:'#1e2d3d', border:'none', borderRadius: 8, color:'#fff', padding:'5px 10px'}}>Select ▾</button>
+        </div>
+        <button onClick={executeSwap} style={{width:'100%', padding: 15, background: '#2b6aff', color: '#fff', border: 'none', borderRadius: 12, fontWeight: 'bold'}}>
+          {activeTrade ? 'Finding best route...' : 'Swap via 1inch'}
+        </button>
+      </div>
+    </div>
+  );
+
+  // --- RAYDIUM UI ---
+  const RaydiumUI = () => (
+    <div style={{background: '#0c0d21', height: '100%', padding: 15, color: '#fff'}}>
+      <div style={{display:'flex', justifyContent:'space-between', marginBottom:20}}>
+        <b style={{color:'#39f2af'}}>RAYDIUM</b>
+        <span onClick={()=>setSelectedDex(null)}>✕</span>
+      </div>
+      <div style={{background: 'rgba(20,22,46,0.9)', padding: 20, borderRadius: 12, border: '1px solid #1a1b36'}}>
+        <div style={{background: '#050614', padding: 15, borderRadius: 10, marginBottom: 5}}>
+          <div style={{fontSize: 10, opacity: 0.4}}>FROM</div>
+          <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:'100%', background:'none', border:'none', color:'#fff', fontSize: 20, outline: 'none'}} />
+        </div>
+        <div style={{background: '#050614', padding: 15, borderRadius: 10, marginBottom: 20}}>
+          <div style={{fontSize: 10, opacity: 0.4}}>TO</div>
+          <div style={{fontSize: 20}}>{signal?.coin || 'SOL'}</div>
+        </div>
+        <button onClick={executeSwap} style={{width:'100%', padding: 15, background: '#39f2af', color: '#000', border: 'none', borderRadius: 10, fontWeight: 'bold'}}>
+          {activeTrade ? 'Processing...' : 'SWAP'}
+        </button>
+      </div>
+    </div>
+  );
+
+  // --- UNISWAP UI ---
+  const UniswapUI = () => (
+    <div style={{background: '#190a24', height: '100%', padding: 15, color: '#fff'}}>
+      <div style={{display:'flex', justifyContent:'space-between', marginBottom:20}}>
+        <b style={{color:'#ff007a'}}>Uniswap</b>
+        <span onClick={()=>setSelectedDex(null)}>✕</span>
+      </div>
+      <div style={{background: '#212429', padding: 12, borderRadius: 24}}>
+        <div style={{background: '#2c2f36', padding: 16, borderRadius: 20, marginBottom: 4}}>
+          <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:'100%', background:'none', border:'none', color:'#fff', fontSize: 28, outline: 'none'}} />
+        </div>
+        <div style={{background: '#2c2f36', padding: 16, borderRadius: 20, marginBottom: 15}}>
+          <div style={{fontSize: 28}}>{signal?.coin || 'TOKEN'}</div>
+        </div>
+        {step === 1 ? (
+          <button onClick={()=>setStep(2)} style={{width:'100%', padding: 18, background: '#ff007a', color: '#fff', border: 'none', borderRadius: 20, fontWeight: 'bold'}}>Allow Uniswap</button>
+        ) : (
+          <button onClick={executeSwap} style={{width:'100%', padding: 18, background: '#ff007a', color: '#fff', border: 'none', borderRadius: 20, fontWeight: 'bold'}}>
+            {activeTrade ? 'Confirming...' : 'Swap'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  // --- PANCAKESWAP UI ---
+  const PancakeUI = () => (
+    <div style={{background: '#08060b', height: '100%', padding: 15, color: '#fff'}}>
+      <div style={{display:'flex', justifyContent:'space-between', marginBottom:20}}>
+        <b style={{color:'#1fc7d4'}}>PancakeSwap</b>
+        <span onClick={()=>setSelectedDex(null)}>✕</span>
+      </div>
+      <div style={{background: '#27262c', borderRadius: 24, padding: 20}}>
+        <div style={{fontSize: 12, color: '#1fc7d4', marginBottom: 10, textAlign:'center'}}>SWAP</div>
+        <div style={{background: '#372f47', padding: 15, borderRadius: 16, marginBottom: 10}}>
+          <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} style={{width:'100%', background:'none', border:'none', color:'#fff', fontSize: 18, outline:'none'}} />
+        </div>
+        <div style={{background: '#372f47', padding: 15, borderRadius: 16, marginBottom: 20}}>
+          <div style={{fontSize: 18}}>{signal?.coin || 'BNB'}</div>
+        </div>
+        <button onClick={executeSwap} style={{width:'100%', padding: 15, background: '#1fc7d4', color: '#fff', border: 'none', borderRadius: 16, fontWeight: 'bold'}}>
+          {activeTrade ? 'Swapping...' : 'Swap Now'}
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div onPointerDown={handleGlobalClick} className={isShaking ? 'shake' : ''} style={{
-      width:'100vw', height:'100dvh', background: showCrash ? '#200' : currentTheme.bg, color:'#fff', 
-      fontFamily:'sans-serif', overflow:'hidden', display:'flex', flexDirection:'column', transition:'all 0.5s'
-    }}>
+    <div onPointerDown={handleGlobalClick} style={{width:'100vw', height:'100dvh', background:'#000', color:'#fff', fontFamily:'sans-serif', overflow:'hidden'}}>
       <style>{`
+        .dollar { position:absolute; color:#00ff88; font-weight:900; animation:pop 0.6s forwards; z-index:999; pointer-events:none; font-size:28px; }
         @keyframes pop { 0%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(-100px)} }
-        .dollar { position:absolute; color:#00ff88; font-weight:900; animation:pop 0.6s forwards; z-index:99; pointer-events:none; }
-        .shake { animation: shake 0.5s; }
-        @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
-        .dex-card { background: ${currentTheme.card}; border-radius: 24px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); }
-        .nav-btn { flex:1; display:flex; flexDirection:column; alignItems:center; fontSize:10px; opacity:0.5; }
-        .nav-active { opacity:1; color: ${currentTheme.accent}; }
       `}</style>
+      
+      {clicks.map(c => <div key={c.id} className="dollar" style={{left:c.x-10, top:c.y-20}}>$</div>)}
 
-      {clicks.map(c => <div key={c.id} className="dollar" style={{left:c.x, top:c.y}}>$</div>)}
-
-      {/* Header */}
-      <div style={{padding:20, display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-        <b style={{fontSize:22, color: currentTheme.accent}}>${balance.toLocaleString()}</b>
-        <div style={{fontSize:12, opacity:0.6}}>LVL {level}</div>
-      </div>
-
-      <div style={{flex:1, overflowY:'auto', padding:20}}>
-        {tab === 'trade' && (
-          <>
-            <div style={{textAlign:'center', marginBottom:20}}>
-              <a href="https://t.me/vladstelin78" style={{color:'#ffcc00', fontSize:12, textDecoration:'none'}}>MANAGER SUPPORT</a>
-            </div>
-
-            {/* Signal Box */}
-            <div className="dex-card" style={{marginBottom:20, textAlign:'center', borderColor: showCrash ? '#f00' : ''}}>
-              {isAnalyzing ? "АНАЛИЗ РЫНКА..." : (
-                <div>
-                    <div style={{fontSize:10, opacity:0.5}}>РЕКОМЕНДАЦИЯ</div>
-                    <div style={{fontSize:20, fontWeight:'bold', color: showCrash ? '#f00' : '#00ff88'}}>{signal?.coin} +{signal?.perc}%</div>
-                    <div style={{fontSize:11}}>{signal?.buyDex} → {signal?.sellDex}</div>
-                </div>
-              )}
-            </div>
-
-            {/* DEX INTERFACE SELECTOR / WORKSPACE */}
-            {!selectedDex ? (
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:15}}>
-                {Object.keys(DEX_CONFIGS).map(name => (
-                  <div key={name} onClick={()=>setSelectedDex(name)} style={{
-                    padding:20, background:DEX_CONFIGS[name].card, borderRadius:16, textAlign:'center', 
-                    borderBottom:`4px solid ${DEX_CONFIGS[name].accent}`, cursor:'pointer'
-                  }}>
-                    <div style={{fontSize:14, fontWeight:'bold'}}>{name}</div>
-                    <div style={{fontSize:10, opacity:0.5}}>ОТКРЫТЬ ТЕРМИНАЛ</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="dex-workspace">
-                <div onClick={()=>setSelectedDex(null)} style={{fontSize:12, marginBottom:15, color:currentTheme.accent}}>← НАЗАД К СПИСКУ</div>
-                
-                {/* Эмуляция структуры биржи */}
-                <div className="dex-card">
-                  <div style={{display:'flex', justifyContent:'space-between', marginBottom:20}}>
-                    <b style={{fontSize:14}}>{DEX_CONFIGS[selectedDex].title}</b>
-                    <span style={{fontSize:10, color:currentTheme.accent}}>● Live</span>
-                  </div>
-
-                  <div style={{background:'rgba(0,0,0,0.2)', padding:15, borderRadius:12, marginBottom:10}}>
-                    <small style={{fontSize:10, opacity:0.5}}>YOU PAY</small>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                      <input type="number" value={amount} onChange={e=>setAmount(Number(e.target.value))} 
-                             style={{background:'none', border:'none', color:'#fff', fontSize:20, outline:'none', width:'60%'}} />
-                      <b>USD</b>
-                    </div>
-                  </div>
-
-                  <div style={{background:'rgba(0,0,0,0.2)', padding:15, borderRadius:12, marginBottom:20}}>
-                    <small style={{fontSize:10, opacity:0.5}}>YOU RECEIVE (x{leverage})</small>
-                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                      <div style={{fontSize:20}}>{signal?.coin || '...'}</div>
-                      <div style={{color:'#00ff88'}}>+${(amount*leverage*(parseFloat(signal?.perc||0)/100)).toFixed(2)}</div>
-                    </div>
-                  </div>
-
-                  {COINS_DATA.map(c => (
-                    c.lvl <= level && (
-                      <button key={c.id} onClick={()=>buyCoin(c.id)} disabled={activeTrade} style={{
-                        width:'100%', padding:15, borderRadius:12, background:currentTheme.btn, 
-                        color:'#000', fontWeight:'bold', border:'none', marginBottom:5, opacity: activeTrade ? 0.5 : 1
-                      }}>
-                        {activeTrade ? `В СДЕЛКЕ: ${c.id}` : `ОБМЕНЯТЬ НА ${c.id}`}
-                      </button>
-                    )
-                  ))}
-
-                  {activeTrade && (
-                    <button onClick={sellCoin} style={{
-                        width:'100%', padding:15, borderRadius:12, background:'#ff0055', 
-                        color:'#fff', fontWeight:'bold', border:'none', marginTop:10
-                    }}>
-                      {isSyncing ? `ЗАКРЫТИЕ ${syncTimer}s` : "ЗАКРЫТЬ ПОЗИЦИЮ"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === 'opts' && (
-          <div className="dex-card">
-            <h3>SETTINGS</h3>
-            <div style={{marginBottom:15}}>Сделок всего: {totalTrades}</div>
-            <a href="https://t.me/kriptoalians" style={{color:currentTheme.accent, textDecoration:'none', fontWeight:'bold'}}>CREATORS: @KRIPTOALIANS</a>
+      {!selectedDex ? (
+        <div style={{padding: 20}}>
+          <div style={{textAlign:'center', marginBottom: 20}}>
+            <h1 style={{fontSize: 32, margin: 0}}>${balance.toLocaleString()}</h1>
+            <small style={{opacity: 0.5}}>TRADING BALANCE</small>
           </div>
-        )}
-      </div>
 
-      {/* Navigation */}
-      <div style={{height:80, display:'flex', alignItems:'center', background:'rgba(0,0,0,0.8)', borderTop:'1px solid rgba(255,255,255,0.05)'}}>
-        <div onClick={()=>setTab('trade')} className={`nav-btn ${tab==='trade'?'nav-active':''}`}><span>📈</span>TRADE</div>
-        <div onClick={()=>setTab('opts')} className={`nav-btn ${tab==='opts'?'nav-active':''}`}><span>⚙️</span>OPTS</div>
-      </div>
-
-      {/* Result Pop-up */}
-      {result && (
-        <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.9)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:40}}>
-          <div className="dex-card" style={{textAlign:'center', width:'100%'}}>
-            <h1 style={{color: result.win ? '#00ff88' : '#ff0055'}}>{result.win ? 'SUCCESS' : 'FAIL'}</h1>
-            <div style={{fontSize:24, marginBottom:20}}>${result.val}</div>
-            <button onClick={()=>setResult(null)} className="btn" style={{background:'#fff', color:'#000'}}>CONTINUE</button>
+          <div style={{background:'rgba(255,255,255,0.05)', padding: 15, borderRadius: 12, marginBottom: 25, border: '1px solid #333'}}>
+            <div style={{fontSize: 10, color:'#00f2ff'}}>ARBITRAGE SIGNAL:</div>
+            {signal ? (
+              <div style={{fontWeight:'bold', marginTop:5}}>
+                {signal.coin} → <span style={{color:'#ffcc00'}}>{signal.sellDex}</span> <span style={{color:'#00ff88'}}>+{signal.perc}%</span>
+              </div>
+            ) : "SEARCHING..."}
           </div>
+
+          <div style={{display:'grid', gridTemplateColumns: '1fr 1fr', gap: 10}}>
+            {['RAYDIUM', 'UNISWAP', 'PANCAKE', '1INCH'].map(dex => (
+              <div key={dex} onClick={()=>setSelectedDex(dex)} style={{padding: 25, background: '#111', borderRadius: 15, borderBottom: '4px solid #222', textAlign:'center'}}>
+                <b style={{fontSize: 14}}>{dex}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{height: '100%'}}>
+          {selectedDex === 'RAYDIUM' && <RaydiumUI />}
+          {selectedDex === 'UNISWAP' && <UniswapUI />}
+          {selectedDex === 'PANCAKE' && <PancakeUI />}
+          {selectedDex === '1INCH' && <OneInchUI />}
         </div>
       )}
     </div>
   );
-
-  function buyCoin(id) {
-    if (balance >= amount) {
-      setBalance(b => b - amount);
-      setActiveTrade({ id });
-    }
-  }
-
-  function sellCoin() {
-    setIsSyncing(true); setSyncTimer(5);
-    const itv = setInterval(() => {
-      setSyncTimer(s => {
-        if (s <= 1) { clearInterval(itv); finalizeTrade(); return 0; }
-        return s - 1;
-      });
-    }, 1000);
-  }
 }
