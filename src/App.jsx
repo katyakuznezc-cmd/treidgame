@@ -13,7 +13,6 @@ const DEX = [
 ];
 
 export default function App() {
-  // --- УЛУЧШЕННОЕ СОХРАНЕНИЕ ПРОГРЕССА ---
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('st_bal')) || 1000.00);
   const [displayBalance, setDisplayBalance] = useState(balance);
   const [level, setLevel] = useState(() => Number(localStorage.getItem('st_lvl')) || 1);
@@ -40,7 +39,6 @@ export default function App() {
   const [clicks, setClicks] = useState([]); 
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // СЛОЖНАЯ ПРОГРЕССИЯ УРОВНЕЙ
   const getNeededTrades = (lvl) => {
     if (lvl === 1) return 15;
     if (lvl === 2) return 35;
@@ -105,7 +103,7 @@ export default function App() {
             setIsBurning(true);
             setTimeout(() => setIsBurning(false), 1500);
             setActivePos(null); setSignal(null);
-            setTradesInLevel(t => Math.max(0, t - 2)); // Сильный штраф прогресса за нарушение правил
+            setTradesInLevel(t => Math.max(0, t - 2));
             return null;
           }
           return p - 1;
@@ -120,8 +118,7 @@ export default function App() {
         if (p <= 1) {
           clearInterval(itv);
           const isCorrect = signal && activePos.id === signal.coin && activePos.buyDex === signal.buyDex && selectedDex === signal.sellDex;
-          
-          const winChance = isCorrect ? 0.85 : 0.25; // Еще более суровый шанс без сигнала
+          const winChance = isCorrect ? 0.85 : 0.25; 
           const win = Math.random() < winChance;
           
           let pnl;
@@ -133,10 +130,10 @@ export default function App() {
               return t + 1;
             });
           } else {
-            pnl = -(activePos.amount * activePos.leverage * 0.03); 
+            pnl = -(activePos.amount * activePos.leverage * 0.035); 
             setIsBurning(true);
             setTimeout(() => setIsBurning(false), 1200);
-            setTradesInLevel(t => Math.max(0, t - 1)); // Минус прогресс за неудачу
+            setTradesInLevel(t => Math.max(0, t - 1));
           }
           setBalance(b => Math.max(0, b + activePos.amount + pnl));
           setResult({ win, val: Math.abs(pnl).toFixed(2) });
@@ -171,7 +168,6 @@ export default function App() {
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Courier New', monospace; user-select: none; }
         .app { width: 100%; max-width: 500px; height: 100%; display: flex; flex-direction: column; position: relative; border-left: 1px solid #111; border-right: 1px solid #111; }
         .burn-active { animation: shake 0.1s infinite; }
-        .burn-active::after { content: ''; position: absolute; inset: 0; background: rgba(255, 0, 0, 0.4); z-index: 20000; pointer-events: none; }
         @keyframes shake { 0% { transform: translate(4px, 4px); } 50% { transform: translate(-4px, -4px); } 100% { transform: translate(0,0); } }
         .ticker-box { background: #1a1500; color: var(--vip); font-size: 11px; padding: 10px; overflow: hidden; white-space: nowrap; border-bottom: 2px solid var(--vip); font-weight: 900; }
         .ticker { display: inline-block; animation: ticker 25s linear infinite; }
@@ -185,8 +181,7 @@ export default function App() {
         .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; color: #444; font-weight: 900; }
         .tab.active { color: var(--n); }
         input { background: #000; border: 1px solid var(--n); color: var(--w); padding: 12px; border-radius: 10px; width: 100%; font-weight: 900; margin-top: 5px; outline: none; text-align: center; font-size: 18px; }
-        .lock-line { position: absolute; top: 0; left: 0; height: 4px; background: var(--l); transition: linear; }
-        .st-offer { background: linear-gradient(135deg, #111, #0a0a00); border: 1px solid var(--vip); color: #fff; padding: 20px; border-radius: 16px; text-align: center; margin: 15px 0; cursor: pointer; text-decoration: none; display: block; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .st-offer { background: linear-gradient(135deg, #111, #0a0a00); border: 1px solid var(--vip); color: #fff; padding: 20px; border-radius: 16px; text-align: center; margin: 15px 0; cursor: pointer; text-decoration: none; display: block; }
       `}</style>
 
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x-10, top: c.y-20}}>$</div>)}
@@ -194,7 +189,7 @@ export default function App() {
       {result && (
         <div style={{position:'absolute', inset:0, background:'rgba(0,0,0,0.99)', zIndex:15000, display:'flex', alignItems:'center', justifyContent:'center', padding:30}}>
           <div className="card" style={{borderColor: result.win ? 'var(--w)' : 'var(--l)', textAlign: 'center', width: '100%', padding: '50px 20px'}}>
-            <h2 style={{color: result.win ? 'var(--w)' : 'var(--l)', fontSize: 24}}>{result.win ? 'SUCCESSFUL DEAL' : 'POSITION CLOSED IN LOSS'}</h2>
+            <h2 style={{color: result.win ? 'var(--w)' : 'var(--l)', fontSize: 24}}>{result.win ? 'DEAL SUCCESS' : 'LIQUIDATION'}</h2>
             <h1 style={{fontSize: 52, margin: '25px 0', fontWeight: 900}}>{result.win ? '+' : '-'}${Number(result.val).toLocaleString()}</h1>
             <button className="btn" style={{background: '#fff', color: '#000'}} onClick={() => setResult(null)}>OK</button>
           </div>
@@ -202,21 +197,21 @@ export default function App() {
       )}
 
       <div className="app">
-        <div className="ticker-box"><div className="ticker">💎 РЕАЛЬНЫЙ ТРЕЙДИНГ: @vladstelin78  •  📈 ПРОГРЕСС LVL: {tradesInLevel}/{neededTrades} СДЕЛОК  •  🚀 СИСТЕМА VIP СИГНАЛОВ АКТИВНА</div></div>
+        <div className="ticker-box"><div className="ticker">💎 РЕАЛЬНЫЙ ТРЕЙДИНГ: @vladstelin78  •  📈 ПРОГРЕСС LVL: {tradesInLevel}/{neededTrades}  •  🚀 VIP СИГНАЛЫ ВКЛЮЧЕНЫ</div></div>
         
         <header style={{padding: '30px 20px', background: '#050505', borderBottom: '1px solid #1a1a1a'}}>
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
             <div>
               <div style={{fontSize: 42, fontWeight: 900}}>${displayBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-              <div style={{fontSize: 11, color: '#333', marginTop: 5, fontWeight: 900}}>{userId}</div>
+              <div style={{fontSize: 11, color: '#333', marginTop: 5}}>{userId}</div>
             </div>
             <div style={{textAlign: 'right'}}>
               <div style={{color: 'var(--vip)', fontWeight: 900, fontSize: 18}}>LVL {level}</div>
-              <div style={{fontSize: 9, color: '#444'}}>MAX LEVERAGE: {maxLev}X</div>
+              <div style={{fontSize: 9, color: '#444'}}>MAX {maxLev}X</div>
             </div>
           </div>
-          <div style={{width:'100%', height:6, background:'#111', marginTop:20, borderRadius:10, overflow:'hidden', border: '1px solid #222'}}>
-            <div style={{width:`${(tradesInLevel / neededTrades) * 100}%`, height:'100%', background:'var(--n)', boxShadow:'0 0 15px var(--n)', transition: '0.3s'}} />
+          <div style={{width:'100%', height:6, background:'#111', marginTop:20, borderRadius:10, overflow:'hidden'}}>
+            <div style={{width:`${(tradesInLevel / neededTrades) * 100}%`, height:'100%', background:'var(--n)', transition: '0.3s'}} />
           </div>
         </header>
 
@@ -226,80 +221,55 @@ export default function App() {
               {!selectedDex ? (
                 <div>
                   <div className="card vip-card">
-                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--vip)', fontSize: 12, fontWeight: 900}}>АНАЛИЗ ЛИКВИДНОСТИ...</div> : 
+                    {isAnalyzing ? <div style={{textAlign:'center', color:'var(--vip)', fontSize: 12, fontWeight: 900}}>SCANNING...</div> : 
                     <div>
                       <div style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}><b style={{color:'var(--vip)', fontSize: 22}}>{signal.coin}/USDT</b><b style={{color:'var(--w)', fontSize: 22}}>+{signal.perc}%</b></div>
-                      <div style={{fontSize: 12, color: '#666', marginTop: 15, fontWeight: 900}}>
-                        BUY: <span style={{color: '#fff'}}>{signal.buyDex}</span> → SELL: <span style={{color: '#fff'}}>{signal.sellDex}</span>
-                      </div>
+                      <div style={{fontSize: 12, color: '#666', marginTop: 15}}>BUY: {signal.buyDex} → SELL: {signal.sellDex}</div>
                     </div>}
                   </div>
 
+                  {/* ИСПРАВЛЕННЫЙ БАННЕР ТУТ */}
                   <a href="https://t.me/vladstelin78" className="st-offer">
-                    <div style={{fontSize: 10, color: 'var(--vip)', fontWeight: 900, marginBottom: 8, letterSpacing: 1}}>ОБРАЩЕНИЕ К ТРЕЙДЕРАМ</div>
-                    <div style={{fontSize: 13, fontWeight: 900, lineHeight: 1.5}}>Есть желание трейдить на реальных сделках?<br/> <span style={{color: var(--n), fontSize: 14}}>Пишите менеджеру по работе с клиентами @vladstelin78</span></div>
+                    <div style={{fontSize: 10, color: 'var(--vip)', fontWeight: '900', marginBottom: '8px', letterSpacing: '1px'}}>ОБРАЩЕНИЕ К ТРЕЙДЕРАМ</div>
+                    <div style={{fontSize: '13px', fontWeight: '900', lineHeight: '1.5'}}>
+                      Есть желание трейдить на реальных сделках?<br/>
+                      <span style={{color: 'var(--n)', fontSize: '14px'}}>Напишите менеджеру: @vladstelin78</span>
+                    </div>
                   </a>
                   
-                  <div style={{fontSize: 11, color: '#333', margin: '20px 5px 10px', fontWeight: 900}}>DEX TERMINALS:</div>
                   {DEX.map(d => (
                     <div key={d.name} className="card" onClick={() => setSelectedDex(d.name)} style={{display:'flex', justifyContent:'space-between', cursor:'pointer', alignItems: 'center'}}>
                       <b style={{fontSize: 16}}>{d.name}</b>
-                      <span style={{color:'var(--w)', fontSize: 10, fontWeight: 900, border: '1px solid var(--w)', padding: '2px 6px', borderRadius: 4}}>ONLINE</span>
+                      <span style={{color:'var(--w)', fontSize: 10}}>CONNECTED</span>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div>
-                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'var(--n)', marginBottom: 20, fontWeight: 900, fontSize: 13}}>← ВЕРНУТЬСЯ К ХАБУ</button>
-                  
-                  <div className="card" style={{borderColor: '#222'}}>
-                    <div style={{display:'flex', gap:10}}>
-                      <div style={{flex:1}}><label style={{fontSize:9, color: '#444', fontWeight: 900}}>ИНВЕСТИЦИЯ ($)</label><input type="number" value={amount} onChange={(e)=>setAmount(Number(e.target.value))}/></div>
-                      <div style={{flex:1}}><label style={{fontSize:9, color: '#444', fontWeight: 900}}>ПЛЕЧО (MAX {maxLev}X)</label><input type="number" value={leverage} onChange={(e)=>{let v=parseInt(e.target.value)||0; setLeverage(v>maxLev?maxLev:v)}}/></div>
-                    </div>
-                  </div>
-
-                  {COINS_DATA.map(c => {
-                    const isThisActive = activePos?.id === c.id;
-                    const isSameDex = activePos?.buyDex === selectedDex;
-                    const timePassed = isThisActive ? (Date.now() - activePos.startTime) / 1000 : 0;
-
-                    return (
-                      <div key={c.id} className="card" style={{opacity: (c.lvl > level) ? 0.2 : 1}}>
-                        {isThisActive && isSameDex && timePassed < 90 && <div className="lock-line" style={{width: `${100 - (timePassed/90)*100}%`}} />}
-                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <div><b style={{fontSize: 18}}>{c.id}</b><div style={{fontSize:11, color:'var(--n)', fontWeight: 900}}>${c.base}</div></div>
-                          {isThisActive ? (
-                            <button className="btn" style={{background: 'var(--l)', width: 140, color: '#fff', padding: '12px'}} onClick={handleSell}>
-                              {netTimer ? `WAIT ${netTimer}s` : 'SELL'}
-                            </button>
-                          ) : (
-                            <button className="btn" style={{background:'var(--w)', width: 120, color: '#000', padding: '12px'}} disabled={!!activePos || c.lvl > level} onClick={() => handleOpenPosition(c.id)}>BUY</button>
-                          )}
-                        </div>
+                  <button onClick={() => setSelectedDex(null)} style={{background:'none', border:'none', color:'var(--n)', marginBottom: 20, fontWeight: 900}}>← BACK</button>
+                  <div className="card"><div style={{display:'flex', gap:10}}>
+                    <div style={{flex:1}}><label style={{fontSize:9, color:'#444'}}>AMOUNT</label><input type="number" value={amount} onChange={(e)=>setAmount(Number(e.target.value))}/></div>
+                    <div style={{flex:1}}><label style={{fontSize:9, color:'#444'}}>LEVERAGE</label><input type="number" value={leverage} onChange={(e)=>setLeverage(Number(e.target.value))}/></div>
+                  </div></div>
+                  {COINS_DATA.map(c => (
+                    <div key={c.id} className="card" style={{opacity: (c.lvl > level) ? 0.2 : 1}}>
+                      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <div><b style={{fontSize: 18}}>{c.id}</b><div style={{fontSize:11, color:'var(--n)'}}>${c.base}</div></div>
+                        {activePos?.id === c.id ? (
+                          <button className="btn" style={{background:'var(--l)', width:120}} onClick={handleSell}>{netTimer ? `${netTimer}s` : 'SELL'}</button>
+                        ) : (
+                          <button className="btn" style={{background:'var(--w)', width:120, color:'#000'}} disabled={!!activePos || c.lvl > level} onClick={() => handleOpenPosition(c.id)}>BUY</button>
+                        )}
                       </div>
-                    )
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </>
           )}
-
           {tab === 'mining' && (
-            <div style={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column'}}>
-               <div onClick={() => setBalance(b => b + 0.15)} style={{width: 250, height: 250, border: '10px solid #0a0a0a', borderTopColor: 'var(--n)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 60, color: 'var(--n)', fontWeight: '900', cursor: 'pointer', boxShadow: '0 0 50px rgba(0,217,255,0.1)'}}>TAP</div>
-               <div style={{marginTop: 30, color: '#444', fontSize: 12, fontWeight: 900}}>LIQUIDITY GENERATOR</div>
-            </div>
-          )}
-
-          {tab === 'opts' && (
-            <div style={{padding: 10}}>
-              <div className="card" style={{display:'flex', justifyContent:'space-between', alignItems: 'center'}}>
-                <span style={{fontSize: 14, fontWeight: 900}}>HAPTIC ENGINE</span>
-                <button onClick={() => setSoundEnabled(!soundEnabled)} style={{background: soundEnabled ? 'var(--w)' : '#222', border:'none', padding:'12px 20px', borderRadius:10, color: '#000', fontWeight: 900}}>{soundEnabled ? 'ON' : 'OFF'}</button>
-              </div>
-              <a href="https://t.me/vladstelin78" style={{textDecoration:'none'}}><div className="card vip-card" style={{textAlign:'center', color: 'var(--vip)', fontWeight: 900, marginTop: 15}}>MANAGER: @vladstelin78</div></a>
-              <div style={{textAlign:'center', fontSize: 10, color: '#222', marginTop: 20}}>SESSION ID: {userId}</div>
+            <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}>
+               <div onClick={() => setBalance(b => b + 0.15)} style={{width:250, height:250, border:'10px solid #111', borderTopColor:'var(--n)', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:60, color:'var(--n)', fontWeight:'900', cursor:'pointer'}}>TAP</div>
             </div>
           )}
         </main>
@@ -307,7 +277,6 @@ export default function App() {
         <nav className="nav">
           <div onClick={() => setTab('mining')} className={`tab ${tab === 'mining' ? 'active' : ''}`}>⚡️ <b>FARM</b></div>
           <div onClick={() => setTab('trade')} className={`tab ${tab === 'trade' ? 'active' : ''}`}>💹 <b>MARKET</b></div>
-          <div onClick={() => setTab('opts')} className={`tab ${tab === 'opts' ? 'active' : ''}`}>⚙️ <b>SYSTEM</b></div>
         </nav>
       </div>
     </div>
