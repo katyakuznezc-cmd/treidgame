@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 
 const ASSETS = {
@@ -8,7 +10,7 @@ const ASSETS = {
 };
 const DEXES = ['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'];
 
-export default function ArbitrageRussianApp() {
+export default function ArbitrageFixedApp() {
   const [balanceUSDT, setBalanceUSDT] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
   const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet')) || {});
   const [activeDex, setActiveDex] = useState(null);
@@ -76,11 +78,20 @@ export default function ArbitrageRussianApp() {
     }, 6000);
   };
 
+  // Цвета текста в зависимости от биржи
+  const getThemeColors = () => {
+    if (activeDex === 'UNISWAP' || activeDex === 'PANCAKE') return { bg: activeDex === 'PANCAKE' ? '#f6f6f9' : '#fff', text: '#280d5f', inputBg: activeDex === 'PANCAKE' ? '#eeeaf4' : '#f7f8fa' };
+    if (activeDex === 'RAYDIUM') return { bg: '#0c0d21', text: '#fff', inputBg: '#14162e' };
+    return { bg: '#060814', text: '#fff', inputBg: '#131823' };
+  };
+
+  const theme = getThemeColors();
+
   return (
     <div style={{ width: '100vw', height: '100dvh', background: '#000', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       
       {showTokenList && (
-        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 10000, padding: 25, animation: 'fadeIn 0.2s' }}>
+        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 10000, padding: 25 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
             <h2 style={{ fontSize: 24, margin: 0 }}>Выберите токен</h2>
             <button onClick={() => setShowTokenList(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 40 }}>&times;</button>
@@ -103,66 +114,78 @@ export default function ArbitrageRussianApp() {
       )}
 
       {/* ГЛАВНЫЙ ЭКРАН */}
-      <div style={{ display: activeDex ? 'none' : 'flex', flexDirection: 'column', height: '100%', padding: 20, boxSizing: 'border-box' }}>
-        <div style={{ textAlign: 'center', margin: '40px 0' }}>
-          <h1 style={{ fontSize: 48, fontWeight: 900, margin: 0 }}>${balanceUSDT.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
-          <div style={{ opacity: 0.4, fontSize: 12, letterSpacing: 2, marginTop: 5 }}>ДОСТУПНЫЙ БАЛАНС</div>
-        </div>
-
-        {signal && (
-          <div style={{ background: 'linear-gradient(135deg, #121212, #1a1a1a)', padding: 20, borderRadius: 24, border: '1px solid #222', marginBottom: 25, position: 'relative' }}>
-            <div style={{ color: '#39f2af', fontSize: 10, fontWeight: 900, marginBottom: 8, letterSpacing: 1 }}>НАЙДЕН НОВЫЙ СИГНАЛ</div>
-            <div style={{ fontSize: 17, marginBottom: 4 }}>1. Купи {signal.coin.symbol} на <span style={{ color: '#ff007a', fontWeight: 'bold' }}>{signal.buyAt}</span></div>
-            <div style={{ fontSize: 17 }}>2. Продай на <span style={{ color: '#39f2af', fontWeight: 'bold' }}>{signal.sellAt}</span> <span style={{ color: '#39f2af' }}>+{signal.profit}%</span></div>
+      {!activeDex ? (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20, boxSizing: 'border-box' }}>
+          <div style={{ textAlign: 'center', margin: '40px 0' }}>
+            <h1 style={{ fontSize: 48, fontWeight: 900, margin: 0 }}>${balanceUSDT.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
+            <div style={{ opacity: 0.4, fontSize: 12, letterSpacing: 2, marginTop: 5 }}>ДОСТУПНЫЙ БАЛАНС</div>
           </div>
-        )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 'auto' }}>
-          {DEXES.map(id => (
-            <button key={id} onClick={() => setActiveDex(id)} style={{ background: '#111', border: '1px solid #222', padding: '25px 0', borderRadius: 20, color: '#fff', fontWeight: 'bold' }}>{id}</button>
-          ))}
-        </div>
-
-        {/* БАННЕР С МЕНЕДЖЕРОМ */}
-        <div style={{ background: 'linear-gradient(90deg, #111, #1a1a1a)', padding: '18px 20px', borderRadius: 24, border: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <div style={{ flex: 1, paddingRight: 10 }}>
-            <div style={{ fontSize: 14, fontWeight: 'bold', color: '#fff' }}>⚡️ Готовы к реальной прибыли?</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Напишите менеджеру для перехода на реальный счет</div>
-          </div>
-          <a href="https://t.me/vladstelin78" style={{ background: '#39f2af', color: '#000', textDecoration: 'none', padding: '12px 18px', borderRadius: 14, fontSize: 12, fontWeight: '900', whiteSpace: 'nowrap' }}>НАЧАТЬ</a>
-        </div>
-      </div>
-
-      {/* ТЕРМИНАЛЫ */}
-      {activeDex && (
-        <div style={{ height: '100%', animation: 'slideIn 0.3s ease-out' }}>
-          <div style={{ 
-            height: '100%', padding: 20,
-            background: activeDex === 'UNISWAP' ? '#fff' : (activeDex === 'RAYDIUM' ? '#0c0d21' : (activeDex === 'PANCAKE' ? '#f6f6f9' : '#060814')),
-            color: activeDex === 'UNISWAP' || activeDex === 'PANCAKE' ? '#000' : '#fff'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 }}>
-              <b style={{ fontSize: 20 }}>{activeDex}</b>
-              <button onClick={() => setActiveDex(null)} style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '8px 16px', borderRadius: 12, color: 'inherit' }}>Выход</button>
+          {signal && (
+            <div style={{ background: 'linear-gradient(135deg, #121212, #1a1a1a)', padding: 20, borderRadius: 24, border: '1px solid #222', marginBottom: 25 }}>
+              <div style={{ color: '#39f2af', fontSize: 10, fontWeight: 900, marginBottom: 8 }}>НАЙДЕН НОВЫЙ СИГНАЛ</div>
+              <div style={{ fontSize: 17, marginBottom: 4 }}>1. Купи {signal.coin.symbol} на <span style={{ color: '#ff007a', fontWeight: 'bold' }}>{signal.buyAt}</span></div>
+              <div style={{ fontSize: 17 }}>2. Продай на <span style={{ color: '#39f2af', fontWeight: 'bold' }}>{signal.sellAt}</span> <span style={{ color: '#39f2af' }}>+{signal.profit}%</span></div>
             </div>
-            <div style={{ background: activeDex === 'UNISWAP' ? '#f7f8fa' : (activeDex === 'RAYDIUM' ? '#14162e' : (activeDex === 'PANCAKE' ? '#fff' : '#131823')), padding: 20, borderRadius: 32 }}>
-                <div style={{ background: activeDex === 'UNISWAP' ? '#fff' : '#000', padding: 18, borderRadius: 22 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, opacity: 0.6 }}><span>ВЫ ОТДАЕТЕ</span><span onClick={handleMax} style={{ color: '#39f2af', fontWeight: 'bold', cursor: 'pointer' }}>МАКС</span></div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 'auto' }}>
+            {DEXES.map(id => (
+              <button key={id} onClick={() => setActiveDex(id)} style={{ background: '#111', border: '1px solid #222', padding: '25px 0', borderRadius: 20, color: '#fff', fontWeight: 'bold' }}>{id}</button>
+            ))}
+          </div>
+
+          <div style={{ background: 'linear-gradient(90deg, #111, #1a1a1a)', padding: '18px 20px', borderRadius: 24, border: '1px solid #222', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ flex: 1, paddingRight: 10 }}>
+              <div style={{ fontSize: 14, fontWeight: 'bold', color: '#fff' }}>⚡️ Готовы к реальной прибыли?</div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Свяжитесь с менеджером для реальной торговли</div>
+            </div>
+            <a href="https://t.me/vladstelin78" style={{ background: '#39f2af', color: '#000', textDecoration: 'none', padding: '12px 18px', borderRadius: 14, fontSize: 12, fontWeight: '900' }}>НАЧАТЬ</a>
+          </div>
+        </div>
+      ) : (
+        /* ТЕРМИНАЛЫ */
+        <div style={{ height: '100%', background: theme.bg, color: theme.text, animation: 'slideIn 0.3s ease-out' }}>
+          <div style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <b style={{ fontSize: 20 }}>{activeDex}</b>
+            <button onClick={() => setActiveDex(null)} style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '8px 16px', borderRadius: 12, color: 'inherit' }}>Назад</button>
+          </div>
+
+          <div style={{ padding: 20 }}>
+            <div style={{ background: activeDex === 'PANCAKE' ? '#fff' : theme.inputBg, padding: 20, borderRadius: 32, boxShadow: activeDex === 'PANCAKE' ? '0 4px 0 #e9eaeb' : 'none', border: activeDex === '1INCH' ? '1px solid #21273a' : 'none' }}>
+                
+                {/* ПОЛЕ ВВОДА */}
+                <div style={{ background: activeDex === 'PANCAKE' ? '#eeeaf4' : 'rgba(0,0,0,0.2)', padding: 18, borderRadius: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, opacity: 0.6, color: theme.text }}>
+                      <span>ВЫ ОТДАЕТЕ</span>
+                      <span onClick={handleMax} style={{ color: activeDex === 'PANCAKE' ? '#1fc7d4' : '#39f2af', fontWeight: 'bold' }}>МАКС</span>
+                    </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 28, color: 'inherit', outline: 'none', width: '60%' }} />
-                        <button onClick={() => {setShowTokenList(true); setSelectingFor('pay')}} style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '5px 12px', borderRadius: 12, color: 'inherit', fontWeight: 'bold' }}>{payToken.symbol}</button>
+                        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" 
+                               style={{ background: 'none', border: 'none', fontSize: 28, color: theme.text, outline: 'none', width: '60%' }} />
+                        <button onClick={() => {setShowTokenList(true); setSelectingFor('pay')}} 
+                                style={{ background: 'rgba(128,128,128,0.1)', border: 'none', padding: '5px 12px', borderRadius: 12, color: theme.text, fontWeight: 'bold' }}>{payToken.symbol}</button>
                     </div>
                 </div>
+
                 <div style={{ textAlign: 'center', margin: '10px 0', fontSize: 22 }}>↓</div>
-                <div style={{ background: activeDex === 'UNISWAP' ? '#fff' : '#000', padding: 18, borderRadius: 22, marginBottom: 25 }}>
-                    <div style={{ fontSize: 11, opacity: 0.6 }}>ВЫ ПОЛУЧАЕТЕ</div>
+
+                {/* ПОЛЕ ВЫВОДА */}
+                <div style={{ background: activeDex === 'PANCAKE' ? '#eeeaf4' : 'rgba(0,0,0,0.2)', padding: 18, borderRadius: 20, marginBottom: 25 }}>
+                    <div style={{ fontSize: 11, opacity: 0.6, color: theme.text }}>ВЫ ПОЛУЧАЕТЕ</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                        <div style={{ fontSize: 28 }}>{amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}</div>
-                        <button onClick={() => {setShowTokenList(true); setSelectingFor('receive')}} style={{ background: activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af', border: 'none', padding: '5px 12px', borderRadius: 12, color: activeDex === 'UNISWAP' ? '#fff' : '#000', fontWeight: 'bold' }}>{receiveToken.symbol}</button>
+                        <div style={{ fontSize: 28, color: theme.text }}>{amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}</div>
+                        <button onClick={() => {setShowTokenList(true); setSelectingFor('receive')}} 
+                                style={{ background: activeDex === 'UNISWAP' ? '#ff007a' : (activeDex === 'PANCAKE' ? '#1fc7d4' : '#39f2af'), border: 'none', padding: '5px 12px', borderRadius: 12, color: activeDex === 'UNISWAP' ? '#fff' : '#000', fontWeight: 'bold' }}>{receiveToken.symbol}</button>
                     </div>
                 </div>
-                <button onClick={handleSwap} style={{ width: '100%', padding: 22, borderRadius: 24, border: 'none', fontSize: 18, fontWeight: 900, background: activeDex === 'UNISWAP' ? '#ff007a' : (activeDex === 'RAYDIUM' ? '#39f2af' : (activeDex === 'PANCAKE' ? '#1fc7d4' : '#2f8af5')), color: activeDex === 'UNISWAP' ? '#fff' : '#000' }}>
-                   {isProcessing ? 'ОБРАБОТКА...' : (payToken.symbol === 'USDT' ? 'КУПИТЬ' : 'ПРОДАТЬ')}
+
+                <button onClick={handleSwap} style={{ 
+                  width: '100%', padding: 22, borderRadius: 24, border: 'none', fontSize: 18, fontWeight: 900, 
+                  background: activeDex === 'UNISWAP' ? '#ff007a' : (activeDex === 'PANCAKE' ? '#1fc7d4' : (activeDex === 'RAYDIUM' ? '#39f2af' : '#2f8af5')),
+                  color: activeDex === 'UNISWAP' ? '#fff' : '#000'
+                }}>
+                   {isProcessing ? 'СИНХРОНИЗАЦИЯ...' : (payToken.symbol === 'USDT' ? 'ОБМЕНЯТЬ' : 'ПРОДАТЬ')}
                 </button>
             </div>
           </div>
@@ -172,13 +195,12 @@ export default function ArbitrageRussianApp() {
       {isProcessing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)', zIndex: 10002, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div className="loader"></div>
-          <h2 style={{ marginTop: 20, letterSpacing: 2 }}>ТРАНЗАКЦИЯ...</h2>
-          <p style={{ opacity: 0.4, fontSize: 13 }}>Подтверждение в блокчейне</p>
+          <h2 style={{ marginTop: 20, letterSpacing: 2 }}>ОБРАБОТКА...</h2>
+          <p style={{ opacity: 0.4, fontSize: 13 }}>Подтверждение транзакции в сети</p>
         </div>
       )}
 
       <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
         @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
         .loader { width: 50px; height: 50px; border: 4px solid #111; border-top-color: #39f2af; border-radius: 50%; animation: spin 0.8s linear infinite; }
