@@ -22,10 +22,10 @@ const ASSETS = {
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: '#0d0208' },
-  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: '#020d0a' },
-  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: '#0d0206' },
-  '1INCH': { name: '1inch Network', color: '#31569c', bg: '#02050d' }
+  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 0%, #2d0016 0%, #000 100%)', icon: '🦄' },
+  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 0%, #002d21 0%, #000 100%)', icon: '🌀' },
+  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 0%, #2d001a 0%, #000 100%)', icon: '🍣' },
+  '1INCH': { name: '1inch Net', color: '#31569c', bg: 'radial-gradient(circle at 50% 0%, #000c2d 0%, #000 100%)', icon: '🛡️' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -46,8 +46,8 @@ export default function App() {
   const [receipt, setReceipt] = useState(null);
 
   const t = {
-    RU: { bal: "БАЛАНС", deal: "ТОРГОВАЯ СДЕЛКА", buy: "КУПИТЬ НА", sell: "ПРОДАТЬ НА", swap: "Обменять", max: "МАКС", manager: "Менеджер" },
-    EN: { bal: "BALANCE", deal: "TRADE DEAL", buy: "BUY ON", sell: "SELL ON", swap: "Swap Now", max: "MAX", manager: "Manager" }
+    RU: { bal: "ВАШ БАЛАНС", deal: "ТОРГОВАЯ СДЕЛКА", swap: "ОБМЕНЯТЬ", max: "MAX", manager: "Менеджер", buy: "КУПИТЬ", sell: "ПРОДАТЬ" },
+    EN: { bal: "YOUR BALANCE", deal: "TRADE DEAL", swap: "SWAP NOW", max: "MAX", manager: "Manager", buy: "BUY", sell: "SELL" }
   }[lang];
 
   const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id?.toString() || 'Guest';
@@ -64,26 +64,25 @@ export default function App() {
   useEffect(() => {
     if (!deal) generateDeal();
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) { generateDeal(); return 120; }
-        return prev - 1;
+      setTimeLeft(p => {
+        if (p <= 1) { generateDeal(); return 120; }
+        return p - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, [deal]);
 
   const generateDeal = () => {
-    const assetKeys = ['BTC', 'ETH', 'LINK', 'AAVE', 'CRV', 'WPOL'];
-    const dexKeys = Object.keys(DEX_THEMES);
-    const buyAt = dexKeys[Math.floor(Math.random() * dexKeys.length)];
-    let sellAt = dexKeys[Math.floor(Math.random() * dexKeys.length)];
-    while (sellAt === buyAt) sellAt = dexKeys[Math.floor(Math.random() * dexKeys.length)];
-
+    const assets = ['BTC', 'ETH', 'LINK', 'AAVE', 'CRV', 'WPOL'];
+    const dexs = Object.keys(DEX_THEMES);
+    const buyAt = dexs[Math.floor(Math.random()*dexs.length)];
+    let sellAt = dexs[Math.floor(Math.random()*dexs.length)];
+    while(sellAt === buyAt) sellAt = dexs[Math.floor(Math.random()*dexs.length)];
+    
     setDeal({
-      coin: ASSETS[assetKeys[Math.floor(Math.random() * assetKeys.length)]],
-      buyAt,
-      sellAt,
-      profit: (Math.random() * 0.5 + 2.5).toFixed(2) // Профит ~3%
+      coin: ASSETS[assets[Math.floor(Math.random()*assets.length)]],
+      buyAt, sellAt,
+      profit: (Math.random()*0.5 + 2.6).toFixed(2)
     });
     setTimeLeft(120);
   };
@@ -91,24 +90,16 @@ export default function App() {
   const handleSwap = () => {
     const amount = Number(payAmount);
     if (!amount || (payToken.symbol === 'USDC' ? balance : wallet[payToken.symbol] || 0) < amount) return;
-    
     setIsPending(true);
     setTimeout(() => {
       let receiveAmount = (amount * payToken.price) / getToken.price;
       let pnl = 0;
-
-      // Логика профита: Продажа нужного токена на нужной бирже
       const isCorrectSale = getToken.symbol === 'USDC' && payToken.symbol === deal.coin.symbol && activeDex === deal.sellAt;
 
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
-        if (isCorrectSale) {
-            receiveAmount *= (1 + deal.profit / 100);
-            pnl = receiveAmount - (amount * payToken.price);
-            generateDeal(); // Сделка выполнена успешно
-        } else {
-            receiveAmount *= (1 - (Math.random() * 0.015)); // Рандомный минус
-            pnl = receiveAmount - (amount * payToken.price);
-        }
+        receiveAmount *= isCorrectSale ? (1 + deal.profit/100) : (1 - (Math.random()*0.015));
+        pnl = receiveAmount - (amount * payToken.price);
+        if (isCorrectSale) generateDeal();
       }
 
       const newBalance = payToken.symbol === 'USDC' ? balance - amount : (getToken.symbol === 'USDC' ? balance + receiveAmount : balance);
@@ -117,172 +108,245 @@ export default function App() {
       if (getToken.symbol !== 'USDC') newWallet[getToken.symbol] = (newWallet[getToken.symbol] || 0) + receiveAmount;
 
       update(ref(db, `players/${userId}`), { balanceUSDC: newBalance, wallet: newWallet });
-      setReceipt({ pnl, get: receiveAmount, from: payToken.symbol, to: getToken.symbol, amount });
+      setReceipt({ pnl, get: receiveAmount, from: payToken.symbol, to: getToken.symbol, amount, dex: activeDex });
       setIsPending(false); setPayAmount('');
-    }, 2000);
+    }, 2200);
   };
 
   return (
-    <div style={{ backgroundColor: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
-      
-      {/* BACKGROUND FX */}
-      <div style={{ position: 'fixed', inset: 0, background: 'radial-gradient(circle at 50% 10%, #111 0%, #000 80%)', zIndex: 0 }}></div>
+    <div className="app-container">
+      <div className="bg-blur-1"></div>
+      <div className="bg-blur-2"></div>
 
-      <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <header style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ color: '#0CF2B0', fontWeight: 'bold', fontSize: '11px' }}>{t.bal}</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => window.open('https://t.me/vladstelin78')} className="h-btn">👨‍💻 {t.manager}</button>
-            <button onClick={() => setLang(l => l === 'RU' ? 'EN' : 'RU')} className="h-btn">🌐 {lang}</button>
+      <div className="content">
+        <header className="main-header">
+          <div className="bal-label">
+            <div className="dot"></div> {t.bal}
+          </div>
+          <div className="header-actions">
+            <button onClick={() => window.open('https://t.me/vladstelin78')} className="glass-btn">👨‍💻 {t.manager}</button>
+            <button onClick={() => setLang(l => l === 'RU' ? 'EN' : 'RU')} className="glass-btn">🌐 {lang}</button>
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: '0 20px' }}>
-          <div style={{ textAlign: 'center', margin: '20px 0 40px' }}>
-            <h1 style={{ fontSize: '50px', fontWeight: '900', margin: 0 }}>${balance.toFixed(2)}</h1>
-          </div>
+        <section className="balance-section">
+          <h1 className="balance-text">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
+          <div className="balance-sub">USDC LIQUIDITY POOL</div>
+        </section>
 
-          {/* ТОРГОВАЯ СДЕЛКА: КУПИ ТАМ -> ПРОДАЙ ТУТ */}
-          {deal && (
-            <div className="deal-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                <span style={{ color: '#0CF2B0', fontSize: '10px', fontWeight: 'bold' }}>{t.deal}</span>
-                <span style={{ opacity: 0.5, fontSize: '10px' }}>⏳ {timeLeft}s</span>
-              </div>
-              
-              <div className="step-box">
-                <div className="step-tag" style={{borderColor: DEX_THEMES[deal.buyAt].color}}>{t.buy}</div>
-                <div className="step-info">
-                   <b>{deal.coin.symbol}</b> <span style={{opacity: 0.5}}>на</span> <b>{DEX_THEMES[deal.buyAt].name}</b>
+        {/* НОВЫЙ ДЕТАЛИЗИРОВАННЫЙ БЛОК СДЕЛКИ */}
+        {deal && (
+          <div className="deal-card-ultra">
+            <div className="deal-top">
+              <span className="deal-title">{t.deal}</span>
+              <span className="deal-timer">EXPIRES: {timeLeft}s</span>
+            </div>
+            
+            <div className="deal-route">
+              <div className="route-node">
+                <div className="node-icon">{DEX_THEMES[deal.buyAt].icon}</div>
+                <div className="node-info">
+                  <span className="node-label">{t.buy}</span>
+                  <span className="node-name">{DEX_THEMES[deal.buyAt].name}</span>
                 </div>
               </div>
 
-              <div style={{ paddingLeft: '15px', color: '#0CF2B0', margin: '5px 0' }}>↓</div>
+              <div className="route-path">
+                <div className="path-line"></div>
+                <img src={deal.coin.icon} className="path-coin" />
+                <div className="path-line"></div>
+              </div>
 
-              <div className="step-box" style={{ background: 'rgba(12, 242, 176, 0.05)' }}>
-                <div className="step-tag" style={{borderColor: '#0CF2B0', color: '#0CF2B0'}}>{t.sell}</div>
-                <div className="step-info">
-                   <b>{deal.coin.symbol}</b> <span style={{opacity: 0.5}}>на</span> <b style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</b>
+              <div className="route-node">
+                <div className="node-icon" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].icon}</div>
+                <div className="node-info">
+                  <span className="node-label">{t.sell}</span>
+                  <span className="node-name" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</span>
                 </div>
-                <div style={{ color: '#0CF2B0', fontWeight: 'bold' }}>+{deal.profit}%</div>
               </div>
             </div>
-          )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '25px' }}>
-            {Object.keys(DEX_THEMES).map(k => (
-              <button key={k} onClick={() => setActiveDex(k)} className="dex-select-btn">
-                <div style={{ fontSize: '10px', opacity: 0.5, marginBottom: '5px' }}>MARKET</div>
-                <div style={{ color: DEX_THEMES[k].color, fontWeight: 'bold' }}>{DEX_THEMES[k].name}</div>
-              </button>
-            ))}
+            <div className="deal-footer">
+              <span className="profit-tag">PROFIT: +{deal.profit}%</span>
+              <span className="asset-tag">{deal.coin.symbol}</span>
+            </div>
           </div>
-        </main>
+        )}
+
+        <div className="dex-grid">
+          {Object.keys(DEX_THEMES).map(k => (
+            <button key={k} onClick={() => setActiveDex(k)} className="dex-card">
+              <div className="dex-card-inner" style={{borderTop: `2px solid ${DEX_THEMES[k].color}`}}>
+                <span className="dex-icon-main">{DEX_THEMES[k].icon}</span>
+                <span className="dex-name-main">{DEX_THEMES[k].name}</span>
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ЭКРАН БИРЖИ */}
+      {/* ЭКРАН БИРЖИ С ПОЛНОЙ ДЕТАЛИЗАЦИЕЙ */}
       {activeDex && (
-        <div className="dex-screen" style={{ backgroundColor: DEX_THEMES[activeDex].bg }}>
-          <header className="dex-top">
-            <button onClick={() => setActiveDex(null)} style={{ fontSize: '24px' }}>✕</button>
-            <div style={{ color: DEX_THEMES[activeDex].color, fontWeight: '900' }}>{DEX_THEMES[activeDex].name.toUpperCase()}</div>
-            <div style={{ width: 30 }}></div>
+        <div className="dex-overlay" style={{ background: DEX_THEMES[activeDex].bg }}>
+          <header className="dex-header">
+            <button onClick={() => setActiveDex(null)} className="close-btn">✕</button>
+            <div className="dex-title-box">
+               <span className="dex-icon-min">{DEX_THEMES[activeDex].icon}</span>
+               <b>{DEX_THEMES[activeDex].name}</b>
+            </div>
+            <div style={{width: 40}}></div>
           </header>
 
-          <div style={{ padding: '20px' }}>
-            <div className="sw-input">
-              <div className="sw-label"><span>Отдаете</span><span onClick={() => setPayAmount((payToken.symbol === 'USDC' ? balance : wallet[payToken.symbol] || 0).toString())} style={{color: DEX_THEMES[activeDex].color}}>{t.max}</span></div>
-              <div className="sw-row">
+          <div className="swap-container">
+            <div className="glass-panel">
+              <div className="panel-top"><span>ОТДАЕТЕ</span><span onClick={() => setPayAmount((payToken.symbol === 'USDC' ? balance : wallet[payToken.symbol] || 0).toString())} className="max-chip">{t.max}</span></div>
+              <div className="panel-main">
                 <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.0" />
-                <button onClick={() => setShowTokenList('pay')} className="t-btn"><img src={payToken.icon} width="18"/> {payToken.symbol}</button>
+                <button onClick={() => setShowTokenList('pay')} className="token-picker">
+                  <img src={payToken.icon} /> {payToken.symbol}
+                </button>
               </div>
             </div>
 
-            <div style={{ textAlign: 'center', margin: '-10px 0', zIndex: 10, position: 'relative' }}>
-              <div style={{ background: '#000', border: `1px solid ${DEX_THEMES[activeDex].color}`, width: '36px', height: '36px', borderRadius: '12px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>↓</div>
+            <div className="swap-arrow-container">
+               <div className="swap-arrow-circle" style={{borderColor: DEX_THEMES[activeDex].color}}>↓</div>
             </div>
 
-            <div className="sw-input">
-              <div className="sw-label">Получаете</div>
-              <div className="sw-row">
-                <div style={{ fontSize: '26px', fontWeight: 'bold' }}>{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(5) : '0.0'}</div>
-                <button onClick={() => setShowTokenList('get')} className="t-btn"><img src={getToken.icon} width="18"/> {getToken.symbol}</button>
+            <div className="glass-panel">
+              <div className="panel-top">ПОЛУЧАЕТЕ</div>
+              <div className="panel-main">
+                <div className="res-val">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
+                <button onClick={() => setShowTokenList('get')} className="token-picker">
+                  <img src={getToken.icon} /> {getToken.symbol}
+                </button>
               </div>
             </div>
 
-            <button onClick={handleSwap} disabled={isPending} className="sw-exe-btn" style={{ background: DEX_THEMES[activeDex].color }}>
-              {isPending ? <div className="spinner"></div> : t.swap.toUpperCase()}
+            <div className="gas-info">
+               <span>NETWORK FEE: <b>$0.08</b></span>
+               <span>SLIPPAGE: <b>0.1%</b></span>
+            </div>
+
+            <button onClick={handleSwap} disabled={isPending} className="swap-btn-final" style={{ background: DEX_THEMES[activeDex].color }}>
+              {isPending ? <div className="loader"></div> : t.swap}
             </button>
           </div>
         </div>
       )}
 
-      {/* КВИТАНЦИЯ */}
+      {/* КВИТАНЦИЯ (CHECK) */}
       {receipt && (
         <div className="receipt-overlay">
-          <div className="receipt-card">
-            <h2 style={{margin: 0}}>{receipt.pnl >= 0 ? 'Success' : 'Completed'}</h2>
-            <div style={{ color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b', fontSize: '32px', fontWeight: '900', margin: '20px 0' }}>
+          <div className="receipt-check">
+            <div className="check-header">TRANSACTION RECEIPT</div>
+            <div className="check-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
             </div>
-            <div className="receipt-list">
-              <div className="r-item"><span>Exchange:</span> <span>{DEX_THEMES[activeDex].name}</span></div>
-              <div className="r-item"><span>Swapped:</span> <span>{receipt.amount} {receipt.from}</span></div>
-              <div className="r-item"><span>Received:</span> <span>{receipt.get.toFixed(2)} {receipt.to}</span></div>
+            <div className="check-body">
+               <div className="check-row"><span>Exchange</span> <span>{receipt.dex}</span></div>
+               <div className="check-row"><span>From</span> <span>{receipt.amount} {receipt.from}</span></div>
+               <div className="check-row"><span>To</span> <span>{receipt.get.toFixed(4)} {receipt.to}</span></div>
+               <div className="check-divider"></div>
+               <div className="check-row"><span>Status</span> <span style={{color: '#0CF2B0'}}>Success</span></div>
             </div>
-            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="r-close">OK</button>
+            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="check-btn">CLOSE</button>
           </div>
         </div>
       )}
 
       {/* ВЫБОР ТОКЕНА */}
       {showTokenList && (
-        <div className="token-modal">
-          <div className="modal-head"><h3>Select Asset</h3><button onClick={() => setShowTokenList(null)}>✕</button></div>
-          {Object.values(ASSETS).map(a => (
-            <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="a-row">
-              <img src={a.icon} width="28"/>
-              <div style={{flex: 1}}><b>{a.symbol}</b></div>
-              <div style={{opacity: 0.5}}>${a.price}</div>
-            </div>
-          ))}
+        <div className="token-list-modal">
+          <header className="modal-head"><span>Select Asset</span><button onClick={() => setShowTokenList(null)}>✕</button></header>
+          <div className="token-scroll">
+            {Object.values(ASSETS).map(a => (
+              <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="token-row">
+                <img src={a.icon} />
+                <div className="t-info"><b>{a.symbol}</b><span>{a.symbol === 'USDC' ? 'Stablecoin' : 'Crypto Asset'}</span></div>
+                <div className="t-price">${a.price}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       <style>{`
-        .h-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 14px; border-radius: 12px; font-size: 11px; font-weight: bold; }
-        .deal-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 20px; border-radius: 24px; }
-        .step-box { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
-        .step-tag { font-size: 9px; font-weight: 900; border: 1px solid; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
-        .step-info { flex: 1; font-size: 14px; }
+        .app-container { background: #000; height: 100vh; color: #fff; overflow: hidden; position: relative; font-family: 'Inter', sans-serif; }
+        .bg-blur-1 { position: absolute; top: -10%; left: -10%; width: 50%; height: 50%; background: #0CF2B011; filter: blur(100px); border-radius: 50%; }
+        .bg-blur-2 { position: absolute; bottom: -10%; right: -10%; width: 50%; height: 50%; background: #FF007A08; filter: blur(100px); border-radius: 50%; }
+        .content { position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; padding: 0 20px; }
         
-        .dex-select-btn { background: #111; border: 1px solid #222; padding: 22px; border-radius: 20px; color: #fff; text-align: left; transition: 0.2s; }
-        .dex-select-btn:active { transform: scale(0.97); }
+        .main-header { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; }
+        .bal-label { font-size: 10px; font-weight: 900; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px; color: #0CF2B0; }
+        .dot { width: 6px; height: 6px; background: #0CF2B0; border-radius: 50%; box-shadow: 0 0 10px #0CF2B0; }
+        .glass-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 12px; font-weight: 600; backdrop-filter: blur(10px); }
         
-        .dex-screen { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
-        .dex-top { padding: 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .dex-top button { background: none; border: none; color: #fff; }
+        .balance-section { text-align: center; margin: 20px 0 30px; }
+        .balance-text { font-size: 54px; font-weight: 900; margin: 0; letter-spacing: -1px; }
+        .balance-sub { font-size: 10px; opacity: 0.3; letter-spacing: 4px; margin-top: 5px; }
+
+        /* DEAL CARD ULTRA */
+        .deal-card-ultra { background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+        .deal-top { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .deal-title { font-size: 10px; font-weight: 900; color: #0CF2B0; }
+        .deal-timer { font-size: 10px; opacity: 0.4; font-family: monospace; }
+        .deal-route { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .route-node { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .node-icon { font-size: 24px; background: rgba(255,255,255,0.05); width: 45px; height: 45px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
+        .node-info { text-align: center; }
+        .node-label { font-size: 8px; opacity: 0.5; display: block; }
+        .node-name { font-size: 12px; font-weight: 800; }
+        .route-path { flex: 1; display: flex; align-items: center; gap: 5px; padding: 0 10px; }
+        .path-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
+        .path-coin { width: 24px; height: 24px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+        .deal-footer { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); pt: 15px; margin-top: 15px; padding-top: 15px; }
+        .profit-tag { color: #0CF2B0; font-weight: 900; font-size: 14px; }
+        .asset-tag { background: #fff; color: #000; padding: 2px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; }
+
+        .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; }
+        .dex-card { background: rgba(255,255,255,0.03); border: none; padding: 0; border-radius: 24px; cursor: pointer; }
+        .dex-card-inner { padding: 25px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .dex-icon-main { font-size: 24px; }
+        .dex-name-main { font-size: 13px; font-weight: 700; }
+
+        /* DEX OVERLAY */
+        .dex-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .dex-header { padding: 20px; display: flex; align-items: center; justify-content: space-between; }
+        .close-btn { background: rgba(255,255,255,0.1); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; }
+        .dex-title-box { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+        .swap-container { padding: 20px; flex: 1; overflow-y: auto; }
+        .glass-panel { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 28px; }
+        .panel-top { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; opacity: 0.5; margin-bottom: 15px; }
+        .max-chip { color: #fff; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 6px; cursor: pointer; }
+        .panel-main { display: flex; justify-content: space-between; align-items: center; }
+        .panel-main input { background: none; border: none; color: #fff; font-size: 32px; font-weight: 700; width: 50%; outline: none; }
+        .token-picker { background: #111; border: 1px solid #333; color: #fff; padding: 10px 14px; border-radius: 16px; display: flex; align-items: center; gap: 10px; font-weight: 700; }
+        .token-picker img { width: 22px; height: 22px; }
+        .swap-arrow-container { display: flex; justify-content: center; margin: -15px 0; position: relative; z-index: 5; }
+        .swap-arrow-circle { background: #000; width: 42px; height: 42px; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        .gas-info { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.4; padding: 15px 10px; }
+        .swap-btn-final { width: 100%; padding: 22px; border-radius: 24px; border: none; color: #fff; font-weight: 900; font-size: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+
+        /* RECEIPT */
+        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 30px; }
+        .receipt-check { background: #111; border: 1px solid #222; width: 100%; border-radius: 35px; padding: 30px; position: relative; }
+        .check-header { font-size: 11px; font-weight: 900; opacity: 0.3; letter-spacing: 2px; margin-bottom: 20px; }
+        .check-pnl { font-size: 42px; font-weight: 900; margin-bottom: 30px; }
+        .check-body { background: #000; padding: 20px; border-radius: 20px; text-align: left; }
+        .check-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px; opacity: 0.7; }
+        .check-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 15px 0; }
+        .check-btn { background: #fff; color: #000; border: none; width: 100%; padding: 18px; border-radius: 20px; font-weight: 900; margin-top: 30px; }
+
+        /* TOKEN MODAL */
+        .token-list-modal { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; padding: 20px; }
+        .modal-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #111; }
+        .token-row { display: flex; align-items: center; gap: 15px; padding: 20px; border-bottom: 1px solid #111; }
+        .token-row img { width: 32px; height: 32px; }
+        .t-info { flex: 1; display: flex; flex-direction: column; }
+        .t-info span { font-size: 10px; opacity: 0.4; }
+        .loader { width: 24px; height: 24px; border: 3px solid #fff; border-bottom-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin: auto; }
         
-        .sw-input { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 24px; }
-        .sw-label { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.5; margin-bottom: 10px; }
-        .sw-row { display: flex; justify-content: space-between; align-items: center; }
-        .sw-row input { background: none; border: none; color: #fff; font-size: 26px; width: 50%; outline: none; font-weight: bold; }
-        .t-btn { background: #222; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; }
-        .sw-exe-btn { width: 100%; padding: 22px; border-radius: 24px; border: none; color: #fff; font-weight: 900; font-size: 18px; margin-top: 25px; }
-        
-        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .receipt-card { background: #111; border: 1px solid #222; padding: 40px; border-radius: 35px; width: 100%; text-align: center; }
-        .receipt-list { background: #000; padding: 15px; border-radius: 20px; text-align: left; font-size: 13px; margin-bottom: 25px; }
-        .r-item { display: flex; justify-content: space-between; margin-bottom: 8px; opacity: 0.7; }
-        .r-close { background: #fff; color: #000; width: 100%; padding: 16px; border-radius: 16px; border: none; font-weight: bold; }
-        
-        .token-modal { position: fixed; inset: 0; background: #000; z-index: 3000; padding: 20px; overflow-y: auto; }
-        .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .modal-head button { background: none; border: none; color: #fff; font-size: 24px; }
-        .a-row { display: flex; align-items: center; gap: 15px; padding: 18px; border-bottom: 1px solid #111; }
-        
-        .spinner { width: 20px; height: 20px; border: 3px solid #fff; border-bottom-color: transparent; border-radius: 50%; animation: rot 0.8s linear infinite; margin: auto; }
-        @keyframes rot { to { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
     </div>
