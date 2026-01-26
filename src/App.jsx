@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, update, serverTimestamp } from "firebase/database";
+import { getDatabase, ref, onValue, update, get, serverTimestamp } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
@@ -29,13 +29,19 @@ const DEX_THEMES = {
 };
 
 export default function App() {
-  const [balanceUSDC, setBalanceUSDC] = useState(() => Number(localStorage.getItem('arb_balance_usdc')) || 1000.00);
-  const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet_v4')) || {});
+  const [balanceUSDC, setBalanceUSDC] = useState(1000.00);
+  const [wallet, setWallet] = useState({});
   const [view, setView] = useState('main'); 
   const [activeDex, setActiveDex] = useState(null);
   const [signal, setSignal] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [receipt, setReceipt] = useState(null);
+  const [lang, setLang] = useState('RU');
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminTargetId, setAdminTargetId] = useState('');
+  const [adminNewBalance, setAdminNewBalance] = useState('');
+  const [clickCount, setClickCount] = useState(0);
+
   const [showTokenList, setShowTokenList] = useState(false);
   const [selectingFor, setSelectingFor] = useState('pay');
   const [payToken, setPayToken] = useState(ASSETS.USDC);
@@ -43,35 +49,31 @@ export default function App() {
   const [amount, setAmount] = useState('');
 
   const userId = useMemo(() => {
-    try {
-      const tg = window.Telegram?.WebApp?.initDataUnsafe?.user;
-      if (tg) return tg.username || tg.id.toString();
-    } catch (e) {}
-    return localStorage.getItem('arb_user_id') || 'Trader_' + Math.floor(Math.random() * 9999);
+    const tg = window.Telegram?.WebApp?.initDataUnsafe?.user;
+    return tg ? (tg.username || tg.id.toString()) : 'Guest_' + Math.floor(Math.random()*1000);
   }, []);
 
+  // Firebase
   useEffect(() => {
-    const timer = setTimeout(() => {
-      try {
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const userRef = ref(db, 'players/' + userId);
-        onValue(userRef, (s) => {
-          if (s.exists()) {
-            setBalanceUSDC(s.val().balanceUSDC || 1000);
-            setWallet(s.val().wallet || {});
-          }
-        });
-        const interval = setInterval(() => {
-          update(userRef, { balanceUSDC, wallet, username: userId, lastSeen: serverTimestamp() });
-          localStorage.setItem('arb_balance_usdc', balanceUSDC);
-          localStorage.setItem('arb_wallet_v4', JSON.stringify(wallet));
-        }, 4000);
-        return () => clearInterval(interval);
-      } catch (e) {}
-    }, 1000);
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const userRef = ref(db, 'players/' + userId);
+
+    onValue(userRef, (s) => {
+      if (s.exists()) {
+        const d = s.val();
+        setBalanceUSDC(d.balanceUSDC ?? 1000);
+        setWallet(d.wallet ?? {});
+      }
+    });
+
+    const interval = setInterval(() => {
+      update(userRef, { balanceUSDC, wallet, lastSeen: serverTimestamp() });
+    }, 5000);
+    return () => clearInterval(interval);
   }, [balanceUSDC, wallet, userId]);
 
+  // Signal Generator
   useEffect(() => {
     if (!signal) {
       const keys = Object.keys(ASSETS).filter(k => k !== 'USDC');
@@ -79,159 +81,160 @@ export default function App() {
       const dexes = Object.keys(DEX_THEMES);
       const buyAt = dexes[Math.floor(Math.random() * dexes.length)];
       let sellAt = dexes[Math.floor(Math.random() * dexes.length)];
-      while (sellAt === buyAt) sellAt = dexes[Math.floor(Math.random() * dexes.length)];
-      setSignal({ coin, buyAt, sellAt, profit: (Math.random() * 1.5 + 1.5).toFixed(2) });
+      while(sellAt === buyAt) sellAt = dexes[Math.floor(Math.random() * dexes.length)];
+      setSignal({ coin, buyAt, sellAt, profit: (Math.random() * 1.8 + 1.2).toFixed(2) });
     }
   }, [signal]);
+
+  const handleAdminChange = async () => {
+    if (!adminTargetId || !adminNewBalance) return alert('Fill fields');
+    const db = getDatabase();
+    await update(ref(db, 'players/' + adminTargetId), { balanceUSDC: Number(adminNewBalance) });
+    alert('Success');
+  };
 
   const handleTrade = () => {
     const num = Number(amount);
     const currentOwned = payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0);
-    
-    if (!num || num <= 0 || num > currentOwned) return alert('Check amount');
-    
+    if (!num || num <= 0 || num > currentOwned) return;
+
     setIsProcessing(true);
     setTimeout(() => {
-      let receiptData = {};
-      
       if (payToken.symbol === 'USDC') {
-        // КУПИТЬ МОНЕТУ
         const bought = num / receiveToken.price;
         setBalanceUSDC(prev => prev - num);
         setWallet(prev => ({ ...prev, [receiveToken.symbol]: (prev[receiveToken.symbol] || 0) + bought }));
-        receiptData = { type: 'buy', pay: num, get: bought, asset: receiveToken.symbol, profit: 0 };
+        setReceipt({ type: 'buy', pay: num, get: bought, asset: receiveToken.symbol, profit: 0 });
       } else {
-        // ПРОДАТЬ МОНЕТУ
         const isOk = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
-        const mult = isOk ? (1 + signal.profit / 100) : (1 - (Math.random() * 0.015));
+        const mult = isOk ? (1 + signal.profit / 100) : 0.985;
         const usdcGained = (num * payToken.price) * mult;
-        const profitValue = usdcGained - (num * payToken.price);
-
         setBalanceUSDC(prev => prev + usdcGained);
         setWallet(prev => ({ ...prev, [payToken.symbol]: (prev[payToken.symbol] || 0) - num }));
-        receiptData = { type: 'sell', pay: num, get: usdcGained, asset: payToken.symbol, profit: profitValue, isOk };
-        setSignal(null);
+        setReceipt({ type: 'sell', pay: num, get: usdcGained, asset: payToken.symbol, profit: usdcGained - (num * payToken.price), isOk });
+        if(isOk) setSignal(null);
       }
-      
-      setReceipt(receiptData);
-      setIsProcessing(false);
-      setAmount('');
-      setActiveDex(null);
-    }, 1500);
+      setIsProcessing(false); setAmount(''); setActiveDex(null);
+    }, 1200);
   };
 
-  const currentPayBalance = payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0);
+  const t = {
+    RU: { bal: 'БАЛАНС', assets: 'АКТИВЫ', swap: 'ОБМЕН', set: 'Настройки', lang: 'Язык', manager: 'Менеджер', profit: 'Профит', spent: 'Потрачено', get: 'Получено' },
+    EN: { bal: 'BALANCE', assets: 'ASSETS', swap: 'SWAP', set: 'Settings', lang: 'Language', manager: 'Manager', profit: 'Profit', spent: 'Spent', get: 'Received' }
+  }[lang];
 
   return (
     <div style={{ background: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
-      <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column' }}>
         
-        {/* Main View */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-          <div style={{ textAlign: 'center', margin: '30px 0' }}>
-            <h1 style={{ fontSize: '42px', margin: 0 }}>${balanceUSDC.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
-            <p style={{ opacity: 0.4, fontSize: '11px' }}>USDC BALANCE</p>
-          </div>
-
-          <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: '18px', border: '1px solid #1a1a1a', marginBottom: '20px' }}>
-            <p style={{ fontSize: '10px', color: '#0CF2B0', fontWeight: 'bold', margin: '0 0 10px 0' }}>WALLET ASSETS</p>
-            {Object.keys(wallet).filter(k => wallet[k] > 0.0000001).map(c => (
-              <div key={c} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' }}>
-                <div style={{display:'flex', alignItems:'center', gap: 8}}><img src={ASSETS[c].icon} width="18"/> {c}</div>
-                <b>{wallet[c].toFixed(6)}</b>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            {Object.keys(DEX_THEMES).map(k => (
-              <button key={k} onClick={() => setActiveDex(k)} style={{ background: '#0a0a0a', border: `1px solid ${DEX_THEMES[k].color}44`, color: '#fff', padding: '25px 0', borderRadius: '18px', fontWeight: 'bold' }}>{DEX_THEMES[k].name}</button>
-            ))}
-          </div>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 20px', alignItems: 'center' }}>
+          <div style={{ color: '#0CF2B0', fontSize: '11px', fontWeight: 'bold' }}>● {t.bal}</div>
+          <button onClick={() => setView('settings')} style={{ background: '#111', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: '10px' }}>⚙️</button>
         </div>
 
-        {/* Swap Overlay */}
-        {activeDex && (
-          <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 100, padding: '20px' }}>
-            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '30px' }}>←</button>
-            <h2 style={{textAlign:'center', color: DEX_THEMES[activeDex].color}}>{activeDex} Swap</h2>
-            
-            <div style={{ background: '#0f0f0f', padding: '20px', borderRadius: '20px', border: '1px solid #222', marginTop: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', opacity: 0.6, marginBottom: 10 }}>
-                <span>Pay</span>
-                <span onClick={() => setAmount(currentPayBalance.toString())} style={{ color: DEX_THEMES[activeDex].color, fontWeight:'bold', cursor:'pointer' }}>
-                  MAX: {currentPayBalance.toFixed(6)}
-                </span>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 80px 20px' }}>
+          {view === 'main' && !activeDex && (
+            <>
+              <div style={{ textAlign: 'center', margin: '20px 0' }}>
+                <h1 style={{ fontSize: '42px', margin: 0 }}>${balanceUSDC.toLocaleString()}</h1>
+                <p style={{ opacity: 0.4 }}>USDC</p>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '28px', width: '60%', outline: 'none' }} placeholder="0.0"/>
-                <button onClick={() => {setSelectingFor('pay'); setShowTokenList(true)}} style={{ background: '#222', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: '10px', display:'flex', alignItems:'center', gap:5 }}>
-                  <img src={payToken.icon} width="18"/> {payToken.symbol}
-                </button>
-              </div>
-            </div>
 
-            <div style={{ textAlign:'center', padding: '10px', opacity: 0.3 }}>↓</div>
-
-            <div style={{ background: '#0f0f0f', padding: '20px', borderRadius: '20px', border: '1px solid #222' }}>
-              <div style={{ fontSize: '12px', opacity: 0.6, marginBottom: 10 }}>Receive (Est.)</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{fontSize: '28px'}}>{amount ? (payToken.symbol === 'USDC' ? (amount/receiveToken.price).toFixed(6) : (amount*payToken.price).toFixed(2)) : '0.0'}</div>
-                <button onClick={() => {setSelectingFor('receive'); setShowTokenList(true)}} style={{ background: '#222', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: '10px', display:'flex', alignItems:'center', gap:5 }}>
-                  <img src={receiveToken.icon} width="18"/> {receiveToken.symbol}
-                </button>
-              </div>
-            </div>
-
-            <button onClick={handleTrade} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: '20px', borderRadius: '20px', fontWeight: 'bold', marginTop: '30px', border: 'none' }}>
-              Confirm Transaction
-            </button>
-          </div>
-        )}
-
-        {/* RECEIPT MODAL (Чек) */}
-        {receipt && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zInterval: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-            <div style={{ background: '#111', width: '100%', borderRadius: '25px', padding: '25px', border: '1px solid #222', textAlign: 'center' }}>
-              <div style={{ fontSize: '50px' }}>{receipt.profit >= 0 ? '✅' : '📉'}</div>
-              <h2 style={{ margin: '10px 0' }}>{receipt.type === 'buy' ? 'Purchase' : 'Sale'} Done</h2>
-              <div style={{ margin: '20px 0', textAlign: 'left', background: '#000', padding: 15, borderRadius: 15 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 14 }}>
-                  <span style={{opacity: 0.5}}>Spent:</span>
-                  <span>{receipt.type === 'buy' ? receipt.pay.toFixed(2) + ' USDC' : receipt.pay.toFixed(6) + ' ' + receipt.asset}</span>
+              {signal && (
+                <div style={{ background: 'rgba(12,242,176,0.1)', border: '1px solid #0CF2B044', padding: '15px', borderRadius: '15px', marginBottom: '20px' }}>
+                  <div style={{fontSize: 12, opacity: 0.6}}>SIGNAL: {signal.coin.symbol}</div>
+                  <div>Buy: {signal.buyAt} → Sell: <b style={{color: '#0CF2B0'}}>{signal.sellAt}</b></div>
+                  <div style={{color: '#0CF2B0', fontWeight: 'bold'}}>+{signal.profit}%</div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, fontSize: 14 }}>
-                  <span style={{opacity: 0.5}}>Received:</span>
-                  <span>{receipt.type === 'buy' ? receipt.get.toFixed(6) + ' ' + receipt.asset : receipt.get.toFixed(2) + ' USDC'}</span>
-                </div>
-                {receipt.type === 'sell' && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 10, borderTop: '1px solid #222', fontWeight: 'bold' }}>
-                    <span>Profit:</span>
-                    <span style={{ color: receipt.profit >= 0 ? '#0CF2B0' : '#ff4d4d' }}>{receipt.profit >= 0 ? '+' : ''}${receipt.profit.toFixed(2)}</span>
+              )}
+
+              <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: '18px', border: '1px solid #1a1a1a', marginBottom: '20px' }}>
+                <p style={{fontSize: 10, opacity: 0.5}}>{t.assets}</p>
+                {Object.keys(wallet).map(c => wallet[c] > 0.000001 && (
+                  <div key={c} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111' }}>
+                    <div style={{display:'flex', alignItems:'center', gap: 8}}><img src={ASSETS[c].icon} width="18"/> {c}</div>
+                    <b>{wallet[c].toFixed(6)}</b>
                   </div>
-                )}
+                ))}
               </div>
-              <button onClick={() => setReceipt(null)} style={{ width: '100%', background: '#fff', color: '#000', padding: '15px', borderRadius: '15px', border: 'none', fontWeight: 'bold' }}>Close</button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {Object.keys(DEX_THEMES).map(k => (
+                  <button key={k} onClick={() => setActiveDex(k)} style={{ background: '#0a0a0a', border: `1px solid ${DEX_THEMES[k].color}44`, color: '#fff', padding: '20px 0', borderRadius: '15px', fontWeight: 'bold' }}>{DEX_THEMES[k].name}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* DEX UI */}
+        {activeDex && (
+          <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 100, padding: 20 }}>
+            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 30 }}>←</button>
+            <div style={{ background: '#0f0f0f', padding: 20, borderRadius: 20, marginTop: 20 }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: 0.6 }}>
+                 <span>Pay</span>
+                 <span onClick={() => setAmount((payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0)).toString())} style={{color: '#0CF2B0'}}>MAX</span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+                 <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 24, width: '60%' }} placeholder="0.0"/>
+                 <button onClick={() => {setSelectingFor('pay'); setShowTokenList(true)}} style={{ background: '#222', border: 'none', color: '#fff', padding: '5px 10px', borderRadius: 8 }}>{payToken.symbol}</button>
+               </div>
+            </div>
+            <button onClick={handleTrade} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: 20, borderRadius: 20, marginTop: 20, fontWeight: 'bold', border: 'none' }}>SWAP</button>
+          </div>
+        )}
+
+        {/* Settings View */}
+        {view === 'settings' && (
+          <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 100, padding: 20 }}>
+            <button onClick={() => setView('main')} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 30 }}>←</button>
+            <div style={{ marginTop: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', background: '#111', padding: 15, borderRadius: 15, marginBottom: 10 }}>
+                <span>{t.lang}</span>
+                <b onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={{color: '#0CF2B0'}}>{lang}</b>
+              </div>
+              <button onClick={() => window.open('https://t.me/kriptoalians')} style={{ width: '100%', background: '#111', border: 'none', color: '#fff', padding: 15, borderRadius: 15 }}>{t.manager}</button>
+              
+              <div onClick={() => { setClickCount(c => c + 1); if(clickCount > 4) setShowAdmin(true) }} style={{ opacity: 0.1, textAlign: 'center', marginTop: 50 }}>v5.0.0 Pro</div>
+              
+              {showAdmin && (
+                <div style={{ background: '#111', padding: 15, borderRadius: 15, marginTop: 20 }}>
+                  <p>Admin Panel</p>
+                  <input placeholder="Player ID" value={adminTargetId} onChange={e => setAdminTargetId(e.target.value)} style={{ width: '100%', marginBottom: 10 }}/>
+                  <input placeholder="New Balance" value={adminNewBalance} onChange={e => setAdminNewBalance(e.target.value)} style={{ width: '100%', marginBottom: 10 }}/>
+                  <button onClick={handleAdminChange} style={{ background: 'red', color: '#fff', width: '100%' }}>UPDATE</button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Token Selector */}
+        {/* Token List */}
         {showTokenList && (
           <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 1000, padding: 20 }}>
-             <button onClick={() => setShowTokenList(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '30px' }}>×</button>
-             <div style={{marginTop: 20}}>
-               {Object.values(ASSETS).map(t => (
-                 <div key={t.symbol} onClick={() => { selectingFor === 'pay' ? setPayToken(t) : setReceiveToken(t); setShowTokenList(false); }} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #111', alignItems: 'center' }}>
-                   <div style={{display:'flex', alignItems:'center', gap: 10}}><img src={t.icon} width="24"/> <span>{t.symbol}</span></div>
-                   <span>${t.price}</span>
-                 </div>
-               ))}
-             </div>
+             <button onClick={() => setShowTokenList(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 30 }}>×</button>
+             {Object.values(ASSETS).map(t => (
+               <div key={t.symbol} onClick={() => { selectingFor === 'pay' ? setPayToken(t) : setReceiveToken(t); setShowTokenList(false); }} style={{ display: 'flex', justifyContent: 'space-between', padding: 20, borderBottom: '1px solid #111' }}>
+                 <span>{t.symbol}</span><span>${t.price}</span>
+               </div>
+             ))}
           </div>
         )}
 
-        {isProcessing && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>TRANSACTION IN PROGRESS...</div>}
+        {/* Receipt */}
+        {receipt && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div style={{ background: '#111', padding: 25, borderRadius: 25, width: '100%', textAlign: 'center', border: '1px solid #333' }}>
+              <h3>Transaction Detail</h3>
+              <p>{t.spent}: {receipt.pay.toFixed(4)}</p>
+              <p>{t.get}: {receipt.get.toFixed(4)}</p>
+              {receipt.type === 'sell' && <p style={{color: receipt.isOk ? '#0CF2B0' : 'red'}}>{t.profit}: ${receipt.profit.toFixed(2)}</p>}
+              <button onClick={() => setReceipt(null)} style={{ background: '#fff', color: '#000', width: '100%', padding: 10, borderRadius: 10, marginTop: 10 }}>OK</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
