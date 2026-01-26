@@ -25,17 +25,18 @@ const COINS = [
   { id: 'AVAX', name: 'Avalanche', icon: 'https://cryptologos.cc/logos/avalanche-avax-logo.png' },
   { id: 'MATIC', name: 'Polygon', icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png' },
   { id: 'DOT', name: 'Polkadot', icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png' },
-  { id: 'TRX', name: 'TRON', icon: 'https://cryptologos.cc/logos/tron-trx-logo.png' },
-  { id: 'USDT', name: 'Tether', icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' }
+  { id: 'TRX', name: 'TRON', icon: 'https://cryptologos.cc/logos/tron-trx-logo.png' }
 ];
 
 function App() {
+  // Состояния
   const [balance, setBalance] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
+  const [holdCoin, setHoldCoin] = useState(() => localStorage.getItem('arb_hold_coin') || 'USDT'); 
   const [lang, setLang] = useState(() => localStorage.getItem('arb_lang') || 'ru');
   const [view, setView] = useState('main'); 
   const [selectedDex, setSelectedDex] = useState(null);
-  const [selectedCoin, setSelectedCoin] = useState(null);
-  const [tradeAmount, setTradeAmount] = useState("");
+  const [targetCoin, setTargetCoin] = useState(null);
+  
   const [online, setOnline] = useState(0);
   const [isTrading, setIsTrading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -45,83 +46,80 @@ function App() {
   const userId = useMemo(() => {
     const tg = window.Telegram?.WebApp?.initDataUnsafe?.user;
     if (tg) return tg.id.toString();
-    let id = localStorage.getItem('arb_user_id') || 'Player_' + Math.floor(Math.random() * 9000);
-    localStorage.setItem('arb_user_id', id);
-    return id;
+    return localStorage.getItem('arb_user_id') || 'Player_' + Math.floor(Math.random() * 9000);
   }, []);
 
+  // Firebase & LocalStorage
   useEffect(() => {
-    const userRef = ref(db, 'players/' + userId);
-    const presenceRef = ref(db, 'online/' + userId);
-    set(presenceRef, true);
-    onDisconnect(presenceRef).remove();
-    update(userRef, { id: userId, balance: balance, lastSeen: serverTimestamp() });
     localStorage.setItem('arb_balance', balance);
-    localStorage.setItem('arb_lang', lang);
+    localStorage.setItem('arb_hold_coin', holdCoin);
+    update(ref(db, 'players/' + userId), { balance, holdCoin, lastSeen: serverTimestamp() });
     onValue(ref(db, 'online'), (s) => setOnline(s.exists() ? Object.keys(s.val()).length : 1));
-  }, [balance, userId, lang]);
+  }, [balance, holdCoin]);
 
   useEffect(() => { if (!signal) generateSignal(); }, [signal]);
 
   const generateSignal = () => {
-    const coin = COINS[Math.floor(Math.random() * (COINS.length - 1))];
-    const prof = (Math.random() * 1.5 + 1.2).toFixed(2);
-    setSignal(`Buy ${coin.id} on ${DEXES[1]} -> Sell on ${DEXES[0]} (+${prof}%)`);
+    const coin = COINS[Math.floor(Math.random() * COINS.length)];
+    const prof = (Math.random() * 2 + 1.1).toFixed(2);
+    setSignal(`BUY ${coin.id} @ ${DEXES[1]} -> SELL @ ${DEXES[0]} (+${prof}%)`);
   };
 
-  const startTrade = () => {
-    if (!selectedCoin || !tradeAmount) return;
+  const executeTrade = () => {
     setIsTrading(true);
     setProgress(0);
     let p = 0;
     const interval = setInterval(() => {
-      p += 4;
+      p += 5;
       setProgress(p);
       if (p >= 100) {
         clearInterval(interval);
         setTimeout(() => {
-          const isWin = Math.random() > 0.35; // ~65% шанс успеха
-          const percent = isWin ? (Math.random() * 3) : -(Math.random() * 1.5);
-          const diff = balance * (percent / 100);
-          setBalance(prev => prev + diff);
-          setModal({ amount: Math.abs(diff).toFixed(2), isWin });
+          if (holdCoin === 'USDT') {
+            // ПОКУПКА МОНЕТЫ
+            setHoldCoin(targetCoin);
+            setModal({ msg: `Bought ${targetCoin}`, type: 'buy' });
+          } else {
+            // ПРОДАЖА В USDT (С профитом или убытком)
+            const isWin = Math.random() > 0.3;
+            const change = isWin ? (Math.random() * 0.03) : -(Math.random() * 0.015);
+            const newBal = balance * (1 + change);
+            setBalance(newBal);
+            setHoldCoin('USDT');
+            setModal({ amount: Math.abs(newBal - balance).toFixed(2), isWin, type: 'sell' });
+            generateSignal();
+          }
           setIsTrading(false);
           setSelectedDex(null);
-          setSelectedCoin(null);
-          setTradeAmount("");
-          generateSignal();
+          setTargetCoin(null);
         }, 500);
       }
-    }, 100);
+    }, 80);
   };
 
   const t = {
-    ru: { bal: "БАЛАНС", online: "В СЕТИ", signal: "СИГНАЛ", settings: "Настройки", back: "Назад", exchange: "ОБМЕНЯТЬ", max: "MAX", select: "Выберите монету" },
-    en: { bal: "BALANCE", online: "ONLINE", signal: "SIGNAL", settings: "Settings", back: "Back", exchange: "EXCHANGE", max: "MAX", select: "Select coin" }
+    ru: { bal: "БАЛАНС", sell: "ПРОДАТЬ", buy: "КУПИТЬ", max: "МАКС", back: "НАЗАД" },
+    en: { bal: "BALANCE", sell: "SELL", buy: "BUY", max: "MAX", back: "BACK" }
   }[lang];
 
   return (
     <div style={styles.container}>
       {/* Header */}
       <div style={styles.header}>
+        <div style={styles.onlineTag}><div style={styles.dot}></div>{online} ONLINE</div>
         <button onClick={() => setView('settings')} style={styles.iconBtn}>⚙️</button>
-        <div style={styles.onlineTag}>
-          <div style={styles.dot}></div>
-          <span>{online} {t.online}</span>
-        </div>
-        <button style={styles.iconBtn} onClick={() => window.location.reload()}>📜</button>
       </div>
 
       {view === 'main' && !selectedDex && (
         <div style={styles.content}>
           <div style={styles.balanceBox}>
-            <h1 style={styles.balanceText}>${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
-            <div style={styles.subText}>{t.bal}</div>
+            <div style={styles.subText}>{holdCoin} {t.bal}</div>
+            <h1 style={styles.balanceText}>{holdCoin === 'USDT' ? '$' : ''}{balance.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
           </div>
 
           <div style={styles.signalBox}>
-            <div style={styles.signalTitle}>{t.signal}</div>
-            <div style={styles.signalText}>{signal}</div>
+            <div style={{color: '#39f2af', fontSize: '10px', fontWeight: 'bold'}}>LIVE SIGNAL</div>
+            <div style={{fontSize: '12px'}}>{signal}</div>
           </div>
 
           <div style={styles.grid}>
@@ -129,91 +127,65 @@ function App() {
               <button key={d} onClick={() => setSelectedDex(d)} style={styles.dexBtn}>{d}</button>
             ))}
           </div>
-
-          <div style={styles.footer}>
-            <div style={{textAlign: 'left'}}>
-              <div style={{fontWeight: 'bold', fontSize: '13px'}}>{t.ru === 'БАЛАНС' ? 'Нужна помощь?' : 'Need help?'}</div>
-              <a href="https://t.me/vladstelin78" style={{color: '#39f2af', fontSize: '12px', textDecoration: 'none'}}>@vladstelin78</a>
-            </div>
-            <div style={{fontSize: '10px', opacity: 0.3}}>v1.2.0</div>
-          </div>
         </div>
       )}
 
       {selectedDex && !isTrading && (
         <div style={styles.dexView}>
-          <button onClick={() => {setSelectedDex(null); setSelectedCoin(null);}} style={{...styles.iconBtn, alignSelf: 'flex-start'}}>←</button>
-          <h2 style={{textAlign: 'center', margin: '10px 0'}}>{selectedDex}</h2>
-          
-          <div style={styles.coinGrid}>
-            {COINS.map(c => (
-              <div key={c.id} 
-                   onClick={() => setSelectedCoin(c.id)} 
-                   style={{...styles.coinItem, borderColor: selectedCoin === c.id ? '#39f2af' : '#222'}}>
-                <img src={c.icon} width="24" height="24" alt="" />
-                <span style={{fontSize: '10px', marginTop: '5px'}}>{c.id}</span>
-              </div>
-            ))}
+          <div style={styles.dexHeader}>
+            <button onClick={() => setSelectedDex(null)} style={styles.backBtnSmall}>{t.back}</button>
+            <span style={{fontWeight: 'bold'}}>{selectedDex}</span>
+            <div style={{width: '50px'}}></div>
           </div>
 
-          <div style={styles.tradeInputBox}>
-            <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px'}}>
-              <span style={{fontSize: '12px', opacity: 0.5}}>{selectedCoin || '---'}</span>
-              <button onClick={() => setTradeAmount(balance.toFixed(2))} style={styles.maxBtn}>{t.max}</button>
+          <div style={styles.tradeZone}>
+            <div style={styles.assetRow}>
+              <span>{holdCoin === 'USDT' ? 'Pay' : 'Give'}</span>
+              <span>{balance.toFixed(2)} {holdCoin}</span>
             </div>
-            <input 
-              type="number" 
-              placeholder="0.00" 
-              value={tradeAmount} 
-              onChange={(e) => setTradeAmount(e.target.value)}
-              style={styles.input}
-            />
-          </div>
+            
+            <div style={styles.coinGrid}>
+              {COINS.map(c => (
+                <button 
+                  key={c.id} 
+                  disabled={holdCoin !== 'USDT' && holdCoin !== c.id}
+                  onClick={() => setTargetCoin(c.id)}
+                  style={{...styles.coinBtn, borderColor: (targetCoin === c.id || holdCoin === c.id) ? '#39f2af' : '#222'}}
+                >
+                  <img src={c.icon} width="20" alt="" />
+                  <div style={{fontSize: '10px'}}>{c.id}</div>
+                </button>
+              ))}
+            </div>
 
-          <button 
-            disabled={!selectedCoin || !tradeAmount}
-            onClick={startTrade} 
-            style={{...styles.mainExchangeBtn, opacity: (!selectedCoin || !tradeAmount) ? 0.5 : 1}}
-          >
-            {t.exchange}
-          </button>
-        </div>
-      )}
-
-      {view === 'settings' && (
-        <div style={styles.settingsPage}>
-          <h2>{t.settings}</h2>
-          <div style={styles.settingItem}>
-            <button onClick={() => setLang(l => l === 'ru' ? 'en' : 'ru')} style={styles.langBtn}>
-              {lang === 'ru' ? 'Язык: Русский' : 'Language: English'}
+            <button 
+              onClick={executeTrade}
+              disabled={holdCoin === 'USDT' ? !targetCoin : holdCoin === 'USDT'}
+              style={{...styles.mainBtn, background: holdCoin === 'USDT' ? '#39f2af' : '#ff4d4d'}}
+            >
+              {holdCoin === 'USDT' ? `${t.buy} ${targetCoin || ''}` : `${t.sell} ${holdCoin}`}
             </button>
           </div>
-          <div style={styles.settingItem}>
-            <div style={{opacity: 0.5, fontSize: '12px'}}>CHANNEL</div>
-            <a href="https://t.me/kriptoalians" style={{color: '#39f2af', textDecoration: 'none', fontWeight: 'bold'}}>@kriptoalians</a>
-          </div>
-          <button onClick={() => setView('main')} style={styles.backBtn}>{t.back}</button>
         </div>
       )}
 
+      {/* Перекрытия */}
       {isTrading && (
         <div style={styles.overlay}>
-          <div style={{textAlign: 'center', width: '80%'}}>
-            <div style={{color: '#39f2af', fontWeight: 'bold', marginBottom: '10px'}}>SYNCHRONIZING {selectedDex}...</div>
-            <div style={styles.progressBg}><div style={{...styles.progressBar, width: `${progress}%`}}></div></div>
-            <div style={{marginTop: '10px', opacity: 0.5, fontSize: '10px'}}>{progress}%</div>
+          <div style={{textAlign: 'center', width: '70%'}}>
+            <div style={{marginBottom: '10px', fontSize: '12px'}}>{selectedDex} EXECUTING...</div>
+            <div style={styles.pBg}><div style={{...styles.pBar, width: `${progress}%`}}></div></div>
           </div>
         </div>
       )}
 
       {modal && (
         <div style={styles.overlay}>
-          <div style={styles.modalCard}>
-            <div style={{fontSize: '50px'}}>{modal.isWin ? '💰' : '📉'}</div>
-            <h2 style={{color: modal.isWin ? '#39f2af' : '#ff4d4d', fontSize: '32px', margin: '15px 0'}}>
-              {modal.isWin ? `+${modal.amount}` : `-${modal.amount}`}$
-            </h2>
-            <button onClick={() => setModal(null)} style={styles.backBtn}>OK</button>
+          <div style={styles.modal}>
+            <div style={{fontSize: '40px'}}>{modal.type === 'buy' ? '✅' : (modal.isWin ? '💰' : '📉')}</div>
+            <h3>{modal.type === 'buy' ? 'Assets Exchanged' : 'Trade Finished'}</h3>
+            {modal.amount && <h2 style={{color: modal.isWin ? '#39f2af' : '#ff4d4d'}}>{modal.isWin ? '+' : '-'}${modal.amount}</h2>}
+            <button onClick={() => setModal(null)} style={styles.closeBtn}>OK</button>
           </div>
         </div>
       )}
@@ -222,36 +194,30 @@ function App() {
 }
 
 const styles = {
-  container: { height: '100vh', width: '100vw', maxWidth: '500px', margin: '0 auto', background: '#000', color: '#fff', padding: '20px', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' },
-  iconBtn: { background: '#111', border: '1px solid #222', color: '#fff', padding: '10px 14px', borderRadius: '12px', cursor: 'pointer' },
-  onlineTag: { display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(57,242,175,0.1)', padding: '6px 15px', borderRadius: '20px', color: '#39f2af', fontSize: '11px', fontWeight: 'bold' },
-  dot: { width: '6px', height: '6px', background: '#39f2af', borderRadius: '50%', boxShadow: '0 0 8px #39f2af' },
-  content: { flex: 1, display: 'flex', flexDirection: 'column' },
-  balanceBox: { textAlign: 'center', margin: '20px 0' },
-  balanceText: { fontSize: '42px', margin: 0, fontWeight: '900' },
-  subText: { opacity: 0.4, fontSize: '11px', marginTop: '5px' },
-  signalBox: { background: '#111', border: '1px solid #222', padding: '12px', borderRadius: '18px', marginBottom: '20px', textAlign: 'center' },
-  signalTitle: { color: '#39f2af', fontSize: '10px', fontWeight: 'bold', marginBottom: '3px' },
-  signalText: { fontSize: '12px' },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
-  dexBtn: { background: '#111', border: '1px solid #222', color: '#fff', padding: '20px 0', borderRadius: '18px', fontWeight: 'bold' },
+  container: { height: '100vh', width: '100vw', maxWidth: '450px', margin: '0 auto', background: '#000', color: '#fff', padding: '15px', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  header: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px' },
+  onlineTag: { background: 'rgba(57,242,175,0.1)', color: '#39f2af', padding: '5px 12px', borderRadius: '15px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' },
+  dot: { width: '5px', height: '5px', background: '#39f2af', borderRadius: '50%' },
+  iconBtn: { background: '#111', border: '1px solid #222', color: '#fff', borderRadius: '10px', padding: '8px' },
+  balanceBox: { textAlign: 'center', margin: '30px 0' },
+  balanceText: { fontSize: '45px', margin: 0, fontWeight: '900' },
+  subText: { opacity: 0.4, fontSize: '11px' },
+  signalBox: { background: '#111', padding: '15px', borderRadius: '15px', border: '1px solid #222', marginBottom: '20px', textAlign: 'center' },
+  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' },
+  dexBtn: { background: '#111', border: '1px solid #222', color: '#fff', padding: '20px 0', borderRadius: '15px', fontWeight: 'bold' },
   dexView: { flex: 1, display: 'flex', flexDirection: 'column' },
-  coinGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', margin: '15px 0' },
-  coinItem: { background: '#111', border: '2px solid #222', borderRadius: '12px', padding: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' },
-  tradeInputBox: { background: '#111', padding: '15px', borderRadius: '20px', border: '1px solid #222', margin: '10px 0' },
-  maxBtn: { background: '#39f2af', color: '#000', border: 'none', borderRadius: '6px', padding: '2px 8px', fontSize: '10px', fontWeight: 'bold' },
-  input: { background: 'transparent', border: 'none', color: '#fff', fontSize: '24px', width: '100%', outline: 'none' },
-  mainExchangeBtn: { width: '100%', marginTop: 'auto', padding: '18px', borderRadius: '18px', background: '#39f2af', color: '#000', fontWeight: 'bold', fontSize: '16px', border: 'none' },
-  footer: { marginTop: 'auto', background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  settingsPage: { display: 'flex', flexDirection: 'column', flex: 1 },
-  settingItem: { background: '#111', padding: '20px', borderRadius: '20px', marginBottom: '15px' },
-  langBtn: { width: '100%', padding: '12px', background: '#222', border: '1px solid #39f2af', color: '#fff', borderRadius: '12px' },
-  backBtn: { width: '100%', marginTop: 'auto', padding: '15px', borderRadius: '15px', background: '#fff', color: '#000', fontWeight: 'bold', border: 'none' },
-  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  progressBg: { width: '100%', height: '8px', background: '#222', borderRadius: '10px', overflow: 'hidden' },
-  progressBar: { height: '100%', background: '#39f2af', transition: 'width 0.2s linear' },
-  modalCard: { background: '#111', padding: '30px', borderRadius: '30px', textAlign: 'center', width: '85%', border: '1px solid #222' }
+  dexHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
+  backBtnSmall: { background: '#222', border: 'none', color: '#fff', padding: '5px 12px', borderRadius: '8px', fontSize: '10px' },
+  tradeZone: { flex: 1, display: 'flex', flexDirection: 'column' },
+  assetRow: { display: 'flex', justifyContent: 'space-between', opacity: 0.6, fontSize: '12px', marginBottom: '15px' },
+  coinGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '20px' },
+  coinBtn: { background: '#111', border: '2px solid #222', borderRadius: '12px', padding: '10px 5px', color: '#fff' },
+  mainBtn: { width: '100%', marginTop: 'auto', padding: '18px', borderRadius: '15px', border: 'none', color: '#000', fontWeight: '900' },
+  overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
+  pBg: { width: '100%', height: '4px', background: '#222', borderRadius: '10px' },
+  pBar: { height: '100%', background: '#39f2af' },
+  modal: { background: '#111', padding: '30px', borderRadius: '25px', border: '1px solid #222', textAlign: 'center', width: '80%' },
+  closeBtn: { width: '100%', background: '#fff', color: '#000', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 'bold', marginTop: '15px' }
 };
 
 export default App;
