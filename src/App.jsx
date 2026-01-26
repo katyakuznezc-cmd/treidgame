@@ -22,15 +22,15 @@ const ASSETS = {
 };
 
 const TEXTS = {
-  RU: { balance: "ТЕКУЩИЙ БАЛАНС", wallet: "USDC WALLET", deal: "SMART SIGNAL", history: "АКТИВНОСТЬ СЕТИ", settings: "Настройки", lang: "Язык", creators: "Создатели", give: "Отдаете", get: "Получаете", swap: "Подтвердить обмен", pending: "Выполнение...", success: "ПРИБЫЛЬ", failed: "УБЫТОК", close: "ВЕРНУТЬСЯ", max: "МАКС" },
-  EN: { balance: "TOTAL BALANCE", wallet: "USDC WALLET", deal: "SMART SIGNAL", history: "NETWORK ACTIVITY", settings: "Settings", lang: "Language", creators: "Creators", give: "Give", get: "Receive", swap: "Confirm Swap", pending: "Processing...", success: "PROFIT", failed: "LOSS", close: "GO BACK", max: "MAX" }
+  RU: { balance: "ВАШ БАЛАНС", wallet: "USDC ВАЛЮТА", deal: "ГОРЯЧИЙ СИГНАЛ", history: "ПУЛЬС РЫНКА", settings: "Настройки", lang: "Язык", creators: "Создатели", give: "Отдаете", get: "Получаете", swap: "Сделать обмен", pending: "В процессе...", success: "УСПЕШНО", failed: "ОШИБКА", close: "ЗАКРЫТЬ", max: "МАКС" },
+  EN: { balance: "YOUR BALANCE", wallet: "USDC ASSET", deal: "HOT SIGNAL", history: "MARKET PULSE", settings: "Settings", lang: "Language", creators: "Creators", give: "Give", get: "Receive", swap: "Swap Now", pending: "Processing...", success: "SUCCESS", failed: "FAILED", close: "CLOSE", max: "MAX" }
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 0%, rgba(255, 0, 122, 0.25), #000 80%)' },
-  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'linear-gradient(180deg, rgba(12, 242, 176, 0.1) 0%, #000 100%)' },
-  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 0% 0%, rgba(250, 82, 160, 0.2), #000 70%)' },
-  '1INCH': { name: '1inch Network', color: '#31569c', bg: 'linear-gradient(135deg, rgba(49, 86, 156, 0.2) 0%, #000 100%)' }
+  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', glow: 'rgba(255, 0, 122, 0.4)' },
+  ODOS: { name: 'Odos Router', color: '#0CF2B0', glow: 'rgba(12, 242, 176, 0.4)' },
+  SUSHI: { name: 'SushiSwap', color: '#FA52A0', glow: 'rgba(250, 82, 160, 0.4)' },
+  '1INCH': { name: '1inch Network', color: '#31569c', glow: 'rgba(49, 86, 156, 0.4)' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -45,9 +45,6 @@ export default function App() {
   const [signal, setSignal] = useState(null);
   const [isPending, setIsPending] = useState(false);
   const [receipt, setReceipt] = useState(null);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [allPlayers, setAllPlayers] = useState({});
-  const [globalTrades, setGlobalTrades] = useState([]);
   const [showTokenList, setShowTokenList] = useState(null);
   const [payToken, setPayToken] = useState(ASSETS.USDC);
   const [receiveToken, setReceiveToken] = useState(ASSETS.BTC);
@@ -62,7 +59,6 @@ export default function App() {
     onValue(ref(db, 'players/'), (s) => {
       if (s.exists()) {
         const data = s.val();
-        setAllPlayers(data);
         if (data[userId]) {
           setBalanceUSDC(data[userId].balanceUSDC ?? 1000);
           setWallet(data[userId].wallet ?? {});
@@ -72,7 +68,7 @@ export default function App() {
       }
     });
     onValue(ref(db, 'globalTrades/'), (s) => {
-      if (s.exists()) setGlobalTrades(Object.values(s.val()).reverse().slice(0, 4));
+      if (s.exists()) setGlobalTrades(Object.values(s.val()).reverse().slice(0, 5));
     });
   }, [userId]);
 
@@ -80,7 +76,7 @@ export default function App() {
     if (!signal) {
       const keys = ['BTC', 'ETH', 'LINK', 'AAVE', 'CRV', 'WPOL'];
       const randomCoin = ASSETS[keys[Math.floor(Math.random() * keys.length)]];
-      setSignal({ coin: randomCoin, buyAt: 'UNISWAP', sellAt: 'ODOS', profit: (Math.random()*0.8 + 2.2).toFixed(2) });
+      setSignal({ coin: randomCoin, buyAt: 'UNISWAP', sellAt: 'ODOS', profit: (Math.random()*0.9 + 2.1).toFixed(2) });
     }
   }, [signal]);
 
@@ -96,7 +92,7 @@ export default function App() {
       const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
 
       if (receiveToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
-        gotAmount *= isCorrect ? (1 + signal.profit / 100) : (1 - (Math.random() * 0.012));
+        gotAmount *= isCorrect ? (1 + signal.profit / 100) : (1 - (Math.random() * 0.015));
         pnlValue = gotAmount - (amount * payToken.price);
         if (isCorrect) setSignal(null);
       }
@@ -113,129 +109,177 @@ export default function App() {
 
       setReceipt({ from: payToken.symbol, to: receiveToken.symbol, spent: amount, got: gotAmount, pnl: pnlValue });
       setIsPending(false); setPayAmount('');
-    }, 1200);
+    }, 1500);
   };
 
   return (
-    <div style={{ background: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: '-apple-system, sans-serif', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ backgroundColor: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflow: 'hidden', position: 'relative' }}>
       
-      {/* --- ЭФФЕКТЫ ФОНА --- */}
-      <div style={{ position: 'absolute', top: '-10%', left: '-20%', width: '70%', height: '70%', background: 'radial-gradient(circle, rgba(12, 242, 176, 0.1) 0%, transparent 70%)', zIndex: 0 }}></div>
-      <div style={{ position: 'absolute', bottom: '-10%', right: '-20%', width: '70%', height: '70%', background: 'radial-gradient(circle, rgba(255, 0, 122, 0.08) 0%, transparent 70%)', zIndex: 0 }}></div>
-      <div style={{ position: 'absolute', top: '30%', left: '10%', width: '100px', height: '100px', background: 'rgba(255,255,255,0.03)', borderRadius: '50%', filter: 'blur(40px)', animation: 'float 8s infinite ease-in-out' }}></div>
+      {/* --- ЖИВОЙ АНИМИРОВАННЫЙ ФОН --- */}
+      <div className="blobs">
+        <div className="blob blob-1"></div>
+        <div className="blob blob-2"></div>
+        <div className="blob blob-3"></div>
+      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
         
         {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '25px', alignItems: 'center' }}>
-          <div onClick={() => setShowAdmin(true)} style={{ color: '#0CF2B0', fontWeight: '800', fontSize: '12px', letterSpacing: '1.5px', cursor: 'pointer' }}>{t.balance}</div>
-          <button onClick={() => setView('settings')} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', width: '42px', height: '42px', borderRadius: '14px', backdropFilter: 'blur(10px)' }}>⚙️</button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', alignItems: 'center' }}>
+          <div style={{ color: '#0CF2B0', fontWeight: 'bold', fontSize: '11px', letterSpacing: '2px', textShadow: '0 0 10px rgba(12,242,176,0.5)' }}>{t.balance}</div>
+          <button onClick={() => setView('settings')} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 15px', borderRadius: '15px', backdropFilter: 'blur(10px)' }}>⚙️</button>
         </div>
 
         <div style={{ flex: 1, padding: '0 20px', overflowY: 'auto' }}>
-          {/* BALANCE */}
-          <div style={{ textAlign: 'center', margin: '30px 0 50px 0' }}>
-            <h1 style={{ fontSize: '58px', margin: 0, fontWeight: '900', background: 'linear-gradient(180deg, #FFFFFF 0%, #A0A0A0 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          {/* BALANCE SECTION */}
+          <div style={{ textAlign: 'center', margin: '30px 0 40px' }}>
+            <h1 className="glow-text" style={{ fontSize: '56px', margin: 0, fontWeight: '900', letterSpacing: '-2px' }}>
               ${balanceUSDC.toLocaleString(undefined, {minimumFractionDigits: 2})}
             </h1>
-            <p style={{ opacity: 0.4, fontSize: '11px', letterSpacing: '3px', marginTop: 10 }}>{t.wallet}</p>
+            <p style={{ opacity: 0.5, fontSize: '10px', letterSpacing: '4px', marginTop: 8 }}>{t.wallet}</p>
           </div>
 
-          {/* SIGNAL CARD (Glassmorphism) */}
+          {/* SIGNAL CARD (NEON) */}
           {signal && (
-            <div style={{ 
-              background: 'rgba(12, 242, 176, 0.04)', 
-              padding: '20px', 
-              borderRadius: '26px', 
-              marginBottom: '30px', 
-              border: '1px solid rgba(12, 242, 176, 0.15)', 
-              backdropFilter: 'blur(10px)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-            }}>
-              <div style={{ fontSize: '10px', color: '#0CF2B0', fontWeight: 'bold', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 8, height: 8, background: '#0CF2B0', borderRadius: '50%', boxShadow: '0 0 10px #0CF2B0' }}></span>
-                {t.deal}
+            <div className="signal-card">
+              <div style={{ fontSize: '9px', color: '#0CF2B0', fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="dot-pulse"></span> {t.deal}
               </div>
-              <div style={{ fontWeight: '800', fontSize: '17px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{signal.coin.symbol} <span style={{opacity: 0.3, fontWeight: '300'}}>→</span> {signal.sellAt}</span>
-                <span style={{ color: '#0CF2B0' }}>+{signal.profit}%</span>
+              <div style={{ fontWeight: '800', fontSize: '16px', display: 'flex', justifyContent: 'space-between' }}>
+                <span>{signal.coin.symbol} <span style={{opacity: 0.3}}>→</span> {signal.sellAt}</span>
+                <span style={{ color: '#0CF2B0', textShadow: '0 0 10px rgba(12,242,176,0.5)' }}>+{signal.profit}%</span>
               </div>
             </div>
           )}
 
-          {/* DEX GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '35px' }}>
+          {/* DEX BUTTONS GRID */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
             {Object.keys(DEX_THEMES).map(k => (
-              <button key={k} onClick={() => setActiveDex(k)} style={{ 
-                background: 'rgba(255,255,255,0.03)', 
-                border: `1px solid ${DEX_THEMES[k].color}33`, 
-                color: '#fff', 
-                padding: '28px 0', 
-                borderRadius: '26px', 
-                fontWeight: '800', 
-                fontSize: '14px',
-                backdropFilter: 'blur(12px)',
-                transition: 'transform 0.2s'
-              }} onTouchStart={(e) => e.currentTarget.style.transform = 'scale(0.96)'} onTouchEnd={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+              <button key={k} onClick={() => setActiveDex(k)} className="dex-btn" style={{ borderColor: `${DEX_THEMES[k].color}55` }}>
+                <div style={{ color: DEX_THEMES[k].color, fontSize: '10px', marginBottom: 4 }}>DEX</div>
                 {DEX_THEMES[k].name}
               </button>
             ))}
           </div>
 
-          {/* FEED */}
-          <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '28px', padding: '22px', border: '1px solid rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}>
-            <div style={{ fontSize: '10px', opacity: 0.3, marginBottom: '18px', fontWeight: 'bold', letterSpacing: '1px' }}>{t.history}</div>
-            {globalTrades.map((item, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
-                <span style={{opacity: 0.6}}>@{item.user}</span>
-                <span style={{ color: item.isProfit ? '#0CF2B0' : '#FF4B4B', fontWeight: '800' }}>{item.isProfit ? '+' : ''}{item.amount} USDC</span>
-              </div>
-            ))}
+          {/* LIVE FEED BOX */}
+          <div className="glass-card">
+            <div style={{ fontSize: '10px', opacity: 0.4, marginBottom: '15px', fontWeight: 'bold', letterSpacing: '1px' }}>{t.history}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{opacity: 0.6}}>@crypto_king</span>
+                  <span style={{color: '#0CF2B0', fontWeight: 'bold'}}>+42.50 USDC</span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{opacity: 0.6}}>@whale_tracker</span>
+                  <span style={{color: '#FF4B4B', fontWeight: 'bold'}}>-12.10 USDC</span>
+               </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* --- DEX OVERLAY --- */}
       {activeDex && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', backgroundImage: DEX_THEMES[activeDex].bg, zIndex: 1000, padding: '25px', display: 'flex', flexDirection: 'column', animation: 'slideUp 0.3s ease-out' }}>
-          <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px', width: '40px' }}>←</button>
-          <h2 style={{ textAlign: 'center', color: DEX_THEMES[activeDex].color, fontWeight: '900', letterSpacing: '1px' }}>{DEX_THEMES[activeDex].name}</h2>
-          
-          <div style={{ background: 'rgba(255,255,255,0.06)', padding: '25px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 30 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 15, opacity: 0.5 }}><span>{t.give}</span><span onClick={() => setPayAmount((payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0)).toString())} style={{color: DEX_THEMES[activeDex].color, fontWeight:'bold'}}>{t.max}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '38px', width: '60%', outline: 'none', fontWeight: '800' }} placeholder="0.0"/>
-              <button onClick={() => setShowTokenList('pay')} style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '18px', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src={payToken.icon} width="22"/> {payToken.symbol}
-              </button>
+        <div className="dex-overlay" style={{ backgroundImage: `radial-gradient(circle at 50% 100%, ${DEX_THEMES[activeDex].glow}, #000 70%)` }}>
+          <div style={{ maxWidth: '500px', margin: '0 auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px', textAlign: 'left', padding: '20px' }}>✕</button>
+            <h2 style={{ textAlign: 'center', color: DEX_THEMES[activeDex].color, fontWeight: '900', letterSpacing: '1px', textShadow: `0 0 20px ${DEX_THEMES[activeDex].glow}` }}>{DEX_THEMES[activeDex].name}</h2>
+            
+            <div className="swap-container">
+              <div className="swap-box">
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: 10, opacity: 0.5 }}><span>{t.give}</span><span onClick={() => setPayAmount(balanceUSDC.toString())} style={{color: DEX_THEMES[activeDex].color, fontWeight:'bold'}}>{t.max}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="swap-input" placeholder="0.0"/>
+                  <div className="token-select"><img src={payToken.icon} width="20"/> {payToken.symbol}</div>
+                </div>
+              </div>
+
+              <div className="swap-arrow" style={{ backgroundColor: DEX_THEMES[activeDex].color }}>↓</div>
+
+              <div className="swap-box">
+                <div style={{ fontSize: '11px', opacity: 0.5, marginBottom: 10 }}>{t.get}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{fontSize: '32px', fontWeight: '800'}}>{payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(5) : '0.0'}</div>
+                  <button onClick={() => setShowTokenList('receive')} className="token-select-btn"><img src={receiveToken.icon} width="20"/> {receiveToken.symbol} ▾</button>
+                </div>
+              </div>
             </div>
+
+            <button onClick={handleSwap} disabled={isPending} className="confirm-btn" style={{ backgroundColor: DEX_THEMES[activeDex].color, boxShadow: `0 0 30px ${DEX_THEMES[activeDex].glow}` }}>
+              {isPending ? t.pending : t.swap}
+            </button>
           </div>
-
-          <div style={{textAlign:'center', margin:'-18px 0', zIndex: 1001}}><button onClick={()=>{const temp=payToken; setPayToken(receiveToken); setReceiveToken(temp);}} style={{background:'#000', border:`1px solid ${DEX_THEMES[activeDex].color}`, color:'#fff', padding: '12px', borderRadius:'18px', boxShadow: `0 0 15px ${DEX_THEMES[activeDex].color}33`}}>⇅</button></div>
-
-          <div style={{ background: 'rgba(255,255,255,0.06)', padding: '25px', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 5 }}>
-            <div style={{ fontSize: '12px', opacity: 0.5, marginBottom: 15 }}>{t.get}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{fontSize: '38px', fontWeight: '800'}}>{payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(6) : '0.0'}</div>
-              <button onClick={() => setShowTokenList('receive')} style={{ background: 'rgba(0,0,0,0.3)', padding: '12px 16px', borderRadius: '18px', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src={receiveToken.icon} width="22"/> {receiveToken.symbol}
-              </button>
-            </div>
-          </div>
-
-          <button onClick={handleSwap} disabled={isPending} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: '24px', borderRadius: '28px', marginTop: 'auto', marginBottom: 20, fontWeight: '900', fontSize: '18px', border: 'none', boxShadow: `0 15px 40px ${DEX_THEMES[activeDex].color}55` }}>
-            {isPending ? t.pending : t.swap}
-          </button>
         </div>
       )}
 
-      {/* --- CSS ANIMATIONS --- */}
+      {/* --- CSS СТИЛИ ДЛЯ ЭФФЕКТОВ --- */}
       <style>{`
-        @keyframes float { 0%, 100% { transform: translateY(0) translateX(0); } 50% { transform: translateY(-20px) translateX(10px); } }
+        .blobs { position: absolute; inset: 0; overflow: hidden; z-index: 1; filter: blur(60px); opacity: 0.6; }
+        .blob { position: absolute; width: 300px; height: 300px; border-radius: 50%; animation: move 20s infinite alternate; }
+        .blob-1 { background: #FF007A; top: -100px; left: -100px; }
+        .blob-2 { background: #0CF2B0; bottom: -100px; right: -100px; animation-delay: -5s; }
+        .blob-3 { background: #31569c; top: 40%; left: 30%; animation-delay: -10s; }
+        
+        @keyframes move { 
+          from { transform: translate(0, 0) scale(1); } 
+          to { transform: translate(100px, 150px) scale(1.2); } 
+        }
+
+        .glow-text { background: linear-gradient(180deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .signal-card { 
+          background: rgba(255,255,255,0.03); border: 1px solid rgba(12,242,176,0.3); padding: 20px; border-radius: 24px; 
+          backdrop-filter: blur(20px); margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .dex-btn { 
+          background: rgba(255,255,255,0.05); border: 1px solid; border-radius: 22px; padding: 25px 10px; 
+          color: #fff; font-weight: 800; backdrop-filter: blur(10px); transition: 0.2s;
+        }
+        .dex-btn:active { transform: scale(0.95); }
+
+        .glass-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 26px; padding: 20px; backdrop-filter: blur(15px); }
+
+        .dex-overlay { position: fixed; inset: 0; z-index: 1000; animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .swap-container { padding: 20px; display: flex; flexDirection: column; gap: 8px; margin-top: 20px; }
+        .swap-box { background: rgba(255,255,255,0.08); padding: 20px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
+        .swap-input { background: none; border: none; color: #fff; fontSize: 32px; width: 60%; outline: none; font-weight: 800; }
+        .swap-arrow { width: 40px; height: 40px; margin: -20px auto; border-radius: 12px; display: flex; align-items: center; justifyContent: center; z-index: 5; border: 4px solid #000; font-weight: bold; }
+        
+        .confirm-btn { width: calc(100% - 40px); margin: auto 20px 30px; padding: 22px; border: none; border-radius: 24px; color: #fff; font-weight: 900; font-size: 18px; }
+
+        .dot-pulse { width: 8px; height: 8px; background: #0CF2B0; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
       `}</style>
 
+      {/* SETTINGS VIEW */}
+      {view === 'settings' && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 2000, padding: '30px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+            <h2 style={{fontWeight: '900'}}>{t.settings}</h2>
+            <button onClick={() => setView('main')} style={{ background: '#222', border: 'none', color: '#fff', width: '45px', height: '45px', borderRadius: '50%' }}>✕</button>
+          </div>
+          <button onClick={() => setLang(l => l === 'RU' ? 'EN' : 'RU')} style={{ width: '100%', padding: '22px', background: 'rgba(255,255,255,0.05)', color: '#fff', borderRadius: '20px', marginBottom: '15px', border: '1px solid #333', textAlign: 'left', fontWeight: 'bold' }}>🌐 {t.lang}: {lang}</button>
+          <button onClick={() => window.open('https://t.me/kriptoalians')} style={{ width: '100%', padding: '22px', background: 'rgba(255,255,255,0.05)', color: '#fff', borderRadius: '20px', border: '1px solid #333', textAlign: 'left', fontWeight: 'bold' }}>👥 {t.creators}: @kriptoalians</button>
+        </div>
+      )}
+
+      {/* TOKEN LIST */}
+      {showTokenList && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 3000, padding: '20px', overflowY: 'auto' }}>
+           <button onClick={() => setShowTokenList(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '35px', marginBottom: 20 }}>×</button>
+           {Object.values(ASSETS).map(item => (
+             <div key={item.symbol} onClick={() => { if(showTokenList === 'pay') setPayToken(item); else setReceiveToken(item); setShowTokenList(null); }} style={{ display: 'flex', gap: 15, padding: '20px', borderBottom: '1px solid #111', alignItems: 'center' }}>
+                <img src={item.icon} width="32"/>
+                <div style={{flex: 1}}><b>{item.symbol}</b></div>
+                <div style={{opacity: 0.5, fontSize: '13px'}}>${item.price.toLocaleString()}</div>
+             </div>
+           ))}
+        </div>
+      )}
     </div>
   );
 }
