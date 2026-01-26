@@ -22,10 +22,30 @@ const ASSETS = {
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'UNISWAP V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 0%, #1a000a 0%, #000 100%)' },
-  ODOS: { name: 'ODOS ROUTER', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 0%, #001a14 0%, #000 100%)' },
-  SUSHI: { name: 'SUSHISWAP', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 0%, #1a000d 0%, #000 100%)' },
-  '1INCH': { name: '1INCH NETWORK', color: '#31569c', bg: 'radial-gradient(circle at 50% 0%, #00081a 0%, #000 100%)' }
+  UNISWAP: { 
+    name: 'UNISWAP V3', 
+    color: '#FF007A', 
+    bg: 'radial-gradient(circle at 50% 0%, rgba(255, 0, 122, 0.15) 0%, #000 100%)',
+    accent: '#FF007A'
+  },
+  ODOS: { 
+    name: 'ODOS ROUTER', 
+    color: '#0CF2B0', 
+    bg: 'radial-gradient(circle at 50% 0%, rgba(12, 242, 176, 0.15) 0%, #000 100%)',
+    accent: '#0CF2B0'
+  },
+  SUSHI: { 
+    name: 'SUSHISWAP', 
+    color: '#FA52A0', 
+    bg: 'radial-gradient(circle at 50% 0%, rgba(250, 82, 160, 0.15) 0%, #000 100%)',
+    accent: '#FA52A0'
+  },
+  '1INCH': { 
+    name: '1INCH NETWORK', 
+    color: '#31569c', 
+    bg: 'radial-gradient(circle at 50% 0%, rgba(49, 86, 156, 0.15) 0%, #000 100%)',
+    accent: '#31569c'
+  }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -100,101 +120,109 @@ export default function App() {
       update(ref(db, `players/${userId}`), { balanceUSDC: newB, wallet: newW });
       setReceipt({ pnl, get: receiveAmt, to: getToken.symbol, dex: activeDex });
       setIsPending(false); setPayAmount('');
-    }, 2500); 
+    }, 3000); 
   };
 
   return (
-    <div className="app">
-      <div className="main-content">
-        <header className="top-nav">
-          <div className="liq-stat">USDC: <span>${balance.toFixed(2)}</span></div>
-          <button onClick={() => window.open('https://t.me/vladstelin78')} className="manager-link">MANAGER</button>
+    <div className="app-main">
+      <div className="scroll-container">
+        <header className="main-header">
+          <div className="token-pill">USDC: <span>${balance.toFixed(2)}</span></div>
+          <button onClick={() => window.open('https://t.me/vladstelin78')} className="btn-manager">MANAGER</button>
         </header>
 
-        <div className="balance-area">
-          <div className="bal-num">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          <div className="bal-desc">TOTAL PORTFOLIO</div>
-        </div>
+        <section className="portfolio-section">
+          <div className="portfolio-val">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div className="portfolio-label">TOTAL EQUITY</div>
+        </section>
 
         {deal && (
-          <div className="signal-card">
-            <div className="sc-head">
-              <span className="sc-tag">ARBITRAGE</span>
-              <span className="sc-pct">+{deal.profit}%</span>
+          <div className="deal-alert">
+            <div className="da-header">
+              <span className="da-status">LIVE ARBITRAGE</span>
+              <span className="da-profit">+{deal.profit}%</span>
             </div>
-            <div className="sc-route">
-              <div className="sc-node">
-                <small>BUY</small>
-                <div className="sc-dex">{DEX_THEMES[deal.buyAt].name}</div>
+            <div className="da-route">
+              <div className="da-node">
+                <small>BUY AT</small>
+                <div className="da-dex-name">{DEX_THEMES[deal.buyAt].name}</div>
               </div>
-              <div className="sc-token">
+              <div className="da-coin">
                 <img src={deal.coin.icon} />
                 <b>{deal.coin.symbol}</b>
               </div>
-              <div className="sc-node text-right">
-                <small>SELL</small>
-                <div className="sc-dex" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</div>
+              <div className="da-node text-right">
+                <small>SELL AT</small>
+                <div className="da-dex-name highlight">{DEX_THEMES[deal.sellAt].name}</div>
               </div>
             </div>
-            <div className="sc-timer"><div className="sc-fill" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
+            <div className="da-progress"><div className="da-bar" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
           </div>
         )}
 
         <div className="dex-grid">
           {Object.keys(DEX_THEMES).map(k => (
-            <button key={k} onClick={() => setActiveDex(k)} className="dex-tile">
-              <div className="tile-bar" style={{background: DEX_THEMES[k].color}}></div>
-              <div className="tile-title">{DEX_THEMES[k].name}</div>
-              <div className="tile-sub">V3 POOL</div>
+            <button key={k} onClick={() => setActiveDex(k)} className="dex-card">
+              <div className="dex-card-border" style={{background: DEX_THEMES[k].color}}></div>
+              <div className="dex-card-title">{DEX_THEMES[k].name}</div>
+              <div className="dex-card-status">POOL ACTIVE</div>
             </button>
           ))}
         </div>
       </div>
 
+      {/* ЭКРАН БИРЖИ С ОРИГИНАЛЬНЫМ ФОНОМ */}
       {activeDex && (
-        <div className="dex-overlay" style={{ background: DEX_THEMES[activeDex].bg }}>
-          <div className="dex-nav">
-            <button onClick={() => setActiveDex(null)}>✕</button>
-            <div className="dex-name-nav">{DEX_THEMES[activeDex].name}</div>
-            <div style={{width: 20}}></div>
-          </div>
+        <div className="dex-view" style={{ background: DEX_THEMES[activeDex].bg }}>
+          <header className="dex-view-header">
+            <button className="back-btn" onClick={() => setActiveDex(null)}>← BACK</button>
+            <div className="dex-view-title">{DEX_THEMES[activeDex].name}</div>
+            <div style={{width: 50}}></div>
+          </header>
 
-          <div className="swap-box-premium">
-            <div className="input-group">
-              <div className="ig-label"><span>SEND</span> <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))} className="max-btn">MAX</span></div>
-              <div className="ig-row">
-                <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                <button onClick={() => setShowTokenList('pay')} className="token-pick"><img src={payToken.icon} /> {payToken.symbol}</button>
+          <div className="swap-interface">
+            <div className="swap-card-premium">
+              <div className="sc-group">
+                <div className="sc-label"><span>FROM</span> <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))} className="max-action">MAX</span></div>
+                <div className="sc-row">
+                  <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
+                  <button onClick={() => setShowTokenList('pay')} className="token-selector"><img src={payToken.icon} /> {payToken.symbol}</button>
+                </div>
               </div>
-            </div>
 
-            <div className="swap-icon-wrap">↓</div>
-
-            <div className="input-group">
-              <div className="ig-label">RECEIVE</div>
-              <div className="ig-row">
-                <div className="ig-out">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(5) : '0.00'}</div>
-                <button onClick={() => setShowTokenList('get')} className="token-pick active"><img src={getToken.icon} /> {getToken.symbol}</button>
+              <div className="swap-visual-divider">
+                <div className="sv-line"></div>
+                <div className="sv-icon" style={{color: DEX_THEMES[activeDex].color}}>↓</div>
+                <div className="sv-line"></div>
               </div>
-            </div>
 
-            <button onClick={handleSwap} disabled={isPending} className="swap-main-btn" style={{ background: DEX_THEMES[activeDex].color }}>
-              {isPending ? <div className="loader"></div> : "CONFIRM TRANSACTION"}
-            </button>
+              <div className="sc-group">
+                <div className="sc-label">TO</div>
+                <div className="sc-row">
+                  <div className="sc-read-only">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(5) : '0.00'}</div>
+                  <button onClick={() => setShowTokenList('get')} className="token-selector active" style={{borderColor: `${DEX_THEMES[activeDex].color}44`}}><img src={getToken.icon} /> {getToken.symbol}</button>
+                </div>
+              </div>
+
+              <button onClick={handleSwap} disabled={isPending} className="swap-confirm-btn" style={{ background: DEX_THEMES[activeDex].color }}>
+                {isPending ? <div className="loading-spinner"></div> : "SWAP ASSETS"}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
+      {/* ВЫБОР ТОКЕНОВ */}
       {showTokenList && (
-        <div className="token-modal">
-          <div className="token-sheet">
-            <div className="ts-head">Select Asset <button onClick={() => setShowTokenList(null)}>✕</button></div>
-            <div className="ts-list">
+        <div className="token-modal-overlay">
+          <div className="token-modal-sheet">
+            <div className="tm-header">Select Asset <button onClick={() => setShowTokenList(null)}>✕</button></div>
+            <div className="tm-list">
               {Object.values(ASSETS).map(a => (
-                <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="ts-row">
+                <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="tm-item">
                   <img src={a.icon} />
-                  <div className="ts-info"><b>{a.symbol}</b><small>Verified Token</small></div>
-                  <div className="ts-price">${a.price}</div>
+                  <div className="tm-info"><b>{a.symbol}</b><small>Standard Protocol</small></div>
+                  <div className="tm-price">${a.price}</div>
                 </div>
               ))}
             </div>
@@ -202,86 +230,92 @@ export default function App() {
         </div>
       )}
 
+      {/* ЧЕК */}
       {receipt && (
         <div className="receipt-overlay">
-          <div className="receipt-card">
-            <div className="rc-icon">✓</div>
-            <h3>SUCCESSFUL</h3>
-            <div className="rc-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
+          <div className="receipt-modal">
+            <div className="rm-icon">✓</div>
+            <h3>TRANSACTION COMPLETED</h3>
+            <div className="rm-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
             </div>
-            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="rc-btn">DONE</button>
+            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="rm-btn">DONE</button>
           </div>
         </div>
       )}
 
       <style>{`
-        .app { background: #000; height: 100vh; color: #fff; font-family: -apple-system, sans-serif; overflow: hidden; }
-        .main-content { padding: 20px; height: 100%; overflow-y: auto; }
-        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .liq-stat { font-size: 10px; font-weight: 800; background: #111; padding: 6px 12px; border-radius: 12px; border: 1px solid #222; }
-        .liq-stat span { color: #0CF2B0; }
-        .manager-link { background: #fff; color: #000; border: none; padding: 6px 12px; border-radius: 12px; font-size: 9px; font-weight: 900; }
+        .app-main { background: #000; height: 100vh; color: #fff; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
+        .scroll-container { padding: 20px; height: 100%; overflow-y: auto; }
+        
+        .main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .token-pill { font-size: 10px; font-weight: 900; background: #0d0d0d; border: 1px solid #1a1a1a; padding: 6px 14px; border-radius: 20px; }
+        .token-pill span { color: #0CF2B0; }
+        .btn-manager { background: #fff; color: #000; border: none; padding: 6px 12px; border-radius: 10px; font-size: 10px; font-weight: 900; }
 
-        .balance-area { text-align: center; margin-bottom: 30px; }
-        .bal-num { font-size: 42px; font-weight: 800; letter-spacing: -1px; }
-        .bal-desc { font-size: 9px; opacity: 0.3; letter-spacing: 2px; margin-top: 5px; }
+        .portfolio-section { text-align: center; margin-bottom: 35px; }
+        .portfolio-val { font-size: 42px; font-weight: 800; letter-spacing: -1px; }
+        .portfolio-label { font-size: 9px; opacity: 0.3; letter-spacing: 2px; margin-top: 5px; }
 
-        .signal-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 18px; border-radius: 24px; margin-bottom: 25px; }
-        .sc-head { display: flex; justify-content: space-between; margin-bottom: 15px; }
-        .sc-tag { font-size: 9px; font-weight: 900; color: #0CF2B0; }
-        .sc-pct { font-size: 16px; font-weight: 900; color: #0CF2B0; }
-        .sc-route { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .sc-node small { font-size: 8px; opacity: 0.3; display: block; margin-bottom: 3px; }
-        .sc-dex { font-size: 12px; font-weight: 800; }
-        .sc-token { background: #fff; color: #000; padding: 6px 12px; border-radius: 12px; text-align: center; }
-        .sc-token img { width: 14px; margin-bottom: 2px; }
-        .sc-token b { display: block; font-size: 9px; }
-        .sc-timer { height: 2px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
-        .sc-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
+        .deal-alert { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; }
+        .da-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .da-status { font-size: 9px; font-weight: 900; color: #0CF2B0; letter-spacing: 1px; }
+        .da-profit { font-size: 18px; font-weight: 900; color: #0CF2B0; }
+        .da-route { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .da-node small { font-size: 8px; opacity: 0.4; display: block; margin-bottom: 4px; }
+        .da-dex-name { font-size: 13px; font-weight: 900; }
+        .da-dex-name.highlight { color: #0CF2B0; }
+        .da-coin { background: #fff; color: #000; padding: 6px 12px; border-radius: 12px; text-align: center; }
+        .da-coin img { width: 14px; margin-bottom: 2px; }
+        .da-coin b { display: block; font-size: 9px; }
+        .da-progress { height: 2px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
+        .da-bar { height: 100%; background: #0CF2B0; transition: width 1s linear; }
 
         .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .dex-tile { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 22px 15px; border-radius: 20px; text-align: left; color: #fff; position: relative; overflow: hidden; }
-        .tile-bar { position: absolute; top: 0; left: 0; width: 3px; height: 100%; }
-        .tile-title { font-size: 11px; font-weight: 900; margin-bottom: 4px; }
-        .tile-sub { font-size: 8px; opacity: 0.2; }
+        .dex-card { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 25px 15px; border-radius: 22px; text-align: left; color: #fff; position: relative; overflow: hidden; }
+        .dex-card-border { position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        .dex-card-title { font-size: 12px; font-weight: 900; margin-bottom: 4px; }
+        .dex-card-status { font-size: 8px; opacity: 0.2; }
 
-        .dex-overlay { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; }
-        .dex-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .dex-nav button { background: rgba(255,255,255,0.1); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; font-weight: bold; }
-        .dex-name-nav { font-weight: 800; font-size: 14px; }
+        .dex-view { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
+        .dex-view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .back-btn { background: rgba(255,255,255,0.05); border: none; color: #fff; padding: 8px 14px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+        .dex-view-title { font-weight: 900; font-size: 14px; letter-spacing: 1px; }
 
-        .swap-box-premium { background: rgba(0,0,0,0.6); padding: 18px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
-        .input-group { background: #000; padding: 16px; border-radius: 20px; border: 1px solid #1a1a1a; }
-        .ig-label { display: flex; justify-content: space-between; font-size: 9px; opacity: 0.4; margin-bottom: 10px; }
-        .max-btn { color: #0CF2B0; font-weight: 900; }
-        .ig-row { display: flex; justify-content: space-between; align-items: center; }
-        .ig-row input { background: none; border: none; color: #fff; font-size: 24px; font-weight: 600; width: 50%; outline: none; }
-        .ig-out { font-size: 24px; font-weight: 600; }
-        .token-pick { background: #111; border: 1px solid #222; color: #fff; padding: 6px 10px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; }
-        .token-pick img { width: 16px; }
-        .token-pick.active { border-color: #0CF2B033; }
-        .swap-icon-wrap { text-align: center; margin: 10px 0; opacity: 0.2; font-size: 14px; }
-        .swap-main-btn { width: 100%; padding: 18px; border: none; border-radius: 18px; color: #fff; font-weight: 900; font-size: 14px; margin-top: 15px; display: flex; justify-content: center; }
+        .swap-interface { flex: 1; display: flex; align-items: center; }
+        .swap-card-premium { background: rgba(0,0,0,0.4); width: 100%; padding: 20px; border-radius: 32px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(15px); }
+        .sc-group { background: #000; padding: 18px; border-radius: 22px; border: 1px solid #1a1a1a; }
+        .sc-label { display: flex; justify-content: space-between; font-size: 9px; opacity: 0.4; margin-bottom: 12px; }
+        .max-action { color: #0CF2B0; font-weight: 900; }
+        .sc-row { display: flex; justify-content: space-between; align-items: center; }
+        .sc-row input { background: none; border: none; color: #fff; font-size: 26px; font-weight: 700; width: 50%; outline: none; }
+        .sc-read-only { font-size: 26px; font-weight: 700; }
+        .token-selector { background: #111; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+        .token-selector img { width: 18px; }
+        .swap-visual-divider { display: flex; align-items: center; gap: 15px; padding: 10px 0; }
+        .sv-line { flex: 1; height: 1px; background: rgba(255,255,255,0.05); }
+        .sv-icon { font-size: 16px; font-weight: bold; }
+        .swap-confirm-btn { width: 100%; padding: 20px; border: none; border-radius: 22px; color: #fff; font-weight: 900; font-size: 14px; margin-top: 20px; display: flex; justify-content: center; }
 
-        .token-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; align-items: flex-end; }
-        .token-sheet { background: #0a0a0a; width: 100%; border-top-left-radius: 25px; border-top-right-radius: 25px; padding: 20px; }
-        .ts-head { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: 800; font-size: 14px; }
-        .ts-row { display: flex; align-items: center; gap: 15px; padding: 12px 0; border-bottom: 1px solid #151515; }
-        .ts-row img { width: 28px; }
-        .ts-info { flex: 1; }
-        .ts-info b { display: block; font-size: 13px; }
-        .ts-info small { font-size: 9px; opacity: 0.3; }
-        .ts-price { font-weight: 700; font-size: 13px; }
+        .token-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; align-items: flex-end; }
+        .token-modal-sheet { background: #0d0d0d; width: 100%; border-top-left-radius: 30px; border-top-right-radius: 30px; padding: 25px; }
+        .tm-header { display: flex; justify-content: space-between; margin-bottom: 25px; font-weight: 900; font-size: 15px; }
+        .tm-item { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #151515; }
+        .tm-item img { width: 32px; }
+        .tm-info { flex: 1; }
+        .tm-info b { display: block; font-size: 14px; }
+        .tm-info small { font-size: 9px; opacity: 0.3; }
+        .tm-price { font-weight: 700; font-size: 14px; }
 
         .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 30px; }
-        .receipt-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 30px; width: 100%; text-align: center; }
-        .rc-icon { width: 50px; height: 50px; background: #0CF2B015; color: #0CF2B0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px; }
-        .rc-pnl { font-size: 32px; font-weight: 800; margin: 15px 0 25px; }
-        .rc-btn { background: #fff; color: #000; border: none; width: 100%; padding: 15px; border-radius: 14px; font-weight: 800; }
+        .receipt-modal { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 35px 25px; border-radius: 35px; width: 100%; text-align: center; }
+        .rm-icon { width: 60px; height: 60px; background: rgba(12, 242, 176, 0.1); color: #0CF2B0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 24px; }
+        .rm-pnl { font-size: 38px; font-weight: 800; margin-bottom: 30px; }
+        .rm-btn { background: #fff; color: #000; border: none; width: 100%; padding: 18px; border-radius: 18px; font-weight: 900; }
 
-        .loader { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .loading-spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
       `}</style>
     </div>
   );
