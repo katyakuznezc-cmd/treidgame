@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set, push, update } from "firebase/database";
 
@@ -12,25 +12,20 @@ const firebaseConfig = {
 };
 
 const ASSETS = {
-  USDC: { symbol: 'USDC', price: 1, icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=024' },
-  BTC: { symbol: 'BTC', price: 65000, icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=024' },
-  ETH: { symbol: 'ETH', price: 2600, icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=024' },
-  LINK: { symbol: 'LINK', price: 18.2, icon: 'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=024' },
-  AAVE: { symbol: 'AAVE', price: 145.5, icon: 'https://cryptologos.cc/logos/aave-aave-logo.svg?v=024' },
-  CRV: { symbol: 'CRV', price: 0.35, icon: 'https://cryptologos.cc/logos/curve-dao-token-crv-logo.svg?v=024' },
-  WPOL: { symbol: 'WPOL', price: 0.55, icon: 'https://cryptologos.cc/logos/polygon-matic-logo.svg?v=024' }
-};
-
-const TEXTS = {
-  RU: { balance: "ВАШ БАЛАНС", wallet: "USDC ВАЛЮТА", deal: "ГОРЯЧИЙ СИГНАЛ", history: "ПУЛЬС РЫНКА", settings: "Настройки", lang: "Язык", creators: "Создатели", give: "Отдаете", get: "Получаете", swap: "Сделать обмен", pending: "В процессе...", success: "УСПЕШНО", failed: "ОШИБКА", close: "ЗАКРЫТЬ", max: "МАКС" },
-  EN: { balance: "YOUR BALANCE", wallet: "USDC ASSET", deal: "HOT SIGNAL", history: "MARKET PULSE", settings: "Settings", lang: "Language", creators: "Creators", give: "Give", get: "Receive", swap: "Swap Now", pending: "Processing...", success: "SUCCESS", failed: "FAILED", close: "CLOSE", max: "MAX" }
+  USDC: { symbol: 'USDC', price: 1, icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg' },
+  BTC: { symbol: 'BTC', price: 65000, icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg' },
+  ETH: { symbol: 'ETH', price: 2600, icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg' },
+  LINK: { symbol: 'LINK', price: 18.2, icon: 'https://cryptologos.cc/logos/chainlink-link-logo.svg' },
+  AAVE: { symbol: 'AAVE', price: 145.5, icon: 'https://cryptologos.cc/logos/aave-aave-logo.svg' },
+  CRV: { symbol: 'CRV', price: 0.35, icon: 'https://cryptologos.cc/logos/curve-dao-token-crv-logo.svg' },
+  WPOL: { symbol: 'WPOL', price: 0.55, icon: 'https://cryptologos.cc/logos/polygon-matic-logo.svg' }
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', glow: 'rgba(255, 0, 122, 0.4)' },
-  ODOS: { name: 'Odos Router', color: '#0CF2B0', glow: 'rgba(12, 242, 176, 0.4)' },
-  SUSHI: { name: 'SushiSwap', color: '#FA52A0', glow: 'rgba(250, 82, 160, 0.4)' },
-  '1INCH': { name: '1inch Network', color: '#31569c', glow: 'rgba(49, 86, 156, 0.4)' }
+  UNISWAP: { name: 'Uniswap V3', color: '#FF007A' },
+  ODOS: { name: 'Odos Router', color: '#0CF2B0' },
+  SUSHI: { name: 'SushiSwap', color: '#FA52A0' },
+  '1INCH': { name: '1inch Network', color: '#31569c' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -38,248 +33,221 @@ const db = getDatabase(app);
 
 export default function App() {
   const [lang, setLang] = useState('RU');
-  const [balanceUSDC, setBalanceUSDC] = useState(1000.0);
+  const [balance, setBalance] = useState(1000);
   const [wallet, setWallet] = useState({});
   const [view, setView] = useState('main'); 
   const [activeDex, setActiveDex] = useState(null);
   const [signal, setSignal] = useState(null);
+  const [payToken, setPayToken] = useState(ASSETS.USDC);
+  const [getToken, setGetToken] = useState(ASSETS.BTC);
+  const [payAmount, setPayAmount] = useState('');
   const [isPending, setIsPending] = useState(false);
   const [receipt, setReceipt] = useState(null);
-  const [showTokenList, setShowTokenList] = useState(null);
-  const [payToken, setPayToken] = useState(ASSETS.USDC);
-  const [receiveToken, setReceiveToken] = useState(ASSETS.BTC);
-  const [payAmount, setPayAmount] = useState('');
+  const [clicks, setClicks] = useState([]); // Для эффекта доллара
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const t = TEXTS[lang];
-  const tgData = useMemo(() => window.Telegram?.WebApp?.initDataUnsafe?.user, []);
-  const userId = useMemo(() => tgData?.id?.toString() || 'User_Sim', [tgData]);
-  const userName = useMemo(() => tgData?.username || tgData?.first_name || 'Trader', [tgData]);
+  const t = {
+    RU: { balance: "БАЛАНС", swap: "Обмен", settings: "Настройки", max: "МАКС", buy: "Купить", sell: "Продать", done: "Готово" },
+    EN: { balance: "BALANCE", swap: "Swap", settings: "Settings", max: "MAX", buy: "Buy", sell: "Sell", done: "Done" }
+  }[lang];
 
+  // Инициализация данных
+  const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id?.toString() || 'Guest';
+  
   useEffect(() => {
-    onValue(ref(db, 'players/'), (s) => {
+    onValue(ref(db, `players/${userId}`), (s) => {
       if (s.exists()) {
-        const data = s.val();
-        if (data[userId]) {
-          setBalanceUSDC(data[userId].balanceUSDC ?? 1000);
-          setWallet(data[userId].wallet ?? {});
-        } else {
-          set(ref(db, 'players/' + userId), { balanceUSDC: 1000, wallet: {}, username: userName });
-        }
+        setBalance(s.val().balanceUSDC);
+        setWallet(s.val().wallet || {});
+      } else {
+        set(ref(db, `players/${userId}`), { balanceUSDC: 1000, wallet: {}, username: 'Trader' });
       }
-    });
-    onValue(ref(db, 'globalTrades/'), (s) => {
-      if (s.exists()) setGlobalTrades(Object.values(s.val()).reverse().slice(0, 5));
     });
   }, [userId]);
 
+  // Генерация сигнала
   useEffect(() => {
     if (!signal) {
       const keys = ['BTC', 'ETH', 'LINK', 'AAVE', 'CRV', 'WPOL'];
-      const randomCoin = ASSETS[keys[Math.floor(Math.random() * keys.length)]];
-      setSignal({ coin: randomCoin, buyAt: 'UNISWAP', sellAt: 'ODOS', profit: (Math.random()*0.9 + 2.1).toFixed(2) });
+      const coin = ASSETS[keys[Math.floor(Math.random() * keys.length)]];
+      setSignal({ coin, sellAt: 'ODOS', profit: (Math.random() * 1.5 + 1.5).toFixed(2) });
     }
   }, [signal]);
 
+  const playClick = () => {
+    if (!soundEnabled) return;
+    const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
+    audio.play();
+  };
+
+  const handleInteraction = (e) => {
+    playClick();
+    const id = Date.now();
+    setClicks([...clicks, { id, x: e.clientX, y: e.clientY }]);
+    setTimeout(() => setClicks(prev => prev.filter(c => c.id !== id)), 1000);
+  };
+
   const handleSwap = () => {
     const amount = Number(payAmount);
-    const available = payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0);
-    if (!amount || amount <= 0 || amount > available) return;
+    const hasEnough = payToken.symbol === 'USDC' ? balance >= amount : (wallet[payToken.symbol] || 0) >= amount;
+    if (!amount || !hasEnough) return;
+
     setIsPending(true);
-
     setTimeout(() => {
-      let gotAmount = (amount * payToken.price) / receiveToken.price;
-      let pnlValue = null;
-      const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
+      let receiveAmount = (amount * payToken.price) / getToken.price;
+      let pnl = 0;
 
-      if (receiveToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
-        gotAmount *= isCorrect ? (1 + signal.profit / 100) : (1 - (Math.random() * 0.015));
-        pnlValue = gotAmount - (amount * payToken.price);
-        if (isCorrect) setSignal(null);
+      // Логика профита по сигналу
+      if (getToken.symbol === 'USDC' && payToken.symbol === signal.coin.symbol && activeDex === signal.sellAt) {
+        receiveAmount *= (1 + signal.profit / 100);
+        pnl = receiveAmount - (amount * payToken.price);
+        setSignal(null);
+      } else if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
+        // Рандомный минус до 1.5%
+        receiveAmount *= (1 - (Math.random() * 0.015));
+        pnl = receiveAmount - (amount * payToken.price);
       }
 
-      const newBalanceUSDC = payToken.symbol === 'USDC' ? balanceUSDC - amount : (receiveToken.symbol === 'USDC' ? balanceUSDC + gotAmount : balanceUSDC);
+      const newBalance = payToken.symbol === 'USDC' ? balance - amount : (getToken.symbol === 'USDC' ? balance + receiveAmount : balance);
       const newWallet = { ...wallet };
       if (payToken.symbol !== 'USDC') newWallet[payToken.symbol] = (newWallet[payToken.symbol] || 0) - amount;
-      if (receiveToken.symbol !== 'USDC') newWallet[receiveToken.symbol] = (newWallet[receiveToken.symbol] || 0) + gotAmount;
+      if (getToken.symbol !== 'USDC') newWallet[getToken.symbol] = (newWallet[getToken.symbol] || 0) + receiveAmount;
 
-      update(ref(db, 'players/' + userId), { balanceUSDC: newBalanceUSDC, wallet: newWallet, username: userName });
-      if (pnlValue !== null) {
-        push(ref(db, 'globalTrades/'), { user: userName, amount: pnlValue.toFixed(2), isProfit: pnlValue >= 0 });
-      }
-
-      setReceipt({ from: payToken.symbol, to: receiveToken.symbol, spent: amount, got: gotAmount, pnl: pnlValue });
-      setIsPending(false); setPayAmount('');
+      update(ref(db, `players/${userId}`), { balanceUSDC: newBalance, wallet: newWallet });
+      setReceipt({ pnl, get: receiveAmount, token: getToken.symbol });
+      setIsPending(false);
+      setPayAmount('');
     }, 1500);
   };
 
   return (
-    <div style={{ backgroundColor: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', overflow: 'hidden', position: 'relative' }}>
+    <div style={{ background: '#000', height: '100vh', width: '100vw', color: '#fff', overflow: 'hidden', position: 'relative' }} onClick={handleInteraction}>
       
-      {/* --- ЖИВОЙ АНИМИРОВАННЫЙ ФОН --- */}
-      <div className="blobs">
-        <div className="blob blob-1"></div>
-        <div className="blob blob-2"></div>
-        <div className="blob blob-3"></div>
-      </div>
+      {/* АНИМИРОВАННЫЙ ФОН ГЛАВНОЙ */}
+      <div className="bg-animation"></div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '500px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
-        
-        {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', alignItems: 'center' }}>
-          <div style={{ color: '#0CF2B0', fontWeight: 'bold', fontSize: '11px', letterSpacing: '2px', textShadow: '0 0 10px rgba(12,242,176,0.5)' }}>{t.balance}</div>
-          <button onClick={() => setView('settings')} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', padding: '10px 15px', borderRadius: '15px', backdropFilter: 'blur(10px)' }}>⚙️</button>
-        </div>
+      {/* ЭФФЕКТ ДОЛЛАРА */}
+      {clicks.map(c => <div key={c.id} className="dollar-pop" style={{ left: c.x, top: c.y }}>$</div>)}
 
-        <div style={{ flex: 1, padding: '0 20px', overflowY: 'auto' }}>
-          {/* BALANCE SECTION */}
-          <div style={{ textAlign: 'center', margin: '30px 0 40px' }}>
-            <h1 className="glow-text" style={{ fontSize: '56px', margin: 0, fontWeight: '900', letterSpacing: '-2px' }}>
-              ${balanceUSDC.toLocaleString(undefined, {minimumFractionDigits: 2})}
-            </h1>
-            <p style={{ opacity: 0.5, fontSize: '10px', letterSpacing: '4px', marginTop: 8 }}>{t.wallet}</p>
-          </div>
+      {/* --- ГЛАВНЫЙ ЭКРАН --- */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', zIndex: 10 }}>
+        <header style={{ padding: '20px', display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: '#0CF2B0', fontWeight: 'bold' }}>{t.balance}</span>
+          <button onClick={() => setView('settings')} style={{ background: 'none', border: 'none', fontSize: '20px' }}>⚙️</button>
+        </header>
 
-          {/* SIGNAL CARD (NEON) */}
+        <main style={{ flex: 1, padding: '0 20px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '50px', margin: '20px 0' }}>${balance.toFixed(2)}</h1>
+          
           {signal && (
-            <div className="signal-card">
-              <div style={{ fontSize: '9px', color: '#0CF2B0', fontWeight: 'bold', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="dot-pulse"></span> {t.deal}
-              </div>
-              <div style={{ fontWeight: '800', fontSize: '16px', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{signal.coin.symbol} <span style={{opacity: 0.3}}>→</span> {signal.sellAt}</span>
-                <span style={{ color: '#0CF2B0', textShadow: '0 0 10px rgba(12,242,176,0.5)' }}>+{signal.profit}%</span>
-              </div>
+            <div className="signal-box">
+              <div style={{ color: '#0CF2B0', fontSize: '12px' }}>LIVE SIGNAL</div>
+              <b>{signal.coin.symbol} → {signal.sellAt} (+{signal.profit}%)</b>
             </div>
           )}
 
-          {/* DEX BUTTONS GRID */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '30px' }}>
             {Object.keys(DEX_THEMES).map(k => (
-              <button key={k} onClick={() => setActiveDex(k)} className="dex-btn" style={{ borderColor: `${DEX_THEMES[k].color}55` }}>
-                <div style={{ color: DEX_THEMES[k].color, fontSize: '10px', marginBottom: 4 }}>DEX</div>
+              <button key={k} onClick={() => setActiveDex(k)} className="dex-card" style={{ border: `1px solid ${DEX_THEMES[k].color}55` }}>
                 {DEX_THEMES[k].name}
               </button>
             ))}
           </div>
-
-          {/* LIVE FEED BOX */}
-          <div className="glass-card">
-            <div style={{ fontSize: '10px', opacity: 0.4, marginBottom: '15px', fontWeight: 'bold', letterSpacing: '1px' }}>{t.history}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{opacity: 0.6}}>@crypto_king</span>
-                  <span style={{color: '#0CF2B0', fontWeight: 'bold'}}>+42.50 USDC</span>
-               </div>
-               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{opacity: 0.6}}>@whale_tracker</span>
-                  <span style={{color: '#FF4B4B', fontWeight: 'bold'}}>-12.10 USDC</span>
-               </div>
-            </div>
-          </div>
-        </div>
+        </main>
       </div>
 
-      {/* --- DEX OVERLAY --- */}
+      {/* --- ЭКРАН ОБМЕНА (DEX) --- */}
       {activeDex && (
-        <div className="dex-overlay" style={{ backgroundImage: `radial-gradient(circle at 50% 100%, ${DEX_THEMES[activeDex].glow}, #000 70%)` }}>
-          <div style={{ maxWidth: '500px', margin: '0 auto', width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px', textAlign: 'left', padding: '20px' }}>✕</button>
-            <h2 style={{ textAlign: 'center', color: DEX_THEMES[activeDex].color, fontWeight: '900', letterSpacing: '1px', textShadow: `0 0 20px ${DEX_THEMES[activeDex].glow}` }}>{DEX_THEMES[activeDex].name}</h2>
-            
-            <div className="swap-container">
-              <div className="swap-box">
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: 10, opacity: 0.5 }}><span>{t.give}</span><span onClick={() => setPayAmount(balanceUSDC.toString())} style={{color: DEX_THEMES[activeDex].color, fontWeight:'bold'}}>{t.max}</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="swap-input" placeholder="0.0"/>
-                  <div className="token-select"><img src={payToken.icon} width="20"/> {payToken.symbol}</div>
-                </div>
-              </div>
+        <div style={{ 
+          position: 'fixed', inset: 0, backgroundColor: '#0b0b0b', zIndex: 100, 
+          display: 'flex', flexDirection: 'column', animation: 'slideIn 0.3s ease' 
+        }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #222', display: 'flex', alignItems: 'center' }}>
+            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '24px' }}>✕</button>
+            <div style={{ flex: 1, textAlign: 'center', fontWeight: 'bold', color: DEX_THEMES[activeDex].color }}>{DEX_THEMES[activeDex].name}</div>
+          </div>
 
-              <div className="swap-arrow" style={{ backgroundColor: DEX_THEMES[activeDex].color }}>↓</div>
-
-              <div className="swap-box">
-                <div style={{ fontSize: '11px', opacity: 0.5, marginBottom: 10 }}>{t.get}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{fontSize: '32px', fontWeight: '800'}}>{payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(5) : '0.0'}</div>
-                  <button onClick={() => setShowTokenList('receive')} className="token-select-btn"><img src={receiveToken.icon} width="20"/> {receiveToken.symbol} ▾</button>
-                </div>
+          <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* ПОЛЕ ВВОДА 1 */}
+            <div className="swap-field">
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.0" />
+              <div className="token-picker">
+                <img src={payToken.icon} width="24" /> {payToken.symbol}
               </div>
             </div>
 
-            <button onClick={handleSwap} disabled={isPending} className="confirm-btn" style={{ backgroundColor: DEX_THEMES[activeDex].color, boxShadow: `0 0 30px ${DEX_THEMES[activeDex].glow}` }}>
-              {isPending ? t.pending : t.swap}
+            <div style={{ textAlign: 'center', margin: '-20px 0', zIndex: 2 }}>
+              <div className="swap-icon">↓</div>
+            </div>
+
+            {/* ПОЛЕ ВВОДА 2 */}
+            <div className="swap-field">
+              <div style={{ fontSize: '24px', fontWeight: 'bold' }}>
+                {payAmount ? ((payAmount * payToken.price) / getToken.price).toFixed(4) : '0.0'}
+              </div>
+              <div className="token-picker" onClick={() => {/* Тут можно добавить выбор */}}>
+                <img src={getToken.icon} width="24" /> {getToken.symbol}
+              </div>
+            </div>
+
+            <button onClick={handleSwap} disabled={isPending} className="swap-btn" style={{ backgroundColor: DEX_THEMES[activeDex].color }}>
+              {isPending ? 'Processing...' : 'Swap'}
             </button>
           </div>
         </div>
       )}
 
-      {/* --- CSS СТИЛИ ДЛЯ ЭФФЕКТОВ --- */}
-      <style>{`
-        .blobs { position: absolute; inset: 0; overflow: hidden; z-index: 1; filter: blur(60px); opacity: 0.6; }
-        .blob { position: absolute; width: 300px; height: 300px; border-radius: 50%; animation: move 20s infinite alternate; }
-        .blob-1 { background: #FF007A; top: -100px; left: -100px; }
-        .blob-2 { background: #0CF2B0; bottom: -100px; right: -100px; animation-delay: -5s; }
-        .blob-3 { background: #31569c; top: 40%; left: 30%; animation-delay: -10s; }
-        
-        @keyframes move { 
-          from { transform: translate(0, 0) scale(1); } 
-          to { transform: translate(100px, 150px) scale(1.2); } 
-        }
-
-        .glow-text { background: linear-gradient(180deg, #fff 0%, #aaa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        
-        .signal-card { 
-          background: rgba(255,255,255,0.03); border: 1px solid rgba(12,242,176,0.3); padding: 20px; border-radius: 24px; 
-          backdrop-filter: blur(20px); margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .dex-btn { 
-          background: rgba(255,255,255,0.05); border: 1px solid; border-radius: 22px; padding: 25px 10px; 
-          color: #fff; font-weight: 800; backdrop-filter: blur(10px); transition: 0.2s;
-        }
-        .dex-btn:active { transform: scale(0.95); }
-
-        .glass-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 26px; padding: 20px; backdrop-filter: blur(15px); }
-
-        .dex-overlay { position: fixed; inset: 0; z-index: 1000; animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        .swap-container { padding: 20px; display: flex; flexDirection: column; gap: 8px; margin-top: 20px; }
-        .swap-box { background: rgba(255,255,255,0.08); padding: 20px; border-radius: 24px; border: 1px solid rgba(255,255,255,0.1); }
-        .swap-input { background: none; border: none; color: #fff; fontSize: 32px; width: 60%; outline: none; font-weight: 800; }
-        .swap-arrow { width: 40px; height: 40px; margin: -20px auto; border-radius: 12px; display: flex; align-items: center; justifyContent: center; z-index: 5; border: 4px solid #000; font-weight: bold; }
-        
-        .confirm-btn { width: calc(100% - 40px); margin: auto 20px 30px; padding: 22px; border: none; border-radius: 24px; color: #fff; font-weight: 900; font-size: 18px; }
-
-        .dot-pulse { width: 8px; height: 8px; background: #0CF2B0; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-      `}</style>
-
-      {/* SETTINGS VIEW */}
+      {/* --- НАСТРОЙКИ --- */}
       {view === 'settings' && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 2000, padding: '30px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
-            <h2 style={{fontWeight: '900'}}>{t.settings}</h2>
-            <button onClick={() => setView('main')} style={{ background: '#222', border: 'none', color: '#fff', width: '45px', height: '45px', borderRadius: '50%' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 200, padding: '20px' }}>
+          <button onClick={() => setView('main')}>Назад</button>
+          <div style={{ marginTop: '30px' }}>
+            <div onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')}>Язык: {lang}</div>
+            <div onClick={() => setSoundEnabled(!soundEnabled)}>Звук: {soundEnabled ? 'ON' : 'OFF'}</div>
+            <a href="https://t.me/kriptoalians" style={{ color: '#0CF2B0' }}>Creators: @kriptoalians</a>
           </div>
-          <button onClick={() => setLang(l => l === 'RU' ? 'EN' : 'RU')} style={{ width: '100%', padding: '22px', background: 'rgba(255,255,255,0.05)', color: '#fff', borderRadius: '20px', marginBottom: '15px', border: '1px solid #333', textAlign: 'left', fontWeight: 'bold' }}>🌐 {t.lang}: {lang}</button>
-          <button onClick={() => window.open('https://t.me/kriptoalians')} style={{ width: '100%', padding: '22px', background: 'rgba(255,255,255,0.05)', color: '#fff', borderRadius: '20px', border: '1px solid #333', textAlign: 'left', fontWeight: 'bold' }}>👥 {t.creators}: @kriptoalians</button>
         </div>
       )}
 
-      {/* TOKEN LIST */}
-      {showTokenList && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 3000, padding: '20px', overflowY: 'auto' }}>
-           <button onClick={() => setShowTokenList(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '35px', marginBottom: 20 }}>×</button>
-           {Object.values(ASSETS).map(item => (
-             <div key={item.symbol} onClick={() => { if(showTokenList === 'pay') setPayToken(item); else setReceiveToken(item); setShowTokenList(null); }} style={{ display: 'flex', gap: 15, padding: '20px', borderBottom: '1px solid #111', alignItems: 'center' }}>
-                <img src={item.icon} width="32"/>
-                <div style={{flex: 1}}><b>{item.symbol}</b></div>
-                <div style={{opacity: 0.5, fontSize: '13px'}}>${item.price.toLocaleString()}</div>
-             </div>
-           ))}
+      {/* --- ЧЕК --- */}
+      {receipt && (
+        <div className="receipt-overlay">
+          <div className="receipt-card">
+            <h2>{receipt.pnl >= 0 ? 'Success!' : 'Trade Done'}</h2>
+            <div style={{ color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b', fontSize: '24px' }}>
+              {receipt.pnl >= 0 ? `+${receipt.pnl.toFixed(2)}` : receipt.pnl.toFixed(2)} USDC
+            </div>
+            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="done-btn">ОК</button>
+          </div>
         </div>
       )}
+
+      <style>{`
+        .bg-animation {
+          position: absolute; width: 200%; height: 200%;
+          background: radial-gradient(circle, #1a1a1a 0%, #000 70%);
+          animation: rotate 20s linear infinite; z-index: 1;
+        }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .dex-card { background: rgba(255,255,255,0.05); padding: 30px; border-radius: 20px; color: #fff; font-weight: bold; }
+        .signal-box { background: rgba(12,242,176,0.1); border: 1px solid #0CF2B0; padding: 15px; border-radius: 15px; margin: 20px 0; }
+        
+        .swap-field { background: #1a1a1a; padding: 25px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .swap-field input { background: none; border: none; color: #fff; fontSize: 24px; width: 50%; outline: none; }
+        .token-picker { background: #222; padding: 10px 15px; border-radius: 12px; display: flex; align-items: center; gap: 8px; }
+        .swap-icon { background: #000; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: auto; border: 2px solid #222; }
+        .swap-btn { width: 100%; padding: 20px; border: none; border-radius: 20px; color: #fff; font-weight: bold; font-size: 18px; margin-top: 20px; }
+        
+        .dollar-pop { position: fixed; pointer-events: none; color: #0CF2B0; font-weight: bold; font-size: 24px; animation: flyUp 1s forwards; z-index: 1000; }
+        @keyframes flyUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-100px); } }
+        
+        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 500; }
+        .receipt-card { background: #111; padding: 40px; border-radius: 30px; text-align: center; border: 1px solid #222; }
+        .done-btn { background: #fff; color: #000; border: none; padding: 15px 40px; border-radius: 15px; margin-top: 20px; font-weight: bold; }
+        
+        @keyframes slideIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }
