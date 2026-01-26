@@ -1,12 +1,169 @@
+
+
 <!DOCTYPE html>
 <html lang="ru">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>KRYPTOALIANS</title>
-  </head>
-  <body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crypto Alliance Arb</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: -apple-system, sans-serif; overflow: hidden; height: 100%; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        .btn-active:active { transform: scale(0.96); opacity: 0.8; }
+        @keyframes boom { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        .profit-text { color: #39f2af; font-weight: bold; animation: boom 0.5s ease-out; }
+    </style>
+</head>
+<body>
     <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+    <script type="module" typeof="babel">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
+            authDomain: "treidgame-b2ae0.firebaseapp.com",
+            projectId: "treidgame-b2ae0",
+            storageBucket: "treidgame-b2ae0.firebasestorage.app",
+            messagingSenderId: "985305772375",
+            appId: "1:985305772375:web:08d9b482a6f9d3cd748e12",
+            measurementId: "G-KZG27024BR"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const { useState, useEffect, useMemo } = React;
+
+        const ASSETS = {
+            USDT: { symbol: 'USDT', price: 1 },
+            SOL: { symbol: 'SOL', price: 145.5 },
+            ETH: { symbol: 'ETH', price: 2600 },
+            BNB: { symbol: 'BNB', price: 605 },
+            DOGE: { symbol: 'DOGE', price: 0.16 },
+            XRP: { symbol: 'XRP', price: 0.62 },
+            ADA: { symbol: 'ADA', price: 0.45 },
+            AVAX: { symbol: 'AVAX', price: 35.8 },
+            MATIC: { symbol: 'MATIC', price: 0.72 },
+            DOT: { symbol: 'DOT', price: 7.1 },
+            TRX: { symbol: 'TRX', price: 0.12 }
+        };
+
+        const DEXES = ['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'];
+
+        function ArbApp() {
+            const [balance, setBalance] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
+            const [lang, setLang] = useState(() => localStorage.getItem('arb_lang') || 'ru');
+            const [view, setView] = useState('main');
+            const [onlineCount, setOnlineCount] = useState(1);
+            const [isTrading, setIsTrading] = useState(false);
+            const [lastTrade, setLastTrade] = useState(null);
+
+            const userId = useMemo(() => {
+                const tg = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                if (tg) return tg.id.toString();
+                let id = localStorage.getItem('arb_user_id') || 'Player_' + Math.floor(1000 + Math.random() * 9000);
+                localStorage.setItem('arb_user_id', id);
+                return id;
+            }, []);
+
+            useEffect(() => {
+                const userRef = ref(db, 'players/' + userId);
+                const onlineRef = ref(db, 'online/' + userId);
+                set(onlineRef, true);
+                onDisconnect(onlineRef).remove();
+                
+                update(userRef, { id: userId, balance: balance, lastSeen: serverTimestamp() });
+                localStorage.setItem('arb_balance', balance);
+                onValue(ref(db, 'online'), (s) => setOnlineCount(s.exists() ? Object.keys(s.val()).length : 1));
+            }, [balance]);
+
+            const handleTrade = () => {
+                setIsTrading(true);
+                setTimeout(() => {
+                    const isWin = Math.random() > 0.3; 
+                    const change = isWin 
+                        ? (Math.random() * 3).toFixed(2) // Макс 3% прибыли
+                        : -(Math.random() * 1.5).toFixed(2); // Рандомный минус до 1.5%
+                    
+                    const amount = (balance * (change / 100));
+                    setBalance(prev => prev + amount);
+                    setLastTrade(amount.toFixed(2));
+                    setIsTrading(false);
+                }, 1500);
+            };
+
+            return (
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '20px' }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <button onClick={() => setView('settings')} className="btn-active" style={{ background: '#111', border: 'none', color: '#fff', padding: '10px 15px', borderRadius: '12px' }}>⚙️</button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(57,242,175,0.1)', padding: '6px 15px', borderRadius: '20px' }}>
+                            <div style={{ width: '6px', height: '6px', background: '#39f2af', borderRadius: '50%', boxShadow: '0 0 8px #39f2af' }}></div>
+                            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#39f2af' }}>{onlineCount} {lang === 'ru' ? 'В СЕТИ' : 'ONLINE'}</span>
+                        </div>
+                    </div>
+
+                    {view === 'main' ? (
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
+                            <div style={{ margin: '40px 0' }}>
+                                <h1 style={{ fontSize: '50px', margin: 0 }}>${balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h1>
+                                <div style={{ opacity: 0.4, fontSize: '12px' }}>{lang === 'ru' ? 'МОЙ БАЛАНС' : 'MY BALANCE'}</div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+                                {DEXES.map(d => (
+                                    <button key={d} onClick={handleTrade} className="btn-active" style={{ background: '#111', border: '1px solid #222', color: '#fff', padding: '25px 0', borderRadius: '20px', fontWeight: 'bold' }}>{d}</button>
+                                ))}
+                            </div>
+
+                            <div style={{ background: '#111', padding: '15px', borderRadius: '20px', border: '1px solid #222', marginTop: 'auto' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 'bold' }}>Нужна помощь?</div>
+                                <a href="https://t.me/vladstelin78" style={{ color: '#39f2af', textDecoration: 'none', fontSize: '12px' }}>Связаться с менеджером</a>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ flex: 1, marginTop: '20px' }}>
+                            <div style={{ background: '#111', padding: '20px', borderRadius: '20px' }}>
+                                <p>Language / Язык:</p>
+                                <button onClick={() => setLang(lang === 'ru' ? 'en' : 'ru')} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: '#39f2af', fontWeight: 'bold' }}>{lang.toUpperCase()}</button>
+                                <hr style={{ opacity: 0.1, margin: '20px 0' }} />
+                                <p>Канал: <a href="https://t.me/kriptoalians" style={{ color: '#39f2af' }}>@kriptoalians</a></p>
+                            </div>
+                            <button onClick={() => setView('main')} style={{ width: '100%', marginTop: '20px', padding: '15px', borderRadius: '15px', background: '#fff', border: 'none', fontWeight: 'bold' }}>Назад</button>
+                        </div>
+                    )}
+
+                    {/* Оверлей загрузки */}
+                    {isTrading && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                            <div style={{ color: '#39f2af', fontWeight: 'bold' }}>Анализ ликвидности...</div>
+                        </div>
+                    )}
+
+                    {/* Результат сделки */}
+                    {lastTrade && (
+                        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+                            <div style={{ background: '#111', padding: '30px', borderRadius: '30px', textAlign: 'center', border: '1px solid #222', width: '80%' }}>
+                                <div style={{ fontSize: '40px' }}>{Number(lastTrade) > 0 ? '💰' : '📉'}</div>
+                                <h2 className="profit-text" style={{ color: Number(lastTrade) > 0 ? '#39f2af' : '#ff4d4d' }}>
+                                    {Number(lastTrade) > 0 ? `+${lastTrade}$` : `${lastTrade}$`}
+                                </h2>
+                                <button onClick={() => setLastTrade(null)} style={{ background: '#fff', color: '#000', border: 'none', padding: '12px 25px', borderRadius: '15px', fontWeight: 'bold', marginTop: '15px' }}>OK</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ArbApp />);
+        if (window.Telegram?.WebApp) window.Telegram.WebApp.expand();
+    </script>
+</body>
 </html>
