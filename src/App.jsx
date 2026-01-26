@@ -31,8 +31,8 @@ const DEX_THEMES = {
 };
 
 const TRANSLATIONS = {
-  RU: { balance: 'БАЛАНС', portfolio: 'ПОРТФЕЛЬ', settings: 'Настройки', lang: 'Язык: RU', manager: 'Менеджер', swap: 'Обменять', max: 'МАКС', pay: 'Отдаете', get: 'Получаете', signal: 'СИГНАЛ', admin: 'АДМИН', loading: 'ТРАНЗАКЦИЯ...', success: 'УСПЕШНО', profit: 'ПРИБЫЛЬ', loss: 'УБЫТОК' },
-  EN: { balance: 'BALANCE', portfolio: 'PORTFOLIO', settings: 'Settings', lang: 'Lang: EN', manager: 'Support', swap: 'Swap Now', max: 'MAX', pay: 'Pay', get: 'Receive', signal: 'SIGNAL', admin: 'ADMIN', loading: 'TRANSACTION...', success: 'SUCCESS', profit: 'PROFIT', loss: 'LOSS' }
+  RU: { balance: 'БАЛАНС', portfolio: 'ПОРТФЕЛЬ', settings: 'Настройки', lang: 'Язык: RU', manager: 'Менеджер', swap: 'Обменять', max: 'МАКС', pay: 'Отдаете', get: 'Получаете', signal: 'ТОРГОВАЯ СДЕЛКА', admin: 'АДМИН', loading: 'ТРАНЗАКЦИЯ...', success: 'УСПЕШНО', profit: 'ПРИБЫЛЬ', loss: 'УБЫТОК' },
+  EN: { balance: 'BALANCE', portfolio: 'PORTFOLIO', settings: 'Settings', lang: 'Lang: EN', manager: 'Support', swap: 'Swap Now', max: 'MAX', pay: 'Pay', get: 'Receive', signal: 'TRADE DEAL', admin: 'ADMIN', loading: 'TRANSACTION...', success: 'SUCCESS', profit: 'PROFIT', loss: 'LOSS' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -115,13 +115,11 @@ export default function App() {
     <div style={{ background: activeDex ? DEX_THEMES[activeDex].bg : '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       <div style={{ maxWidth: '500px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
         
-        {/* HEADER */}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 20px', alignItems: 'center', zIndex: 10 }}>
           <div onClick={() => (ADMINS.includes(userId) || userId.startsWith('Trader')) && setShowAdmin(true)} style={{ color: '#0CF2B0', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>{t.balance}</div>
           <button onClick={() => setView('settings')} style={{ background: '#111', border: 'none', color: '#fff', padding: '10px', borderRadius: '12px' }}>⚙️</button>
         </div>
 
-        {/* MAIN SCROLL VIEW */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 100px' }}>
           {view === 'main' && !activeDex && (
             <>
@@ -136,7 +134,7 @@ export default function App() {
 
               {signal && (
                 <div style={{ background: '#111', padding: '12px', borderRadius: '15px', marginBottom: '15px', borderLeft: '4px solid #0CF2B0' }}>
-                  <div style={{ fontSize: '10px', color: '#0CF2B0' }}>{t.signal}</div>
+                  <div style={{ fontSize: '10px', color: '#0CF2B0', fontWeight: 'bold', letterSpacing: '0.5px' }}>{t.signal}</div>
                   <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{signal.coin.symbol}: {signal.buyAt} → {signal.sellAt} (+{signal.profit}%)</div>
                 </div>
               )}
@@ -159,7 +157,6 @@ export default function App() {
           )}
         </div>
 
-        {/* EXCHANGE INTERFACE */}
         {activeDex && (
           <div style={{ position: 'absolute', inset: 0, background: DEX_THEMES[activeDex].bg, zIndex: 100, padding: '20px' }}>
             <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '30px' }}>←</button>
@@ -183,16 +180,14 @@ export default function App() {
           </div>
         )}
 
-        {/* LOADING OVERLAY (RE-ADDED) */}
         {isPending && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
             <div style={{ width: '50px', height: '50px', border: '4px solid #222', borderTopColor: '#0CF2B0', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <p style={{ marginTop: 20, fontWeight: 'bold', letterSpacing: '1px' }}>{t.loading}</p>
+            <p style={{ marginTop: 20, fontWeight: 'bold' }}>{t.loading}</p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
-        {/* RECEIPT NOTIFICATION (RE-ADDED) */}
         {receipt && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
             <div style={{ background: '#111', width: '100%', borderRadius: '35px', padding: '30px', textAlign: 'center', border: '1px solid #222' }}>
@@ -206,17 +201,16 @@ export default function App() {
                   {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
                 </div>
               )}
-              <button onClick={() => setReceipt(null)} style={{ width: '100%', background: '#fff', color: '#000', padding: '20px', borderRadius: '15px', border: 'none', marginTop: '25px', fontWeight: 'bold', fontSize: '16px' }}>OK</button>
+              <button onClick={() => setReceipt(null)} style={{ width: '100%', background: '#fff', color: '#000', padding: '20px', borderRadius: '15px', border: 'none', marginTop: '25px', fontWeight: 'bold' }}>OK</button>
             </div>
           </div>
         )}
 
-        {/* ADMIN & TOKEN LIST (STILL TOP LAYER) */}
         {showAdmin && (
           <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 11000, padding: '20px', overflowY: 'auto' }}>
             <div style={{display:'flex', justifyContent:'space-between', marginBottom: 20}}><h2>{t.admin}</h2> <button onClick={()=>setShowAdmin(false)}>X</button></div>
             {Object.keys(allPlayers).map(pId => (
-              <div key={pId} style={{background:'#111', padding:'15px', marginBottom:'10px', borderRadius:'15px', border:'1px solid #333'}}>
+              <div key={pId} style={{background:'#111', padding:'15px', marginBottom:'10px', borderRadius:'15px'}}>
                 <div style={{fontSize: 10, opacity: 0.5}}>ID: {pId}</div>
                 <div style={{fontSize: 18, fontWeight:'bold', margin:'5px 0'}}>${allPlayers[pId].balanceUSDC?.toFixed(2)}</div>
                 <input type="number" placeholder="New Balance" onBlur={(e) => set(ref(db, `players/${pId}/balanceUSDC`), Number(e.target.value))} style={{width:'100%', padding:'10px', background:'#000', color:'#fff', border:'1px solid #444', borderRadius: 8}} />
@@ -237,7 +231,6 @@ export default function App() {
           </div>
         )}
 
-        {/* SETTINGS (STILL TOP LAYER) */}
         {view === 'settings' && (
           <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 10500, padding: '25px' }}>
             <button onClick={() => setView('main')} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px' }}>←</button>
