@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, update, get } from "firebase/database";
 
-// Конфиг Firebase оставляем прежним
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
   authDomain: "treidgame-b2ae0.firebaseapp.com",
@@ -22,11 +21,39 @@ const ASSETS = {
   WPOL: { symbol: 'WPOL', price: 0.72, icon: 'https://cryptologos.cc/logos/polygon-matic-logo.svg' }
 };
 
-const DEX_LIST = [
-  { id: 'UNISWAP', name: 'UNISWAP V3', color: '#FF007A', logo: '🦄' },
-  { id: 'ODOS', name: 'ODOS ROUTER', color: '#0CF2B0', logo: '🦉' },
-  { id: 'SUSHI', name: 'SUSHISWAP', color: '#FA52A0', logo: '🍣' },
-  { id: '1INCH', name: '1INCH NET', color: '#31569c', logo: '⚔️' }
+const DEX_CONFIG = [
+  { 
+    id: 'UNISWAP', 
+    name: 'Uniswap V3', 
+    color: '#FF007A', 
+    bg: 'linear-gradient(135deg, #FF007A 0%, #4200FF 100%)',
+    logo: '🦄',
+    status: 'High Liquidity'
+  },
+  { 
+    id: 'ODOS', 
+    name: 'Odos Router', 
+    color: '#0CF2B0', 
+    bg: 'linear-gradient(135deg, #131A2A 0%, #0CF2B0 200%)',
+    logo: '🦉',
+    status: 'Optimal Route'
+  },
+  { 
+    id: 'SUSHI', 
+    name: 'SushiSwap', 
+    color: '#FA52A0', 
+    bg: 'linear-gradient(135deg, #2D264B 0%, #FA52A0 150%)',
+    logo: '🍣',
+    status: 'Multi-chain'
+  },
+  { 
+    id: '1INCH', 
+    name: '1inch Network', 
+    color: '#0D1E33', 
+    bg: 'linear-gradient(135deg, #06111E 0%, #31569C 100%)',
+    logo: '🛡️',
+    status: 'Aggregator'
+  }
 ];
 
 const app = initializeApp(firebaseConfig);
@@ -59,6 +86,7 @@ export default function App() {
     if (webApp) {
       webApp.expand();
       webApp.ready();
+      webApp.headerColor = '#000000';
     }
     onValue(ref(db, `players/${userId}`), (s) => {
       if (s.exists()) {
@@ -80,10 +108,15 @@ export default function App() {
 
   const generateDeal = () => {
     const assets = ['BTC', 'ETH', 'LINK', 'AAVE', 'CRV', 'WPOL'];
-    const buyIdx = Math.floor(Math.random() * DEX_LIST.length);
-    let sellIdx = Math.floor(Math.random() * DEX_LIST.length);
-    while (sellIdx === buyIdx) sellIdx = Math.floor(Math.random() * DEX_LIST.length);
-    setDeal({ coin: ASSETS[assets[Math.floor(Math.random() * assets.length)]], buyAt: DEX_LIST[buyIdx], sellAt: DEX_LIST[sellIdx], profit: (Math.random() * 0.5 + 2.5).toFixed(2) });
+    const buyIdx = Math.floor(Math.random() * DEX_CONFIG.length);
+    let sellIdx = Math.floor(Math.random() * DEX_CONFIG.length);
+    while (sellIdx === buyIdx) sellIdx = Math.floor(Math.random() * DEX_CONFIG.length);
+    setDeal({ 
+      coin: ASSETS[assets[Math.floor(Math.random() * assets.length)]], 
+      buyAt: DEX_CONFIG[buyIdx], 
+      sellAt: DEX_CONFIG[sellIdx], 
+      profit: (Math.random() * 0.5 + 2.5).toFixed(2) 
+    });
   };
 
   const handleSwap = (e) => {
@@ -103,7 +136,7 @@ export default function App() {
       let receiveAmt = (amt * payToken.price) / getToken.price;
       let pnl = null;
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
-        const isOk = activeDex === deal.sellAt.id && payToken.symbol === deal.coin.symbol;
+        const isOk = activeDex.id === deal.sellAt.id && payToken.symbol === deal.coin.symbol;
         const multiplier = isOk ? (1 + Number(deal.profit)/100) : (1 - (Math.random() * 0.015));
         receiveAmt *= multiplier;
         pnl = receiveAmt - (amt * payToken.price);
@@ -116,7 +149,7 @@ export default function App() {
       update(ref(db, `players/${userId}`), { balanceUSDC: newB, wallet: newW });
       setReceipt({ pnl, get: receiveAmt, to: getToken.symbol, isPurchase: payToken.symbol === 'USDC' });
       setIsPending(false); setPayAmount('');
-    }, 2500); 
+    }, 2800); 
   };
 
   const startAdminTimer = () => {
@@ -128,70 +161,131 @@ export default function App() {
   };
 
   return (
-    <div className="app-root">
-      <div className={`main-view ${activeDex || showAdmin ? 'blurred' : ''}`}>
+    <div className="app-container">
+      <div className={`viewport ${activeDex || showAdmin || receipt || showTokenList ? 'is-modal-open' : ''}`}>
         
-        <div className="top-bar">
-          <div className="usdc-card">
-            <img src={ASSETS.USDC.icon} alt="" />
-            <span>${balance.toFixed(2)}</span>
+        {/* HEADER */}
+        <header className="main-nav">
+          <div className="wallet-pill">
+            <div className="indicator"></div>
+            <span>${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
           </div>
           <button onClick={() => window.open('https://t.me/vladstelin78')} className="mgr-btn">MANAGER</button>
+        </header>
+
+        {/* HERO */}
+        <div className="hero-block" onTouchStart={startAdminTimer} onTouchEnd={() => clearTimeout(timerRef.current)}>
+          <div className="hero-sub">Portfolio Balance</div>
+          <div className="hero-main">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div className="hero-blur"></div>
         </div>
 
-        <div className="hero" onTouchStart={startAdminTimer} onTouchEnd={() => clearTimeout(timerRef.current)}>
-          <div className="hero-lbl">PORTFOLIO VALUE</div>
-          <div className="hero-amt">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-          <div className="hero-glow"></div>
-        </div>
-
+        {/* SIGNAL - REALTIME ARBITRAGE */}
         {deal && (
-          <div className="signal">
-            <div className="sig-head">
-              <span className="live">● LIVE ARBITRAGE</span>
-              <span className="pct">+{deal.profit}%</span>
+          <div className="arbitrage-card">
+            <div className="arb-header">
+              <span className="live-tag">REAL-TIME SIGNAL</span>
+              <span className="yield">Yield: +{deal.profit}%</span>
             </div>
-            <div className="sig-row">
-              <div className="node"><small>BUY</small><b style={{color: deal.buyAt.color}}>{deal.buyAt.name}</b></div>
-              <div className="coin">{deal.coin.symbol}</div>
-              <div className="node text-right"><small>SELL</small><b style={{color: deal.sellAt.color}}>{deal.sellAt.name}</b></div>
+            <div className="arb-route">
+              <div className="route-node">
+                <small>SOURCE</small>
+                <div style={{color: deal.buyAt.color}}>{deal.buyAt.name}</div>
+              </div>
+              <div className="route-asset">
+                <div className="asset-blob">{deal.coin.symbol}</div>
+              </div>
+              <div className="route-node text-right">
+                <small>TARGET</small>
+                <div style={{color: deal.sellAt.color}}>{deal.sellAt.name}</div>
+              </div>
             </div>
-            <div className="bar-bg"><div className="bar-fill" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
+            <div className="arb-timer">
+              <div className="arb-progress" style={{width: `${(timeLeft/120)*100}%`}}></div>
+            </div>
           </div>
         )}
 
-        <div className="dex-section">
-          <p className="section-title">CHOOSE PROTOCOL</p>
-          <div className="dex-stack">
-            {DEX_LIST.map(dex => (
-              <div key={dex.id} className="dex-btn" onClick={() => setActiveDex(dex.id)}>
-                <div className="dex-icon" style={{background: dex.color + '15', color: dex.color}}>{dex.logo}</div>
-                <div className="dex-info">
+        {/* DEX SELECTION */}
+        <div className="dex-grid">
+          <p className="grid-label">ACTIVE SWAP PROTOCOLS</p>
+          {DEX_CONFIG.map(dex => (
+            <div key={dex.id} className="dex-card-real" style={{'--dex-color': dex.color}} onClick={() => setActiveDex(dex)}>
+              <div className="dex-glass" style={{background: dex.bg}}></div>
+              <div className="dex-content">
+                <div className="dex-logo-box">{dex.logo}</div>
+                <div className="dex-txt">
                   <h3>{dex.name}</h3>
-                  <small>LIQUIDITY V3 ACTIVE</small>
+                  <p>{dex.status}</p>
                 </div>
-                <div className="dex-line" style={{background: dex.color}}></div>
+                <div className="dex-chevron">→</div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* OVERLAY: TOKEN PICKER (ИСПРАВЛЕН СКРОЛЛ) */}
+      {/* SWAP MODAL */}
+      {activeDex && (
+        <div className="full-modal">
+          <div className="modal-content">
+            <div className="modal-top">
+              <button onClick={() => setActiveDex(null)}>✕</button>
+              <span>{activeDex.name} Terminal</span>
+              <div style={{width: 32}}></div>
+            </div>
+            
+            <div className="swap-ui">
+              <div className="swap-input-box">
+                <div className="box-header">YOU PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
+                <div className="box-row">
+                  <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
+                  <div className="token-trigger" onClick={() => setShowTokenList('pay')}>
+                    <img src={payToken.icon} alt="" /> {payToken.symbol}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="swap-join">
+                <div className="join-line"></div>
+                <div className="join-icon">↓</div>
+                <div className="join-line"></div>
+              </div>
+
+              <div className="swap-input-box">
+                <div className="box-header">YOU RECEIVE</div>
+                <div className="box-row">
+                  <div className="fake-input">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
+                  <div className="token-trigger" onClick={() => setShowTokenList('get')}>
+                    <img src={getToken.icon} alt="" /> {getToken.symbol}
+                  </div>
+                </div>
+              </div>
+
+              <button className="execute-btn" onClick={handleSwap} disabled={isPending} style={{background: activeDex.bg}}>
+                {isPending ? 'ROUTING THROUGH PROTOCOL...' : `SWAP ON ${activeDex.id}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOKEN LIST - FIXED SCROLL */}
       {showTokenList && (
         <div className="sheet-overlay">
-          <div className="sheet-box">
-            <div className="sheet-top">
-              <span>SELECT TOKEN</span> 
-              <button onClick={() => setShowTokenList(null)}>✕</button>
-            </div>
-            <div className="sheet-list">
+          <div className="sheet-container">
+            <div className="sheet-drag"></div>
+            <div className="sheet-head">Select Asset <button onClick={() => setShowTokenList(null)}>✕</button></div>
+            <div className="sheet-scroll-area">
               {Object.values(ASSETS).map(a => (
-                <div key={a.symbol} className="token-row" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                  <img src={a.icon} alt="" /> 
-                  <div className="t-meta">
+                <div key={a.symbol} className="token-item" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
+                  <img src={a.icon} alt="" />
+                  <div className="token-details">
                     <b>{a.symbol}</b>
-                    <small>${a.price}</small>
+                    <small>${a.price.toLocaleString()}</small>
+                  </div>
+                  <div className="token-balance-view">
+                    {a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}
                   </div>
                 </div>
               ))}
@@ -200,152 +294,134 @@ export default function App() {
         </div>
       )}
 
-      {/* OVERLAY: SWAP (ИСПРАВЛЕНА ШИРИНА) */}
-      {activeDex && (
-        <div className="overlay">
-          <div className="swap-box">
-            <div className="swap-head"><button onClick={() => setActiveDex(null)}>✕</button><b>SWAP</b><div style={{width: 20}}></div></div>
-            <div className="input-block">
-              <div className="block-top">PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
-              <div className="block-row">
-                <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                <div className="token-btn" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt=""/> {payToken.symbol}</div>
-              </div>
-            </div>
-            <div className="arrow-down">↓</div>
-            <div className="input-block">
-              <div className="block-top">RECEIVE</div>
-              <div className="block-row">
-                <div className="fake-inp">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
-                <div className="token-btn" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt=""/> {getToken.symbol}</div>
-              </div>
-            </div>
-            <button className="swap-confirm" onClick={handleSwap} disabled={isPending} style={{background: DEX_LIST.find(d => d.id === activeDex).color}}>
-              {isPending ? 'EXECUTING...' : 'CONFIRM SWAP'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* RECEIPT & ADMIN */}
+      {/* RECEIPT */}
       {receipt && (
-        <div className="receipt">
-          <div className="r-box">
-            <div className="r-icon">✓</div>
-            <h2>SUCCESS</h2>
-            <div className="r-val" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
+        <div className="receipt-overlay">
+          <div className="receipt-card">
+            <div className="receipt-check">✓</div>
+            <h2>Transaction Sent</h2>
+            <div className="receipt-amount" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.isPurchase ? receipt.get.toFixed(4) + ' ' + receipt.to : (receipt.pnl >= 0 ? '+$' : '-$') + Math.abs(receipt.pnl).toFixed(2)}
             </div>
-            <button onClick={() => {setReceipt(null); setActiveDex(null);}}>CLOSE</button>
+            <div className="receipt-details">
+              <div className="rd-row"><span>Status</span><span className="green">Confirmed</span></div>
+              <div className="rd-row"><span>Network Fee</span><span>$0.00 (Gasless)</span></div>
+            </div>
+            <button className="receipt-close" onClick={() => {setReceipt(null); setActiveDex(null);}}>BACK TO TERMINAL</button>
           </div>
         </div>
       )}
 
-      {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x, top: c.y}}>$</div>)}
+      {/* CLICK FX */}
+      {clicks.map(c => <div key={c.id} className="dollar-pop" style={{left: c.x, top: c.y}}>$</div>)}
 
       <style>{`
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-        
-        /* Фикс пустоты справа */
         html, body { 
-          width: 100%; 
-          max-width: 100%; 
-          height: 100%; 
-          background: #000; 
-          color: #fff; 
+          width: 100%; height: 100%; background: #000; color: #fff; 
+          font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; 
           overflow: hidden; 
-          font-family: -apple-system, sans-serif; 
-        }
-        
-        .app-root { 
-          width: 100vw; 
-          height: 100vh; 
-          position: relative; 
-          overflow-x: hidden; /* Жестко режем всё, что вылезает вбок */
         }
 
-        .main-view { 
-          width: 100%; 
-          height: 100%; 
-          overflow-y: auto; 
-          padding: 20px; 
-          padding-bottom: 100px;
-          display: flex;
-          flex-direction: column;
+        .app-container { width: 100vw; height: 100vh; position: relative; overflow-x: hidden; }
+        .viewport { 
+          width: 100%; height: 100%; overflow-y: auto; padding: 20px; 
+          padding-bottom: 120px; transition: 0.4s ease-in-out; 
         }
+        .is-modal-open { filter: blur(15px) scale(0.95); pointer-events: none; }
 
-        .blurred { filter: blur(20px); pointer-events: none; }
-
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; width: 100%; }
-        .usdc-card { background: #111; border: 1px solid #222; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px; color: #0CF2B0; font-weight: 800; font-size: 14px; }
-        .usdc-card img { width: 16px; }
-        .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 14px; border-radius: 12px; font-weight: 900; font-size: 10px; }
-
-        .hero { text-align: center; padding: 30px 0; position: relative; }
-        .hero-lbl { font-size: 10px; opacity: 0.3; letter-spacing: 2px; }
-        .hero-amt { font-size: 44px; font-weight: 900; margin-top: 10px; }
-        .hero-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150px; height: 80px; background: #0CF2B010; filter: blur(50px); z-index: -1; }
-
-        .signal { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; width: 100%; }
-        .sig-head { display: flex; justify-content: space-between; margin-bottom: 15px; }
-        .live { color: #0CF2B0; font-weight: 900; font-size: 9px; }
-        .pct { color: #0CF2B0; font-weight: 900; font-size: 14px; }
-        .sig-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .node small { display: block; font-size: 8px; opacity: 0.3; margin-bottom: 4px; }
-        .node b { font-size: 12px; }
-        .coin { background: #1a1a1a; padding: 6px 12px; border-radius: 10px; font-weight: 900; border: 1px solid #222; font-size: 12px; }
-        .bar-bg { height: 2px; background: #222; border-radius: 1px; overflow: hidden; }
-        .bar-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
-
-        .dex-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
-        .dex-btn { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 18px; border-radius: 20px; display: flex; align-items: center; gap: 15px; width: 100%; position: relative; }
-        .dex-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-        .dex-info h3 { font-size: 14px; margin: 0; }
-        .dex-info small { opacity: 0.3; font-weight: 700; font-size: 9px; }
-
-        /* СКРОЛЛ ТОКЕНОВ */
-        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; align-items: flex-end; }
-        .sheet-box { 
-          width: 100%; 
-          background: #0d0d0d; 
-          border-radius: 24px 24px 0 0; 
-          border-top: 1px solid #222; 
-          max-height: 70vh; /* Ограничиваем высоту */
-          display: flex; 
-          flex-direction: column; 
+        /* NAV */
+        .main-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .wallet-pill { 
+          background: #0d0d0d; border: 1px solid #1a1a1a; padding: 10px 18px; 
+          border-radius: 25px; display: flex; align-items: center; gap: 10px; font-weight: 800;
         }
-        .sheet-top { padding: 20px; display: flex; justify-content: space-between; font-weight: 900; border-bottom: 1px solid #1a1a1a; color: #555; font-size: 12px; }
-        .sheet-list { 
-          overflow-y: auto; /* ВКЛЮЧАЕМ СКРОЛЛ */
-          flex: 1; 
-          padding: 10px 20px 40px; 
-          -webkit-overflow-scrolling: touch; 
+        .indicator { width: 8px; height: 8px; background: #0CF2B0; border-radius: 50%; box-shadow: 0 0 10px #0CF2B0; }
+        .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 900; font-size: 11px; }
+
+        /* HERO */
+        .hero-block { text-align: center; padding: 40px 0; position: relative; }
+        .hero-sub { font-size: 12px; color: #555; font-weight: 800; letter-spacing: 2px; }
+        .hero-main { font-size: 54px; font-weight: 900; letter-spacing: -2px; margin-top: 10px; }
+        .hero-blur { position: absolute; inset: 0; background: radial-gradient(circle, #4200FF15 0%, transparent 70%); z-index: -1; }
+
+        /* ARBITRAGE CARD */
+        .arbitrage-card { 
+          background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px; 
+          border-radius: 28px; margin-bottom: 35px; position: relative; overflow: hidden;
         }
-        .token-row { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #151515; }
-        .token-row img { width: 32px; height: 32px; }
-        .t-meta b { display: block; font-size: 16px; }
-        .t-meta small { opacity: 0.4; }
+        .arb-header { display: flex; justify-content: space-between; margin-bottom: 25px; }
+        .live-tag { font-size: 10px; font-weight: 900; color: #0CF2B0; background: #0CF2B015; padding: 4px 10px; border-radius: 8px; }
+        .yield { font-weight: 900; color: #0CF2B0; font-size: 16px; }
+        .arb-route { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .route-node small { display: block; font-size: 9px; opacity: 0.3; margin-bottom: 6px; font-weight: 800; }
+        .route-node div { font-weight: 900; font-size: 14px; }
+        .asset-blob { background: #1a1a1a; border: 1px solid #333; padding: 10px 18px; border-radius: 15px; font-weight: 900; }
+        .arb-timer { height: 4px; background: #111; border-radius: 2px; }
+        .arb-progress { height: 100%; background: #0CF2B0; transition: width 1s linear; }
 
-        /* ОВЕРЛЕИ */
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); z-index: 500; display: flex; align-items: center; padding: 20px; }
-        .swap-box { width: 100%; background: #0a0a0a; border: 1px solid #222; padding: 20px; border-radius: 24px; }
-        .swap-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .input-block { background: #000; padding: 15px; border-radius: 18px; border: 1px solid #1a1a1a; }
-        .block-top { font-size: 10px; color: #444; font-weight: 800; margin-bottom: 8px; display: flex; justify-content: space-between; }
-        .block-row { display: flex; justify-content: space-between; align-items: center; }
-        .block-row input, .fake-inp { background: none; border: none; color: #fff; font-size: 20px; font-weight: 700; outline: none; width: 55%; }
-        .token-btn { background: #111; border: 1px solid #222; padding: 6px 10px; border-radius: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
-        .token-btn img { width: 16px; }
-        .swap-confirm { width: 100%; padding: 18px; border: none; border-radius: 18px; color: #fff; font-weight: 900; margin-top: 20px; }
+        /* DEX GRID */
+        .grid-label { font-size: 11px; font-weight: 900; color: #333; margin-bottom: 15px; letter-spacing: 1px; }
+        .dex-grid { display: flex; flex-direction: column; gap: 12px; }
+        .dex-card-real { 
+          position: relative; border-radius: 24px; padding: 25px; overflow: hidden;
+          cursor: pointer; transition: 0.2s; 
+        }
+        .dex-card-real:active { transform: scale(0.97); }
+        .dex-glass { position: absolute; inset: 0; opacity: 0.85; z-index: 1; }
+        .dex-content { position: relative; z-index: 2; display: flex; align-items: center; gap: 20px; }
+        .dex-logo-box { 
+          width: 54px; height: 54px; background: rgba(255,255,255,0.1); 
+          border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px;
+        }
+        .dex-txt h3 { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
+        .dex-txt p { font-size: 11px; opacity: 0.6; font-weight: 700; }
+        .dex-chevron { margin-left: auto; opacity: 0.5; font-size: 20px; }
 
-        .receipt { position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; align-items: center; padding: 30px; text-align: center; }
-        .r-box { width: 100%; }
-        .r-icon { width: 70px; height: 70px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 20px; }
-        .r-val { font-size: 32px; font-weight: 900; margin-bottom: 30px; }
-        .receipt button { background: #111; border: 1px solid #222; color: #fff; padding: 15px 40px; border-radius: 15px; font-weight: 800; }
+        /* MODAL SWAP */
+        .full-modal { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; }
+        .modal-top { padding: 20px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; border-bottom: 1px solid #111; }
+        .modal-top button { background: none; border: none; color: #fff; font-size: 22px; }
+        .swap-ui { padding: 25px; flex: 1; display: flex; flex-direction: column; }
+        .swap-input-box { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; }
+        .box-header { font-size: 11px; font-weight: 900; color: #444; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .box-header span { color: #0CF2B0; }
+        .box-row { display: flex; justify-content: space-between; align-items: center; }
+        .box-row input, .fake-input { background: none; border: none; color: #fff; font-size: 28px; font-weight: 800; outline: none; width: 60%; }
+        .token-trigger { background: #1a1a1a; padding: 10px 16px; border-radius: 16px; display: flex; align-items: center; gap: 10px; font-weight: 900; font-size: 15px; border: 1px solid #222; }
+        .token-trigger img { width: 20px; }
+        .swap-join { height: 40px; display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0.1; }
+        .join-line { flex: 1; height: 1px; background: #fff; }
+        .execute-btn { width: 100%; padding: 22px; border: none; border-radius: 24px; color: #fff; font-weight: 900; margin-top: auto; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
 
-        .dollar { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 30px; pointer-events: none; animation: fly 0.8s ease-out forwards; z-index: 3000; }
-        @keyframes fly { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-100px); } }
+        /* SHEET SCROLL FIXED */
+        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: flex-end; }
+        .sheet-container { 
+          width: 100%; background: #0a0a0a; border-radius: 30px 30px 0 0; border-top: 1px solid #222; 
+          max-height: 75vh; display: flex; flex-direction: column; 
+        }
+        .sheet-drag { width: 40px; height: 4px; background: #333; border-radius: 2px; margin: 12px auto; }
+        .sheet-head { padding: 10px 25px 20px; display: flex; justify-content: space-between; font-weight: 900; color: #555; }
+        .sheet-scroll-area { overflow-y: auto; flex: 1; padding: 0 25px 50px; -webkit-overflow-scrolling: touch; }
+        .token-item { display: flex; align-items: center; gap: 18px; padding: 18px 0; border-bottom: 1px solid #111; }
+        .token-item img { width: 36px; height: 36px; }
+        .token-details b { display: block; font-size: 17px; }
+        .token-details small { color: #444; font-weight: 700; }
+        .token-balance-view { margin-left: auto; font-weight: 800; font-size: 14px; color: #0CF2B0; }
+
+        /* RECEIPT */
+        .receipt-overlay { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; align-items: center; padding: 30px; }
+        .receipt-card { width: 100%; text-align: center; }
+        .receipt-check { width: 80px; height: 80px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 30px; }
+        .receipt-amount { font-size: 42px; font-weight: 900; margin-bottom: 30px; }
+        .receipt-details { background: #0d0d0d; border-radius: 20px; padding: 20px; margin-bottom: 40px; }
+        .rd-row { display: flex; justify-content: space-between; padding: 10px 0; font-size: 14px; font-weight: 700; }
+        .rd-row span:first-child { color: #444; }
+        .green { color: #0CF2B0; }
+        .receipt-close { width: 100%; padding: 20px; background: #111; border: 1px solid #222; color: #fff; border-radius: 20px; font-weight: 900; }
+
+        .dollar-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 32px; pointer-events: none; animation: popUp 0.8s ease-out forwards; z-index: 5000; }
+        @keyframes popUp { 0% { opacity: 1; transform: scale(1) translateY(0); } 100% { opacity: 0; transform: scale(2) translateY(-150px); } }
       `}</style>
     </div>
   );
