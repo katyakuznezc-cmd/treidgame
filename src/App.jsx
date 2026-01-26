@@ -21,10 +21,10 @@ const ASSETS = {
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% -20%, #ff007a44, #000 85%)' },
-  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'linear-gradient(180deg, #0cf2b015 0%, #000 100%)' },
-  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 0% 0%, #fa52a025, #000 75%)' },
-  '1INCH': { name: '1inch Network', color: '#31569c', bg: 'linear-gradient(135deg, #31569c25 0%, #000 100%)' }
+  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% -20%, rgba(255, 0, 122, 0.3), #000 80%)' },
+  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'linear-gradient(180deg, rgba(12, 242, 176, 0.15) 0%, #000 100%)' },
+  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 0% 0%, rgba(250, 82, 160, 0.2), #000 75%)' },
+  '1INCH': { name: '1inch Network', color: '#31569c', bg: 'linear-gradient(135deg, rgba(49, 86, 156, 0.2) 0%, #000 100%)' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -66,17 +66,14 @@ export default function App() {
     });
     onValue(ref(db, 'globalTrades/'), (s) => {
       if (s.exists()) {
-        const trades = Object.values(s.val()).reverse().slice(0, 5);
-        setGlobalTrades(trades);
+        setGlobalTrades(Object.values(s.val()).reverse().slice(0, 5));
       }
     });
   }, [userId, userName]);
 
   useEffect(() => {
     if (!signal) {
-      const keys = Object.keys(ASSETS).filter(k => k !== 'USDC');
-      const coin = ASSETS[keys[Math.floor(Math.random() * keys.length)]];
-      setSignal({ coin, buyAt: 'UNISWAP', sellAt: 'ODOS', profit: (Math.random()*1 + 2.1).toFixed(2) });
+      setSignal({ coin: ASSETS.BTC, buyAt: 'UNISWAP', sellAt: 'ODOS', profit: (Math.random()*1 + 2.1).toFixed(2) });
     }
   }, [signal]);
 
@@ -89,8 +86,9 @@ export default function App() {
     setTimeout(() => {
       let gotAmount = (amount * payToken.price) / receiveToken.price;
       let pnlValue = null;
+      const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
+
       if (receiveToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
-        const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
         gotAmount *= isCorrect ? (1 + signal.profit / 100) : (1 - (Math.random() * 0.015));
         pnlValue = gotAmount - (amount * payToken.price);
         if (isCorrect) setSignal(null);
@@ -112,16 +110,15 @@ export default function App() {
   };
 
   return (
-    <div style={{ background: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
-      <div style={{ maxWidth: '500px', margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        
-        {/* HEADER */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 20px', alignItems: 'center', zIndex: 10 }}>
+    <div style={{ background: '#000', height: '100vh', width: '100vw', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden', position: 'relative' }}>
+      
+      {/* BACKGROUND LAYER (Main) */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '500px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '15px 20px', alignItems: 'center' }}>
           <div onClick={() => (ADMINS.includes(userName) || ADMINS.includes(userId)) && setShowAdmin(true)} style={{ color: '#0CF2B0', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>БАЛАНС</div>
           <button onClick={() => setView('settings')} style={{ background: '#111', border: 'none', color: '#fff', padding: '10px', borderRadius: '12px' }}>⚙️</button>
         </div>
 
-        {/* MAIN PAGE */}
         <div style={{ flex: 1, padding: '0 20px', overflowY: 'auto' }}>
           <div style={{ textAlign: 'center', margin: '30px 0' }}>
             <h1 style={{ fontSize: '48px', margin: 0 }}>${balanceUSDC.toFixed(2)}</h1>
@@ -141,7 +138,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* REAL GLOBAL TAPE */}
           <div style={{ background: '#080808', borderRadius: '22px', padding: '18px', border: '1px solid #111' }}>
             <div style={{ fontSize: '10px', opacity: 0.4, marginBottom: '12px', fontWeight: 'bold' }}>ЖИВАЯ ЛЕНТА</div>
             {globalTrades.map((t, i) => (
@@ -152,94 +148,97 @@ export default function App() {
             ))}
           </div>
         </div>
-
-        {/* DEX OVERLAY (FIXED CLICKS) */}
-        {activeDex && (
-          <div style={{ position: 'absolute', inset: 0, background: DEX_THEMES[activeDex].bg, zIndex: 1000, padding: '20px', display: 'flex', flexDirection: 'column' }}>
-            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '30px', alignSelf: 'flex-start', cursor: 'pointer', padding: '10px' }}>←</button>
-            <h2 style={{ textAlign: 'center', color: DEX_THEMES[activeDex].color }}>{DEX_THEMES[activeDex].name}</h2>
-            
-            <div style={{ background: 'rgba(255,255,255,0.07)', padding: '25px', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 15 }}>
-                <span>Отдаете</span>
-                <span onClick={() => setPayAmount((payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0)).toString())} style={{color: DEX_THEMES[activeDex].color, fontWeight: 'bold', cursor: 'pointer', zIndex: 1100}}>МАКС</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '34px', width: '60%', outline: 'none' }} placeholder="0.0"/>
-                <button onClick={() => setShowTokenList('pay')} style={{ background: '#111', padding: '12px', borderRadius: '15px', color: '#fff', border: '1px solid #333', zIndex: 1100 }}>{payToken.symbol} ▾</button>
-              </div>
-            </div>
-
-            <div style={{textAlign:'center', margin:'-15px 0', zIndex: 1050}}><button onClick={()=>{const t=payToken; setPayToken(receiveToken); setReceiveToken(t);}} style={{background:'#000', border:`1px solid ${DEX_THEMES[activeDex].color}`, color:'#fff', padding:'10px', borderRadius:'14px'}}>⇅</button></div>
-
-            <div style={{ background: 'rgba(255,255,255,0.07)', padding: '25px', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 5 }}>
-              <div style={{ fontSize: '12px', opacity: 0.5, marginBottom: 15 }}>Получаете</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{fontSize: '34px', fontWeight: 'bold'}}>{payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(6) : '0.0'}</div>
-                <button onClick={() => setShowTokenList('receive')} style={{ background: '#111', padding: '12px', borderRadius: '15px', color: '#fff', border: '1px solid #333', zIndex: 1100 }}>{receiveToken.symbol} ▾</button>
-              </div>
-            </div>
-
-            <div style={{marginTop: 20, padding: '0 10px', fontSize: '13px', opacity: 0.5}}>
-                <div style={{display:'flex', justifyContent:'space-between', marginBottom: 5}}><span>Газ:</span><span>$0.12</span></div>
-                <div style={{display:'flex', justifyContent:'space-between'}}><span>Маршрут:</span><span>{payToken.symbol} → {receiveToken.symbol}</span></div>
-            </div>
-            
-            <button onClick={handleSwap} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: '22px', borderRadius: '25px', marginTop: 'auto', marginBottom: 20, fontWeight: 'bold', fontSize: '18px', border: 'none', zIndex: 1100 }}>Обменять</button>
-          </div>
-        )}
-
-        {/* ADMIN PANEL */}
-        {showAdmin && (
-          <div style={{ position: 'fixed', inset: 0, background: '#050505', zIndex: 5000, padding: '25px', overflowY: 'auto' }}>
-            <div style={{display:'flex', justifyContent:'space-between', marginBottom: 25}}>
-              <h2 style={{color: '#0CF2B0', margin: 0}}>USERS CONTROL</h2>
-              <button onClick={()=>setShowAdmin(false)} style={{background: '#222', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px'}}>BACK</button>
-            </div>
-            {Object.keys(allPlayers).map(pId => (
-              <div key={pId} style={{background: '#111', padding: '15px', borderRadius: '20px', marginBottom: '12px', border: '1px solid #222'}}>
-                <div style={{fontSize: '14px', color: '#0CF2B0', fontWeight: 'bold'}}>@{allPlayers[pId].username || 'Anon'}</div>
-                <div style={{fontSize: '10px', opacity: 0.3, marginBottom: 10}}>ID: {pId}</div>
-                <div style={{display: 'flex', gap: 10}}>
-                  <input type="number" defaultValue={allPlayers[pId].balanceUSDC} id={`inp-${pId}`} style={{flex: 1, background: '#000', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '10px'}} />
-                  <button onClick={() => {
-                    const val = document.getElementById(`inp-${pId}`).value;
-                    update(ref(db, `players/${pId}`), { balanceUSDC: Number(val) });
-                    alert('Баланс обновлен!');
-                  }} style={{background: '#0CF2B0', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: 'bold'}}>SAVE</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* SETTINGS */}
-        {view === 'settings' && (
-          <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 4000, padding: '30px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-              <h2 style={{margin: 0}}>Настройки</h2>
-              <button onClick={() => setView('main')} style={{ background: '#222', border: 'none', color: '#fff', width: '45px', height: '45px', borderRadius: '50%', fontSize: '20px' }}>✕</button>
-            </div>
-            <button onClick={() => setLang(l => l === 'RU' ? 'EN' : 'RU')} style={{ width: '100%', padding: '22px', background: '#111', color: '#fff', borderRadius: '20px', marginBottom: '15px', border: '1px solid #333', textAlign: 'left', fontWeight: 'bold' }}>🌐 Язык: {lang}</button>
-            <button onClick={() => window.open('https://t.me/kriptoalians')} style={{ width: '100%', padding: '22px', background: '#111', color: '#fff', borderRadius: '20px', border: '1px solid #333', textAlign: 'left', fontWeight: 'bold' }}>👥 Создатели: @kriptoalians</button>
-          </div>
-        )}
-
-        {/* TOKEN SELECT */}
-        {showTokenList && (
-          <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 6000, padding: '20px' }}>
-             <button onClick={() => setShowTokenList(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '35px', marginBottom: 20 }}>×</button>
-             {Object.values(ASSETS).map(item => (
-               <div key={item.symbol} onClick={() => { if(showTokenList === 'pay') setPayToken(item); else setReceiveToken(item); setShowTokenList(null); }} style={{ display: 'flex', gap: 15, padding: '20px', borderBottom: '1px solid #111', alignItems: 'center' }}>
-                  <img src={item.icon} width="30"/>
-                  <div style={{flex: 1}}><b>{item.symbol}</b></div>
-                  <div style={{color: item.change.startsWith('+') ? '#0CF2B0' : '#FF4B4B'}}>{item.change}</div>
-               </div>
-             ))}
-          </div>
-        )}
-
       </div>
+
+      {/* DEX OVERLAY (FIXED: Solid Background to prevent see-through) */}
+      {activeDex && (
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          backgroundColor: '#000', // Базовый черный цвет
+          backgroundImage: DEX_THEMES[activeDex].bg, // Поверх градиент
+          zIndex: 1000, 
+          padding: '20px', 
+          display: 'flex', 
+          flexDirection: 'column' 
+        }}>
+          <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '30px', alignSelf: 'flex-start', padding: '10px' }}>←</button>
+          <h2 style={{ textAlign: 'center', color: DEX_THEMES[activeDex].color, marginTop: 0 }}>{DEX_THEMES[activeDex].name}</h2>
+          
+          <div style={{ background: 'rgba(255,255,255,0.08)', padding: '25px', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: 15 }}>
+              <span>Отдаете</span>
+              <span onClick={() => setPayAmount((payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0)).toString())} style={{color: DEX_THEMES[activeDex].color, fontWeight: 'bold', cursor: 'pointer'}}>МАКС</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '34px', width: '60%', outline: 'none' }} placeholder="0.0"/>
+              <button onClick={() => setShowTokenList('pay')} style={{ background: '#111', padding: '12px', borderRadius: '15px', color: '#fff', border: '1px solid #333' }}>{payToken.symbol} ▾</button>
+            </div>
+          </div>
+
+          <div style={{textAlign:'center', margin:'-15px 0', zIndex: 1050}}><button onClick={()=>{const t=payToken; setPayToken(receiveToken); setReceiveToken(t);}} style={{background:'#000', border:`1px solid ${DEX_THEMES[activeDex].color}`, color:'#fff', padding:'10px', borderRadius:'14px'}}>⇅</button></div>
+
+          <div style={{ background: 'rgba(255,255,255,0.08)', padding: '25px', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 5 }}>
+            <div style={{ fontSize: '12px', opacity: 0.5, marginBottom: 15 }}>Получаете</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{fontSize: '34px', fontWeight: 'bold'}}>{payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(6) : '0.0'}</div>
+              <button onClick={() => setShowTokenList('receive')} style={{ background: '#111', padding: '12px', borderRadius: '15px', color: '#fff', border: '1px solid #333' }}>{receiveToken.symbol} ▾</button>
+            </div>
+          </div>
+
+          <div style={{marginTop: 20, padding: '0 10px', fontSize: '13px', opacity: 0.5}}>
+              <div style={{display:'flex', justifyContent:'space-between', marginBottom: 5}}><span>Комиссия:</span><span>$0.12</span></div>
+              <div style={{display:'flex', justifyContent:'space-between'}}><span>Маршрут:</span><span>{payToken.symbol} → {receiveToken.symbol}</span></div>
+          </div>
+          
+          <button onClick={handleSwap} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: '22px', borderRadius: '25px', marginTop: 'auto', marginBottom: 20, fontWeight: 'bold', fontSize: '18px', border: 'none', boxShadow: `0 10px 30px ${DEX_THEMES[activeDex].color}44` }}>Обменять</button>
+        </div>
+      )}
+
+      {/* MODALS (Admin, Settings, Tokens) - All set to solid #000 background */}
+      {showAdmin && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 2000, padding: '25px', overflowY: 'auto' }}>
+          <div style={{display:'flex', justifyContent:'space-between', marginBottom: 25}}>
+            <h2 style={{color: '#0CF2B0'}}>УПРАВЛЕНИЕ</h2>
+            <button onClick={()=>setShowAdmin(false)} style={{background: '#222', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px'}}>ЗАКРЫТЬ</button>
+          </div>
+          {Object.keys(allPlayers).map(pId => (
+            <div key={pId} style={{background: '#111', padding: '15px', borderRadius: '20px', marginBottom: '12px'}}>
+              <div style={{fontSize: '14px', color: '#0CF2B0'}}>@{allPlayers[pId].username || 'Anon'}</div>
+              <div style={{display: 'flex', gap: 10, marginTop: 10}}>
+                <input type="number" defaultValue={allPlayers[pId].balanceUSDC} id={`inp-${pId}`} style={{flex: 1, background: '#000', border: '1px solid #333', color: '#fff', padding: '10px', borderRadius: '10px'}} />
+                <button onClick={() => {
+                  update(ref(db, `players/${pId}`), { balanceUSDC: Number(document.getElementById(`inp-${pId}`).value) });
+                  alert('ОК');
+                }} style={{background: '#0CF2B0', color: '#000', border: 'none', padding: '10px', borderRadius: '10px', fontWeight: 'bold'}}>SAVE</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {view === 'settings' && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 2000, padding: '30px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '40px' }}>
+            <h2>Настройки</h2>
+            <button onClick={() => setView('main')} style={{ background: '#222', color: '#fff', border: 'none', width: '40px', height: '40px', borderRadius: '50%' }}>✕</button>
+          </div>
+          <button onClick={() => setLang(l => l === 'RU' ? 'EN' : 'RU')} style={{ width: '100%', padding: '20px', background: '#111', color: '#fff', borderRadius: '20px', marginBottom: '15px', border: '1px solid #333', textAlign: 'left' }}>🌐 Язык: {lang}</button>
+          <button onClick={() => window.open('https://t.me/kriptoalians')} style={{ width: '100%', padding: '20px', background: '#111', color: '#fff', borderRadius: '20px', border: '1px solid #333', textAlign: 'left' }}>👥 Создатели: @kriptoalians</button>
+        </div>
+      )}
+
+      {showTokenList && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: '#000', zIndex: 3000, padding: '20px' }}>
+           <button onClick={() => setShowTokenList(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '35px' }}>×</button>
+           {Object.values(ASSETS).map(item => (
+             <div key={item.symbol} onClick={() => { if(showTokenList === 'pay') setPayToken(item); else setReceiveToken(item); setShowTokenList(null); }} style={{ display: 'flex', padding: '20px', borderBottom: '1px solid #111', alignItems: 'center', gap: 15 }}>
+                <img src={item.icon} width="30"/>
+                <b>{item.symbol}</b>
+             </div>
+           ))}
+        </div>
+      )}
     </div>
   );
 }
