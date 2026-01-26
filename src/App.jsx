@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, update, get } from "firebase/database";
 
+// Конфиг Firebase оставляем прежним
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
   authDomain: "treidgame-b2ae0.firebaseapp.com",
@@ -58,7 +59,6 @@ export default function App() {
     if (webApp) {
       webApp.expand();
       webApp.ready();
-      webApp.enableClosingConfirmation();
     }
     onValue(ref(db, `players/${userId}`), (s) => {
       if (s.exists()) {
@@ -148,7 +148,7 @@ export default function App() {
         {deal && (
           <div className="signal">
             <div className="sig-head">
-              <span className="live">● LIVE</span>
+              <span className="live">● LIVE ARBITRAGE</span>
               <span className="pct">+{deal.profit}%</span>
             </div>
             <div className="sig-row">
@@ -177,13 +177,36 @@ export default function App() {
         </div>
       </div>
 
-      {/* MODALS & OVERLAYS */}
+      {/* OVERLAY: TOKEN PICKER (ИСПРАВЛЕН СКРОЛЛ) */}
+      {showTokenList && (
+        <div className="sheet-overlay">
+          <div className="sheet-box">
+            <div className="sheet-top">
+              <span>SELECT TOKEN</span> 
+              <button onClick={() => setShowTokenList(null)}>✕</button>
+            </div>
+            <div className="sheet-list">
+              {Object.values(ASSETS).map(a => (
+                <div key={a.symbol} className="token-row" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
+                  <img src={a.icon} alt="" /> 
+                  <div className="t-meta">
+                    <b>{a.symbol}</b>
+                    <small>${a.price}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY: SWAP (ИСПРАВЛЕНА ШИРИНА) */}
       {activeDex && (
         <div className="overlay">
           <div className="swap-box">
-            <div className="swap-head"><button onClick={() => setActiveDex(null)}>✕</button><b>{activeDex}</b><div style={{width: 20}}></div></div>
+            <div className="swap-head"><button onClick={() => setActiveDex(null)}>✕</button><b>SWAP</b><div style={{width: 20}}></div></div>
             <div className="input-block">
-              <div className="block-top">FROM <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
+              <div className="block-top">PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
               <div className="block-row">
                 <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
                 <div className="token-btn" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt=""/> {payToken.symbol}</div>
@@ -191,61 +214,25 @@ export default function App() {
             </div>
             <div className="arrow-down">↓</div>
             <div className="input-block">
-              <div className="block-top">TO</div>
+              <div className="block-top">RECEIVE</div>
               <div className="block-row">
                 <div className="fake-inp">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
                 <div className="token-btn" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt=""/> {getToken.symbol}</div>
               </div>
             </div>
             <button className="swap-confirm" onClick={handleSwap} disabled={isPending} style={{background: DEX_LIST.find(d => d.id === activeDex).color}}>
-              {isPending ? 'ROUTING...' : 'SWAP ASSETS'}
+              {isPending ? 'EXECUTING...' : 'CONFIRM SWAP'}
             </button>
           </div>
         </div>
       )}
 
-      {showAdmin && (
-        <div className="admin-layer">
-          <div className="admin-head"><button onClick={() => setShowAdmin(false)}>✕</button><h3>ADMIN</h3><div style={{width: 20}}></div></div>
-          <div className="player-list">
-            {Object.entries(allPlayers).map(([id, p]) => (
-              <div key={id} className="p-item" onClick={() => setTargetUser({id, ...p})}>
-                <span>@{p.username || id}</span><b>${p.balanceUSDC?.toFixed(2)}</b>
-              </div>
-            ))}
-          </div>
-          {targetUser && (
-            <div className="pop-overlay">
-              <div className="pop-box">
-                <h4>Edit @{targetUser.username}</h4>
-                <input type="number" value={newAdminBal} onChange={e => setNewAdminBal(e.target.value)} />
-                <button className="save" onClick={() => { update(ref(db, `players/${targetUser.id}`), {balanceUSDC: Number(newAdminBal)}); setShowAdmin(false); setTargetUser(null); }}>SAVE</button>
-                <button className="ban" onClick={() => { update(ref(db, `players/${targetUser.id}`), {balanceUSDC: 0}); setShowAdmin(false); }}>BAN</button>
-                <button onClick={() => setTargetUser(null)}>EXIT</button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {showTokenList && (
-        <div className="sheet">
-          <div className="sheet-box">
-            <div className="sheet-top">TOKENS <button onClick={() => setShowTokenList(null)}>✕</button></div>
-            {Object.values(ASSETS).map(a => (
-              <div key={a.symbol} className="token-row" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                <img src={a.icon} alt="" /> <div><b>{a.symbol}</b><br/><small>${a.price}</small></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {/* RECEIPT & ADMIN */}
       {receipt && (
         <div className="receipt">
           <div className="r-box">
             <div className="r-icon">✓</div>
-            <h2>DONE</h2>
+            <h2>SUCCESS</h2>
             <div className="r-val" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.isPurchase ? receipt.get.toFixed(4) + ' ' + receipt.to : (receipt.pnl >= 0 ? '+$' : '-$') + Math.abs(receipt.pnl).toFixed(2)}
             </div>
@@ -257,80 +244,108 @@ export default function App() {
       {clicks.map(c => <div key={c.id} className="dollar" style={{left: c.x, top: c.y}}>$</div>)}
 
       <style>{`
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { margin: 0; padding: 0; background: #000; color: #fff; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
         
-        .app-root { width: 100%; height: 100vh; position: relative; overflow-x: hidden; }
-        .main-view { width: 100%; height: 100%; overflow-y: auto; padding: 20px; padding-bottom: 80px; transition: 0.3s; }
-        .blurred { filter: blur(20px); transform: scale(0.95); pointer-events: none; }
+        /* Фикс пустоты справа */
+        html, body { 
+          width: 100%; 
+          max-width: 100%; 
+          height: 100%; 
+          background: #000; 
+          color: #fff; 
+          overflow: hidden; 
+          font-family: -apple-system, sans-serif; 
+        }
+        
+        .app-root { 
+          width: 100vw; 
+          height: 100vh; 
+          position: relative; 
+          overflow-x: hidden; /* Жестко режем всё, что вылезает вбок */
+        }
 
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .usdc-card { background: #111; border: 1px solid #222; padding: 8px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; color: #0CF2B0; font-weight: 800; }
-        .usdc-card img { width: 18px; }
-        .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 16px; border-radius: 12px; font-weight: 900; font-size: 11px; }
+        .main-view { 
+          width: 100%; 
+          height: 100%; 
+          overflow-y: auto; 
+          padding: 20px; 
+          padding-bottom: 100px;
+          display: flex;
+          flex-direction: column;
+        }
 
-        .hero { text-align: center; padding: 40px 0; position: relative; }
+        .blurred { filter: blur(20px); pointer-events: none; }
+
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; width: 100%; }
+        .usdc-card { background: #111; border: 1px solid #222; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px; color: #0CF2B0; font-weight: 800; font-size: 14px; }
+        .usdc-card img { width: 16px; }
+        .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 14px; border-radius: 12px; font-weight: 900; font-size: 10px; }
+
+        .hero { text-align: center; padding: 30px 0; position: relative; }
         .hero-lbl { font-size: 10px; opacity: 0.3; letter-spacing: 2px; }
-        .hero-amt { font-size: 46px; font-weight: 900; margin-top: 10px; }
-        .hero-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 200px; height: 100px; background: #0CF2B015; filter: blur(60px); z-index: -1; }
+        .hero-amt { font-size: 44px; font-weight: 900; margin-top: 10px; }
+        .hero-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150px; height: 80px; background: #0CF2B010; filter: blur(50px); z-index: -1; }
 
-        .signal { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 30px; }
-        .sig-head { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .live { color: #0CF2B0; font-weight: 900; font-size: 10px; }
-        .pct { color: #0CF2B0; font-weight: 900; }
-        .sig-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .node small { display: block; font-size: 9px; opacity: 0.3; margin-bottom: 4px; }
-        .node b { font-size: 13px; }
-        .coin { background: #1a1a1a; padding: 8px 14px; border-radius: 12px; font-weight: 900; border: 1px solid #222; }
-        .bar-bg { height: 3px; background: #222; border-radius: 2px; overflow: hidden; }
+        .signal { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; width: 100%; }
+        .sig-head { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .live { color: #0CF2B0; font-weight: 900; font-size: 9px; }
+        .pct { color: #0CF2B0; font-weight: 900; font-size: 14px; }
+        .sig-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .node small { display: block; font-size: 8px; opacity: 0.3; margin-bottom: 4px; }
+        .node b { font-size: 12px; }
+        .coin { background: #1a1a1a; padding: 6px 12px; border-radius: 10px; font-weight: 900; border: 1px solid #222; font-size: 12px; }
+        .bar-bg { height: 2px; background: #222; border-radius: 1px; overflow: hidden; }
         .bar-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
 
-        .dex-section { width: 100%; }
-        .section-title { font-size: 11px; opacity: 0.3; font-weight: 800; margin-bottom: 15px; }
-        .dex-stack { display: flex; flex-direction: column; gap: 10px; }
-        .dex-btn { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 20px; display: flex; align-items: center; gap: 15px; position: relative; overflow: hidden; }
-        .dex-icon { width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
-        .dex-info h3 { font-size: 15px; margin: 0; }
-        .dex-info small { opacity: 0.3; font-weight: 700; font-size: 10px; }
-        .dex-line { position: absolute; right: 0; top: 0; bottom: 0; width: 4px; opacity: 0.5; }
+        .dex-stack { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        .dex-btn { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 18px; border-radius: 20px; display: flex; align-items: center; gap: 15px; width: 100%; position: relative; }
+        .dex-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .dex-info h3 { font-size: 14px; margin: 0; }
+        .dex-info small { opacity: 0.3; font-weight: 700; font-size: 9px; }
 
-        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(20px); z-index: 100; display: flex; align-items: center; padding: 20px; }
-        .swap-box { width: 100%; background: #0a0a0a; border: 1px solid #222; padding: 20px; border-radius: 28px; }
+        /* СКРОЛЛ ТОКЕНОВ */
+        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; display: flex; align-items: flex-end; }
+        .sheet-box { 
+          width: 100%; 
+          background: #0d0d0d; 
+          border-radius: 24px 24px 0 0; 
+          border-top: 1px solid #222; 
+          max-height: 70vh; /* Ограничиваем высоту */
+          display: flex; 
+          flex-direction: column; 
+        }
+        .sheet-top { padding: 20px; display: flex; justify-content: space-between; font-weight: 900; border-bottom: 1px solid #1a1a1a; color: #555; font-size: 12px; }
+        .sheet-list { 
+          overflow-y: auto; /* ВКЛЮЧАЕМ СКРОЛЛ */
+          flex: 1; 
+          padding: 10px 20px 40px; 
+          -webkit-overflow-scrolling: touch; 
+        }
+        .token-row { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #151515; }
+        .token-row img { width: 32px; height: 32px; }
+        .t-meta b { display: block; font-size: 16px; }
+        .t-meta small { opacity: 0.4; }
+
+        /* ОВЕРЛЕИ */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); backdrop-filter: blur(15px); z-index: 500; display: flex; align-items: center; padding: 20px; }
+        .swap-box { width: 100%; background: #0a0a0a; border: 1px solid #222; padding: 20px; border-radius: 24px; }
         .swap-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .swap-head button { background: none; border: none; color: #fff; font-size: 20px; }
         .input-block { background: #000; padding: 15px; border-radius: 18px; border: 1px solid #1a1a1a; }
-        .block-top { font-size: 10px; color: #444; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .block-top span { color: #0CF2B0; }
+        .block-top { font-size: 10px; color: #444; font-weight: 800; margin-bottom: 8px; display: flex; justify-content: space-between; }
         .block-row { display: flex; justify-content: space-between; align-items: center; }
-        .block-row input, .fake-inp { background: none; border: none; color: #fff; font-size: 22px; font-weight: 700; outline: none; width: 60%; }
-        .token-btn { background: #111; border: 1px solid #222; padding: 6px 12px; border-radius: 12px; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; }
+        .block-row input, .fake-inp { background: none; border: none; color: #fff; font-size: 20px; font-weight: 700; outline: none; width: 55%; }
+        .token-btn { background: #111; border: 1px solid #222; padding: 6px 10px; border-radius: 10px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; }
         .token-btn img { width: 16px; }
-        .arrow-down { text-align: center; padding: 5px; opacity: 0.1; }
-        .swap-confirm { width: 100%; padding: 20px; border: none; border-radius: 18px; color: #fff; font-weight: 900; margin-top: 20px; }
+        .swap-confirm { width: 100%; padding: 18px; border: none; border-radius: 18px; color: #fff; font-weight: 900; margin-top: 20px; }
 
-        .sheet { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: flex; align-items: flex-end; }
-        .sheet-box { width: 100%; background: #0d0d0d; border-radius: 24px 24px 0 0; padding: 20px; border-top: 1px solid #222; max-height: 60vh; overflow-y: auto; }
-        .sheet-top { display: flex; justify-content: space-between; font-weight: 900; margin-bottom: 20px; }
-        .token-row { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #1a1a1a; }
-        .token-row img { width: 30px; }
-
-        .receipt { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; align-items: center; padding: 30px; text-align: center; }
+        .receipt { position: fixed; inset: 0; background: #000; z-index: 2000; display: flex; align-items: center; padding: 30px; text-align: center; }
         .r-box { width: 100%; }
-        .r-icon { width: 80px; height: 80px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 30px; }
-        .r-val { font-size: 36px; font-weight: 900; margin-bottom: 40px; }
+        .r-icon { width: 70px; height: 70px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 20px; }
+        .r-val { font-size: 32px; font-weight: 900; margin-bottom: 30px; }
         .receipt button { background: #111; border: 1px solid #222; color: #fff; padding: 15px 40px; border-radius: 15px; font-weight: 800; }
 
-        .dollar { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 30px; pointer-events: none; animation: fly 0.8s ease-out forwards; z-index: 1000; }
-        @keyframes fly { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-120px); } }
-
-        .admin-layer { position: fixed; inset: 0; background: #000; z-index: 500; padding: 20px; overflow-y: auto; }
-        .p-item { display: flex; justify-content: space-between; padding: 15px; background: #0a0a0a; margin-bottom: 8px; border-radius: 12px; border: 1px solid #1a1a1a; }
-        .pop-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; padding: 20px; }
-        .pop-box { background: #111; width: 100%; padding: 20px; border-radius: 20px; border: 1px solid #333; }
-        .pop-box input { width: 100%; padding: 12px; margin: 15px 0; background: #000; color: #fff; border: 1px solid #222; border-radius: 10px; }
-        .pop-box button { width: 100%; padding: 12px; margin-bottom: 8px; border-radius: 10px; border: none; font-weight: 800; }
-        .save { background: #0CF2B0; }
-        .ban { background: #ff4b4b; color: #fff; }
+        .dollar { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 30px; pointer-events: none; animation: fly 0.8s ease-out forwards; z-index: 3000; }
+        @keyframes fly { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-100px); } }
       `}</style>
     </div>
   );
