@@ -1,125 +1,30 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crypto Alliance Arb</title>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <title>Crypto Alliance Arb</title>
+    
     <style>
-        body, html { margin: 0; padding: 0; background: #000; color: #fff; font-family: -apple-system, sans-serif; overflow: hidden; height: 100dvh; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        .container { display: flex; flex-direction: column; height: 100%; padding: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
-        .online-tag { display: flex; align-items: center; gap: 8px; background: rgba(57,242,175,0.1); padding: 6px 15px; border-radius: 20px; color: #39f2af; font-size: 11px; font-weight: bold; }
-        .dot { width: 6px; height: 6px; background: #39f2af; border-radius: 50%; box-shadow: 0 0 8px #39f2af; }
-        .balance-section { text-align: center; margin: 50px 0; }
-        #balance { font-size: 50px; font-weight: 900; margin: 0; }
-        .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .btn { background: #111; border: 1px solid #222; color: #fff; padding: 25px 0; border-radius: 20px; font-weight: bold; cursor: pointer; }
-        .btn:active { transform: scale(0.96); background: #1a1a1a; }
-        .loader { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justifyContent: center; z-index: 100; color: #39f2af; }
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; align-items: center; justify-content: center; z-index: 200; }
-        .card { background: #111; padding: 30px; border-radius: 30px; text-align: center; width: 80%; border: 1px solid #222; }
+      /* Убираем лишние отступы и скролл, чтобы приложение сидело плотно */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000000;
+        overflow: hidden;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        user-select: none;
+      }
     </style>
-</head>
-<body>
-
-    <div class="container" id="main-view">
-        <div class="header">
-            <button class="btn" style="padding: 10px 15px; border-radius: 12px;" onclick="toggleSettings()">⚙️</button>
-            <div class="online-tag"><div class="dot"></div><span id="online-count">1 ONLINE</span></div>
-        </div>
-
-        <div class="balance-section">
-            <h1 id="balance">$1,000.00</h1>
-            <div style="opacity: 0.4; font-size: 12px; margin-top: 5px;">МОЙ БАЛАНС</div>
-        </div>
-
-        <div class="dex-grid">
-            <button class="btn" onclick="startTrade()">UNISWAP</button>
-            <button class="btn" onclick="startTrade()">RAYDIUM</button>
-            <button class="btn" onclick="startTrade()">PANCAKE</button>
-            <button class="btn" onclick="startTrade()">1INCH</button>
-        </div>
-
-        <div style="margin-top: auto; background: #111; padding: 15px; border-radius: 20px; border: 1px solid #222; text-align: center;">
-            <div style="font-size: 13px;">Нужна помощь?</div>
-            <a href="https://t.me/vladstelin78" style="color: #39f2af; text-decoration: none; font-size: 12px;">Связаться с менеджером</a>
-        </div>
-    </div>
-
-    <div id="loader" class="loader">Анализ ликвидности...</div>
-
-    <div id="modal" class="modal">
-        <div class="card">
-            <div id="modal-icon" style="font-size: 40px;">💰</div>
-            <h2 id="modal-amount" style="font-size: 35px; color: #39f2af; margin: 15px 0;">+0.00$</h2>
-            <button class="btn" style="width: 100%; background: #fff; color: #000;" onclick="closeModal()">OK</button>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
-            authDomain: "treidgame-b2ae0.firebaseapp.com",
-            projectId: "treidgame-b2ae0",
-            storageBucket: "treidgame-b2ae0.firebasestorage.app",
-            messagingSenderId: "985305772375",
-            appId: "1:985305772375:web:08d9b482a6f9d3cd748e12"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-
-        let balance = parseFloat(localStorage.getItem('arb_balance')) || 1000.00;
-        const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id?.toString() || "Guest_" + Math.floor(Math.random() * 9000);
-
-        function updateUI() {
-            document.getElementById('balance').innerText = `$${balance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            localStorage.setItem('arb_balance', balance);
-            
-            // Отправка в Firebase
-            update(ref(db, 'players/' + userId), {
-                id: userId,
-                balance: balance,
-                lastSeen: serverTimestamp()
-            });
-        }
-
-        // Онлайн
-        const onlineRef = ref(db, 'online/' + userId);
-        set(onlineRef, true);
-        onDisconnect(onlineRef).remove();
-        onValue(ref(db, 'online'), (s) => {
-            const count = s.exists() ? Object.keys(s.val()).length : 1;
-            document.getElementById('online-count').innerText = `${count} В СЕТИ`;
-        });
-
-        window.startTrade = () => {
-            document.getElementById('loader').style.display = 'flex';
-            setTimeout(() => {
-                document.getElementById('loader').style.display = 'none';
-                const isWin = Math.random() > 0.3;
-                const percent = isWin ? (Math.random() * 3) : -(Math.random() * 1.5);
-                const diff = (balance * (percent / 100));
-                balance += diff;
-                
-                document.getElementById('modal-amount').innerText = (diff > 0 ? "+" : "") + diff.toFixed(2) + "$";
-                document.getElementById('modal-amount').style.color = diff > 0 ? "#39f2af" : "#ff4d4d";
-                document.getElementById('modal-icon').innerText = diff > 0 ? "💰" : "📉";
-                document.getElementById('modal').style.display = 'flex';
-                updateUI();
-            }, 1500);
-        };
-
-        window.closeModal = () => document.getElementById('modal').style.display = 'none';
-        window.toggleSettings = () => alert("Создатели: @kriptoalians");
-
-        updateUI();
-        if(window.Telegram?.WebApp) window.Telegram.WebApp.expand();
-    </script>
-</body>
+  </head>
+  <body>
+    <div id="root"></div>
+    
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
