@@ -15,7 +15,6 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 export default function App() {
-  // Изначальные ассеты (цены обновятся через API)
   const [assets, setAssets] = useState({
     USDC: { symbol: 'USDC', price: 1, icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg' },
     BTC: { symbol: 'BTC', price: 65000, icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg' },
@@ -53,36 +52,29 @@ export default function App() {
   const user = webApp?.initDataUnsafe?.user;
   const userId = user?.id?.toString() || 'Guest';
 
-  // Инициализация токенов по умолчанию
   useEffect(() => {
     setPayToken(assets.USDC);
     setGetToken(assets.BTC);
   }, []);
 
-  // ФУНКЦИЯ ПОЛУЧЕНИЯ РЕАЛЬНЫХ ЦЕН
   const fetchPrices = async () => {
     try {
       const symbols = ['BTCUSDT', 'ETHUSDT', 'LINKUSDT', 'AAVEUSDT', 'CRVUSDT', 'POLUSDT'];
       const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbols=${JSON.stringify(symbols)}`);
       const data = await response.json();
-      
       const newAssets = { ...assets };
       data.forEach(item => {
         const key = item.symbol.replace('USDT', '');
         const finalKey = key === 'POL' ? 'WPOL' : key;
-        if (newAssets[finalKey]) {
-          newAssets[finalKey].price = parseFloat(item.price);
-        }
+        if (newAssets[finalKey]) newAssets[finalKey].price = parseFloat(item.price);
       });
       setAssets(newAssets);
-    } catch (e) {
-      console.log("Price fetch error:", e);
-    }
+    } catch (e) { console.log(e); }
   };
 
   useEffect(() => {
     fetchPrices();
-    const priceInterval = setInterval(fetchPrices, 10000); // Обновляем цены каждые 10 сек
+    const priceInterval = setInterval(fetchPrices, 10000);
     return () => clearInterval(priceInterval);
   }, []);
 
@@ -90,7 +82,6 @@ export default function App() {
     if (webApp) {
       webApp.expand();
       webApp.ready();
-      webApp.headerColor = '#000000';
     }
     onValue(ref(db, `players/${userId}`), (s) => {
       if (s.exists()) {
@@ -121,9 +112,7 @@ export default function App() {
     const buyIdx = Math.floor(Math.random() * DEX_CONFIG.length);
     let sellIdx = Math.floor(Math.random() * DEX_CONFIG.length);
     while (sellIdx === buyIdx) sellIdx = Math.floor(Math.random() * DEX_CONFIG.length);
-    
     setTimeLeft(120);
-
     setDeal({ 
       coin: assets[assetKeys[Math.floor(Math.random() * assetKeys.length)]], 
       buyAt: DEX_CONFIG[buyIdx], 
@@ -144,11 +133,9 @@ export default function App() {
     new Audio('https://www.soundjay.com/buttons/button-16.mp3').play().catch(() => {});
 
     setIsPending(true);
-
     setTimeout(() => {
       let receiveAmt = (amt * payToken.price) / getToken.price;
       let pnl = null;
-
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
         const isOk = activeDex.id === deal.sellAt.id && payToken.symbol === deal.coin.symbol;
         if (isOk) {
@@ -159,24 +146,14 @@ export default function App() {
         }
         pnl = receiveAmt - (amt * payToken.price);
       }
-
       const newB = payToken.symbol === 'USDC' ? balance - amt : (getToken.symbol === 'USDC' ? balance + receiveAmt : balance);
       const newW = { ...wallet };
       if (payToken.symbol !== 'USDC') newW[payToken.symbol] = (newW[payToken.symbol] || 0) - amt;
       if (getToken.symbol !== 'USDC') newW[getToken.symbol] = (newW[getToken.symbol] || 0) + receiveAmt;
-
       update(ref(db, `players/${userId}`), { balanceUSDC: newB, wallet: newW });
       setReceipt({ pnl, get: receiveAmt, to: getToken.symbol, isPurchase: payToken.symbol === 'USDC' });
       setIsPending(false); setPayAmount('');
     }, 2500); 
-  };
-
-  const startAdminTimer = () => {
-    if (user?.username?.toLowerCase() === 'vladstelin78' || userId === '5143323924') {
-      timerRef.current = setTimeout(() => {
-        get(ref(db, 'players')).then(s => { if(s.exists()) setAllPlayers(s.val()); setShowAdmin(true); });
-      }, 3000);
-    }
   };
 
   if (!payToken || !getToken) return null;
@@ -184,16 +161,12 @@ export default function App() {
   return (
     <div className="app-container">
       <div className={`viewport ${activeDex || showAdmin || receipt || showTokenList ? 'is-modal-open' : ''}`}>
-        
         <header className="main-nav">
-          <div className="wallet-pill">
-            <div className="indicator"></div>
-            <span>${balance.toFixed(2)}</span>
-          </div>
+          <div className="wallet-pill"><div className="indicator"></div><span>${balance.toFixed(2)}</span></div>
           <button onClick={() => window.open('https://t.me/vladstelin78')} className="mgr-btn">MANAGER</button>
         </header>
 
-        <div className="hero-block" onTouchStart={startAdminTimer} onTouchEnd={() => clearTimeout(timerRef.current)}>
+        <div className="hero-block">
           <div className="hero-sub">Live Portfolio</div>
           <div className="hero-main">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
           <div className="hero-blur"></div>
@@ -207,18 +180,16 @@ export default function App() {
             </div>
             <div className="arb-route">
               <div className="route-node">
-                <small>BUY</small>
-                <div style={{color: deal.buyAt.color, textShadow: `0 0 10px ${deal.buyAt.color}44` Pel}}>{deal.buyAt.name}</div>
+                <small>КУПИТЬ</small>
+                <div style={{color: deal.buyAt.color, textShadow: `0 0 10px ${deal.buyAt.color}44`}}>{deal.buyAt.name}</div>
               </div>
               <div className="route-asset">{deal.coin.symbol}</div>
               <div className="route-node text-right">
-                <small>SELL</small>
+                <small>ПРОДАТЬ</small>
                 <div style={{color: deal.sellAt.color, textShadow: `0 0 10px ${deal.sellAt.color}44`}}>{deal.sellAt.name}</div>
               </div>
             </div>
-            <div className="arb-timer">
-              <div className="arb-progress" style={{width: `${(timeLeft/120)*100}%`}}></div>
-            </div>
+            <div className="arb-timer"><div className="arb-progress" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
           </div>
         )}
 
@@ -229,10 +200,7 @@ export default function App() {
               <div className="dex-glass" style={{background: dex.bg}}></div>
               <div className="dex-content">
                 <div className="dex-logo-box">{dex.logo}</div>
-                <div className="dex-txt">
-                  <h3>{dex.name}</h3>
-                  <p>{dex.status}</p>
-                </div>
+                <div className="dex-txt"><h3>{dex.name}</h3><p>{dex.status}</p></div>
                 <div className="dex-chevron">→</div>
               </div>
             </div>
@@ -248,30 +216,22 @@ export default function App() {
               <span>{activeDex.name} Terminal</span>
               <div style={{width: 32}}></div>
             </div>
-            
             <div className="swap-ui">
               <div className="swap-box-main">
                 <div className="box-header">PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
                 <div className="box-row">
                   <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                  <div className="token-trigger" onClick={() => setShowTokenList('pay')}>
-                    <img src={payToken.icon} alt="" /> {payToken.symbol}
-                  </div>
+                  <div className="token-trigger" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} /> {payToken.symbol}</div>
                 </div>
               </div>
-              
               <div className="swap-divider">↓</div>
-
               <div className="swap-box-main">
                 <div className="box-header">RECEIVE</div>
                 <div className="box-row">
                   <div className="fake-input">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
-                  <div className="token-trigger" onClick={() => setShowTokenList('get')}>
-                    <img src={getToken.icon} alt="" /> {getToken.symbol}
-                  </div>
+                  <div className="token-trigger" onClick={() => setShowTokenList('get')}><img src={getToken.icon} /> {getToken.symbol}</div>
                 </div>
               </div>
-
               <button className="execute-btn" onClick={handleSwap} disabled={isPending} style={{background: activeDex.bg}}>
                 {isPending ? 'FETCHING LIQUIDITY...' : `CONFIRM ON ${activeDex.id}`}
               </button>
@@ -288,14 +248,9 @@ export default function App() {
             <div className="sheet-scroll-area">
               {Object.values(assets).map(a => (
                 <div key={a.symbol} className="token-item" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                  <img src={a.icon} alt="" />
-                  <div className="token-meta">
-                    <b>{a.symbol}</b>
-                    <small>${a.price > 1 ? a.price.toLocaleString() : a.price.toFixed(4)}</small>
-                  </div>
-                  <div className="token-user-bal">
-                    {a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}
-                  </div>
+                  <img src={a.icon} />
+                  <div className="token-meta"><b>{a.symbol}</b><small>${a.price > 1 ? a.price.toLocaleString() : a.price.toFixed(4)}</small></div>
+                  <div className="token-user-bal">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
                 </div>
               ))}
             </div>
@@ -380,7 +335,7 @@ export default function App() {
         .r-close-btn { width: 100%; padding: 20px; background: #111; border: 1px solid #222; color: #fff; border-radius: 20px; font-weight: 900; }
         .dollar-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 32px; pointer-events: none; animation: popUp 0.8s ease-out forwards; z-index: 5000; }
         @keyframes popUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-150px); } }
-      ` Pel}</style>
+      `}</style>
     </div>
   );
 }
