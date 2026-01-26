@@ -57,10 +57,10 @@ export default function App() {
   const username = user?.username || 'Guest';
 
   useEffect(() => {
-    const setHeight = () => document.documentElement.style.setProperty('--vh', `${window.innerHeight * 0.01}px`);
-    setHeight(); window.addEventListener('resize', setHeight);
-    if (webApp) { webApp.expand(); webApp.disableVerticalSwipes(); }
-    return () => window.removeEventListener('resize', setHeight);
+    if (webApp) {
+      webApp.expand();
+      webApp.ready();
+    }
   }, []);
 
   useEffect(() => {
@@ -235,12 +235,14 @@ export default function App() {
         <div className="token-picker">
           <div className="token-sheet">
             <div className="ts-header">ASSETS <button onClick={() => setShowTokenList(null)}>✕</button></div>
-            {Object.values(ASSETS).map(a => (
-              <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="ts-item">
-                <img src={a.icon} className="ts-icon" alt=""/>
-                <div className="ts-meta"><span>{a.symbol}</span><small>${a.price}</small></div>
-              </div>
-            ))}
+            <div className="ts-scroll-inner">
+                {Object.values(ASSETS).map(a => (
+                <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="ts-item">
+                    <img src={a.icon} className="ts-icon" alt=""/>
+                    <div className="ts-meta"><span>{a.symbol}</span><small>${a.price}</small></div>
+                </div>
+                ))}
+            </div>
           </div>
         </div>
       )}
@@ -248,54 +250,72 @@ export default function App() {
       {clicks.map(c => <div key={c.id} className="click-fx" style={{ left: c.x, top: c.y }}>$</div>)}
 
       <style>{`
-        :root { --vh: 1vh; }
-        .app-container { background: #000; height: calc(var(--vh, 1vh) * 100); width: 100vw; color: #fff; font-family: sans-serif; overflow: hidden; position: fixed; }
-        .main-ui { padding: 20px; height: 100%; display: flex; flex-direction: column; transition: 0.3s; }
-        .scale-down { transform: scale(0.9); opacity: 0; pointer-events: none; }
-        .header-nav { display: flex; justify-content: space-between; align-items: center; }
+        .app-container { 
+          background: #000; 
+          min-height: 100vh; 
+          width: 100vw; 
+          color: #fff; 
+          font-family: sans-serif; 
+          overflow-y: auto; 
+          -webkit-overflow-scrolling: touch;
+        }
+        .main-ui { 
+          padding: 20px; 
+          padding-bottom: 100px; /* Чтобы биржи не прилипали к низу */
+          transition: 0.3s; 
+          display: flex; 
+          flex-direction: column;
+        }
+        .scale-down { transform: scale(0.9); opacity: 0; pointer-events: none; height: 100vh; overflow: hidden; }
+        .header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .usdc-badge { font-size: 10px; font-weight: 900; background: #111; padding: 6px 12px; border-radius: 15px; color: #0CF2B0; border: 1px solid #222; }
-        .mgr-btn { background: #fff; color: #000; border: none; padding: 6px 12px; border-radius: 10px; font-size: 9px; font-weight: 900; }
-        .balance-hero { text-align: center; margin: 30px 0; }
+        .mgr-btn { background: #fff; color: #000; border: none; padding: 6px 12px; border-radius: 10px; font-size: 9px; font-weight: 900; cursor: pointer; }
+        .balance-hero { text-align: center; margin: 40px 0; cursor: pointer; }
         .bal-value { font-size: 40px; font-weight: 800; }
         .bal-sub { font-size: 8px; opacity: 0.2; letter-spacing: 1px; }
-        .signal-box { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 18px; border-radius: 20px; margin-bottom: 20px; }
+        .signal-box { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 18px; border-radius: 20px; margin-bottom: 30px; }
         .sb-top { display: flex; justify-content: space-between; color: #0CF2B0; font-weight: 900; font-size: 10px; margin-bottom: 10px; }
-        .sb-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .sb-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .sb-node b { font-size: 10px; }
-        .sb-coin-tag { background: #1a1a1a; padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; }
+        .sb-coin-tag { background: #1a1a1a; padding: 5px 12px; border-radius: 8px; font-size: 10px; font-weight: 900; border: 1px solid #333; }
         .sb-progress { height: 2px; background: #222; }
         .sb-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
-        .grid-dex { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card-dex { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px 10px; border-radius: 16px; text-align: left; color: #fff; position: relative; }
+        .grid-dex { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .card-dex { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px 10px; border-radius: 16px; text-align: left; color: #fff; position: relative; cursor: pointer; }
         .card-line { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
         .card-name { font-size: 10px; font-weight: 900; }
-        .trade-screen { position: fixed; inset: 0; padding: 20px; z-index: 100; display: flex; flex-direction: column; }
+        
+        .trade-screen { position: fixed; inset: 0; padding: 20px; z-index: 200; display: flex; flex-direction: column; overflow: hidden; }
         .trade-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .trade-card { background: rgba(0,0,0,0.8); padding: 20px; border-radius: 24px; border: 1px solid #333; backdrop-filter: blur(15px); margin: auto 0; }
+        .trade-card { background: rgba(0,0,0,0.85); padding: 20px; border-radius: 24px; border: 1px solid #333; backdrop-filter: blur(20px); margin: auto 0; }
         .trade-input { background: #000; padding: 15px; border-radius: 18px; border: 1px solid #222; }
         .ti-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-        .ti-row input { background: none; border: none; color: #fff; font-size: 20px; font-weight: 700; width: 50%; outline: none; }
-        .asset-btn { background: #111; border: 1px solid #333; color: #fff; padding: 6px 10px; border-radius: 10px; display: flex; align-items: center; gap: 6px; font-size: 10px; }
-        .asset-btn img { width: 14px; height: 14px; }
-        .confirm-btn { width: 100%; padding: 18px; border: none; border-radius: 16px; color: #fff; font-weight: 900; margin-top: 20px; }
-        .admin-panel { position: fixed; inset: 0; background: #000; z-index: 500; padding: 20px; display: flex; flex-direction: column; }
+        .ti-row input { background: none; border: none; color: #fff; font-size: 20px; font-weight: 700; width: 60%; outline: none; }
+        .asset-btn { background: #111; border: 1px solid #333; color: #fff; padding: 6px 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+        .asset-btn img { width: 16px; height: 16px; }
+        .confirm-btn { width: 100%; padding: 20px; border: none; border-radius: 18px; color: #fff; font-weight: 900; margin-top: 20px; cursor: pointer; }
+        
+        .admin-panel { position: fixed; inset: 0; background: #000; z-index: 1000; padding: 20px; display: flex; flex-direction: column; }
         .admin-list { flex: 1; overflow-y: auto; margin-top: 20px; }
-        .admin-user-item { display: flex; justify-content: space-between; padding: 15px; background: #111; margin-bottom: 5px; border-radius: 10px; border: 1px solid #222; }
-        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 600; }
-        .am-box { background: #111; padding: 20px; border-radius: 20px; width: 100%; border: 1px solid #333; }
-        .am-box input { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; }
-        .am-box button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 10px; border: none; font-weight: 800; background: #0CF2B0; }
+        .admin-user-item { display: flex; justify-content: space-between; padding: 15px; background: #111; margin-bottom: 8px; border-radius: 12px; border: 1px solid #222; }
+        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1100; }
+        .am-box { background: #111; padding: 25px; border-radius: 24px; width: 100%; border: 1px solid #333; }
+        .am-box input { width: 100%; padding: 15px; margin: 15px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 12px; font-size: 18px; }
+        .am-box button { width: 100%; padding: 15px; margin-top: 8px; border-radius: 12px; border: none; font-weight: 800; cursor: pointer; background: #0CF2B0; color: #000; }
         .am-box button.ban { background: #ff4b4b; color: #fff; }
         .am-box button.close { background: none; color: #555; }
+        
         .token-picker { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 300; display: flex; align-items: flex-end; }
-        .token-sheet { background: #111; width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 60vh; overflow-y: auto; border-top: 1px solid #333; }
-        .ts-item { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #222; gap: 12px; }
-        .ts-icon { width: 24px; height: 24px; }
+        .token-sheet { background: #111; width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 70vh; display: flex; flex-direction: column; border-top: 1px solid #333; }
+        .ts-scroll-inner { overflow-y: auto; flex: 1; }
+        .ts-item { display: flex; align-items: center; padding: 18px 0; border-bottom: 1px solid #222; gap: 12px; cursor: pointer; }
+        .ts-icon { width: 28px; height: 28px; object-fit: contain; }
         .ts-meta { flex: 1; display: flex; justify-content: space-between; align-items: center; }
-        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .receipt-content { background: #0a0a0a; padding: 30px; border-radius: 30px; text-align: center; width: 100%; border: 1px solid #222; }
-        .click-fx { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 24px; pointer-events: none; animation: floatUp 0.8s ease-out; z-index: 1000; }
-        @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-80px); } }
+        
+        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .receipt-content { background: #0a0a0a; padding: 40px 20px; border-radius: 30px; text-align: center; width: 100%; border: 1px solid #222; }
+        .click-fx { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 28px; pointer-events: none; animation: floatUp 0.8s ease-out; z-index: 1000; }
+        @keyframes floatUp { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-100px); } }
       `}</style>
     </div>
   );
