@@ -2,40 +2,45 @@ export default async function handler(req, res) {
   const botToken = "8318721103:AAFZ0jtX5JoDEjDXeJnk4yLetPkJjfup2Ec";
   const appUrl = "https://treidgame-sigma.vercel.app";
 
-  if (req.method !== 'POST') {
-    return res.status(200).send('Бот активен. Ожидание сообщений от Telegram...');
-  }
+  // Telegram всегда отправляет POST запрос
+  if (req.method === 'POST') {
+    try {
+      const { message } = req.body;
 
-  const { message } = req.body;
+      if (message && message.text === '/start') {
+        const chatId = message.chat.id;
+        const responseText = `👋 *Добро пожаловать!*\n\n` +
+                             `💻 Ты попал в терминал арбитражной торговли\n` +
+                             `📊 Реальные курсы с Binance\n` +
+                             `🏦 4 крупнейшие DEX-биржи\n` +
+                             `⚡️ Сигналы в реальном времени\n\n` +
+                             `Жми кнопку ниже, чтобы попробовать начать в демо версии! 👇`;
 
-  if (message && message.text === '/start') {
-    const chatId = message.chat.id;
-    const responseText = `👋 *Добро пожаловать!*\n\n` +
-                         `💻 Ты попал в терминал арбитражной торговли\n` +
-                         `📊 Реальные курсы с Binance\n` +
-                         `🏦 4 крупнейшие DEX-биржи\n` +
-                         `⚡️ Сигналы в реальном времени\n\n` +
-                         `Жми кнопку ниже, чтобы попробовать начать в демо версии! 👇`;
+        const payload = {
+          chat_id: chatId,
+          text: responseText,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "🚀 НАЧАТЬ В ДЕМО ВЕРСИИ", web_app: { url: appUrl } }],
+              [{ text: "👨‍💻 СВЯЗАТЬСЯ С МЕНЕДЖЕРОМ", url: "https://t.me/vladstelin78" }]
+            ]
+          }
+        };
 
-    const payload = {
-      chat_id: chatId,
-      text: responseText,
-      parse_mode: 'Markdown',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🚀 НАЧАТЬ В ДЕМО ВЕРСИИ", web_app: { url: appUrl } }],
-          [{ text: "👨‍💻 СВЯЗАТЬСЯ С МЕНЕДЖЕРОМ", url: "https://t.me/vladstelin78" }]
-        ]
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
       }
-    };
-
-    // Используем встроенный fetch (Node.js 18+)
-    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    } catch (error) {
+      console.error('Ошибка обработки:', error);
+    }
+    // Важно! Всегда возвращаем 200 для Telegram, иначе он заспамит запросами
+    return res.status(200).json({ ok: true });
   }
 
-  return res.status(200).json({ ok: true });
+  // Если зашли просто через браузер
+  return res.status(200).send('Бот ожидает данные от Telegram...');
 }
