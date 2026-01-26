@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp, update, query, orderByChild, limitToLast } from "firebase/database";
 
-// Конфиг Firebase
+// --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
   authDomain: "treidgame-b2ae0.firebaseapp.com",
@@ -28,17 +28,24 @@ const ASSETS = {
 export default function App() {
   const [balanceUSDT, setBalanceUSDT] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
   const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet')) || {});
-  const [lang, setLang] = useState('RU');
   const [view, setView] = useState('main'); 
   const [activeDex, setActiveDex] = useState(null);
   const [signal, setSignal] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [toast, setToast] = useState(null);
   const [showTokenList, setShowTokenList] = useState(false);
   const [selectingFor, setSelectingFor] = useState('pay');
   const [payToken, setPayToken] = useState(ASSETS.USDT);
   const [receiveToken, setReceiveToken] = useState(ASSETS.SOL);
   const [amount, setAmount] = useState('');
   const [online, setOnline] = useState(1);
+
+  // Admin states
+  const [adminClicks, setAdminClicks] = useState(0);
+  const [isAdminVisible, setIsAdminVisible] = useState(false);
+  const [adminPass, setAdminPass] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [allPlayers, setAllPlayers] = useState({});
 
   const userId = useMemo(() => {
     try {
@@ -50,19 +57,20 @@ export default function App() {
 
   useEffect(() => {
     if (!localStorage.getItem('arb_user_id')) localStorage.setItem('arb_user_id', userId);
-    try {
-      window.Telegram?.WebApp?.ready();
-      window.Telegram?.WebApp?.expand();
-    } catch (e) {}
+    window.Telegram?.WebApp?.ready();
+    window.Telegram?.WebApp?.expand();
   }, [userId]);
 
   useEffect(() => {
     const userRef = ref(db, 'players/' + userId);
     update(userRef, { balanceUSDT, wallet, username: userId, lastSeen: serverTimestamp() });
     onValue(ref(db, 'online'), (s) => setOnline(s.exists() ? Object.keys(s.val()).length : 1));
+    if (isAuthorized) {
+        onValue(ref(db, 'players'), (s) => s.exists() && setAllPlayers(s.val()));
+    }
     localStorage.setItem('arb_balance', balanceUSDT);
     localStorage.setItem('arb_wallet', JSON.stringify(wallet));
-  }, [balanceUSDT, wallet, userId]);
+  }, [balanceUSDT, wallet, userId, isAuthorized]);
 
   useEffect(() => {
     if (!signal) {
@@ -72,187 +80,198 @@ export default function App() {
     }
   }, [signal]);
 
-  const handleMax = (e) => {
-    e.preventDefault(); e.stopPropagation();
+  const showToast = (text, type = 'success') => {
+    setToast({ text, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleMax = () => {
     const val = payToken.symbol === 'USDT' ? balanceUSDT : (wallet[payToken.symbol] || 0);
     setAmount(val.toString());
   };
 
-  const startSwap = (e) => {
-    e.preventDefault();
-    if (!amount || Number(amount) <= 0) return;
+  const startSwap = () => {
+    const num = Number(amount);
+    if (!num || num <= 0) return showToast('Enter valid amount', 'error');
+
     setIsProcessing(true);
     setTimeout(() => {
-      const num = Number(amount);
       if (payToken.symbol === 'USDT') {
         if (balanceUSDT >= num) {
           setBalanceUSDT(prev => prev - num);
           setWallet(prev => ({ ...prev, [receiveToken.symbol]: (prev[receiveToken.symbol] || 0) + (num / receiveToken.price) }));
-        }
+          showToast(`Success: Bought ${receiveToken.symbol}`);
+        } else showToast('Insufficient USDT balance', 'error');
       } else {
         const has = wallet[payToken.symbol] || 0;
         if (has >= num) {
           const isOk = payToken.symbol === signal?.coin.symbol && activeDex === signal?.sellAt;
-          const p = isOk ? (1 + signal.profit / 100) : 0.985;
-          const result = (num * payToken.price) * p;
+          const prof = isOk ? (1 + signal.profit / 100) : (1 - (Math.random() * 0.015)); 
+          const result = (num * payToken.price) * prof;
           setBalanceUSDT(prev => prev + result);
           setWallet(prev => ({ ...prev, [payToken.symbol]: has - num }));
           setSignal(null);
-        }
+          showToast(isOk ? `Profit: +$${(result - (num * payToken.price)).toFixed(2)}` : 'Trade Closed (Loss)', isOk ? 'success' : 'error');
+        } else showToast(`Not enough ${payToken.symbol}`, 'error');
       }
       setIsProcessing(false); setAmount(''); setActiveDex(null);
     }, 2000);
   };
 
-  const openTokenList = (type) => { setSelectingFor(type); setShowTokenList(true); };
-
-  const selectToken = (token) => {
-    if (selectingFor === 'pay') setPayToken(token);
-    else setReceiveToken(token);
-    setShowTokenList(false);
-  };
-
   return (
-    <div style={styles.app}>
-      <div style={styles.header}>
-        <div style={{ color: '#39f2af', fontWeight: 'bold' }}>● {online} ONLINE</div>
-        <button onTouchStart={() => setView('settings')} onClick={() => setView('settings')} style={styles.btnIcon}>⚙️</button>
+    <div style={s.pageWrapper}>
+      <div style={s.container}>
+        {/* Header */}
+        <div style={s.header}>
+          <div style={s.online}>● {online} ONLINE</div>
+          <button onClick={() => setView('settings')} style={s.btnIcon}>⚙️</button>
+        </div>
+
+        {view === 'main' && !activeDex && (
+          <div style={{ padding: '0 20px' }}>
+            <div style={s.balanceBox}>
+              <h1 style={{ fontSize: 45, margin: 0 }}>${balanceUSDT.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
+              <p style={{ opacity: 0.4, fontSize: 10, letterSpacing: 1 }}>AVAILABLE BALANCE</p>
+            </div>
+
+            <div style={s.card}>
+              <p style={{ fontSize: 10, color: '#39f2af', fontWeight: 'bold', marginBottom: 10 }}>MY ASSETS</p>
+              {Object.keys(wallet).filter(k => wallet[k] > 0).length === 0 ? 
+                <p style={{opacity: 0.3, fontSize: 12}}>No assets found</p> :
+                Object.keys(wallet).map(c => wallet[c] > 0 && (
+                  <div key={c} style={s.row}><span>{ASSETS[c].icon} {c}</span><b>{wallet[c].toFixed(4)}</b></div>
+                ))
+              }
+            </div>
+
+            {signal && (
+              <div style={s.signal}>
+                <div style={{color: '#39f2af', fontSize: 10, fontWeight:'bold'}}>SIGNAL ACTIVE</div>
+                <div style={{fontSize: 14, margin: '5px 0'}}>Buy {signal.coin.symbol} (Any) → Sell on <b>{signal.sellAt}</b></div>
+                <div style={{fontSize: 14, color: '#39f2af'}}>Expected Profit: +{signal.profit}%</div>
+              </div>
+            )}
+
+            <div style={s.grid}>
+              {['UNISWAP', 'PANCAKE', 'RAYDIUM', '1INCH'].map(d => (
+                <button key={d} onClick={() => setActiveDex(d)} style={s.dexBtn}>{d}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeDex && (
+          <div style={s.overlay}>
+            <div style={s.header}>
+              <button onClick={() => setActiveDex(null)} style={s.back}>←</button>
+              <b>{activeDex}</b>
+              <div style={{width: 24}}/>
+            </div>
+            <div style={{padding: 20}}>
+               <div style={s.inputBox}>
+                  <div style={s.labelRow}>
+                    <span>You Pay</span>
+                    <span onClick={handleMax} style={s.maxBtn}>MAX: {payToken.symbol === 'USDT' ? balanceUSDT.toFixed(2) : (wallet[payToken.symbol] || 0).toFixed(4)}</span>
+                  </div>
+                  <div style={s.inputRow}>
+                    <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={s.input} placeholder="0.0"/>
+                    <button onClick={() => {setSelectingFor('pay'); setShowTokenList(true)}} style={s.tokenBtn}>{payToken.symbol} ▾</button>
+                  </div>
+               </div>
+               <div style={{textAlign:'center', margin: '15px 0', opacity: 0.3}}>↓</div>
+               <div style={s.inputBox}>
+                  <div style={s.labelRow}><span>You Receive</span></div>
+                  <div style={s.inputRow}>
+                    <div style={{fontSize: 22, fontWeight: 'bold'}}>
+                      {amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}
+                    </div>
+                    <button onClick={() => {setSelectingFor('receive'); setShowTokenList(true)}} style={s.tokenBtn}>{receiveToken.symbol} ▾</button>
+                  </div>
+               </div>
+               <button onClick={startSwap} style={s.mainBtn}>EXECUTE SWAP</button>
+            </div>
+          </div>
+        )}
+
+        {view === 'settings' && (
+          <div style={s.overlay}>
+             <div style={s.header}><button onClick={() => setView('main')} style={s.back}>←</button><h2>Settings</h2><div/></div>
+             <div style={{padding: 20}}>
+                <div style={s.card}>
+                  <p style={{opacity:0.5, margin:0}}>Account ID</p>
+                  <code style={{color:'#39f2af'}}>{userId}</code>
+                </div>
+                <p style={{textAlign:'center', opacity:0.2, marginTop: 40}} onClick={() => {setAdminClicks(c => c+1); if(adminClicks > 4) setIsAdminVisible(true)}}>
+                  Version 2.1.0-stable
+                </p>
+                {isAdminVisible && !isAuthorized && (
+                  <div style={{marginTop: 20}}>
+                    <input type="password" value={adminPass} onChange={e => setAdminPass(e.target.value)} style={s.adminInput} placeholder="Admin Password"/>
+                    <button onClick={() => adminPass === 'admin123' && setIsAuthorized(true)} style={s.mainBtn}>Login</button>
+                  </div>
+                )}
+                {isAuthorized && (
+                  <div style={s.adminPanel}>
+                    <h3 style={{color:'#39f2af'}}>Admin Panel</h3>
+                    {Object.keys(allPlayers).map(p => (
+                      <div key={p} style={s.adminRow}>
+                        <span style={{fontSize: 10}}>{allPlayers[p].username}</span>
+                        <button onClick={() => update(ref(db, 'players/'+p), {balanceUSDT: (allPlayers[p].balanceUSDT || 0) + 1000})} style={s.miniBtn}>+$1k</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+             </div>
+          </div>
+        )}
+
+        {showTokenList && (
+          <div style={{...s.overlay, zIndex: 1000}}>
+            <div style={s.header}><button onClick={() => setShowTokenList(false)} style={s.back}>×</button><h3>Tokens</h3><div/></div>
+            <div style={{padding: 10}}>
+              {Object.values(ASSETS).map(t => (
+                <div key={t.symbol} onClick={() => { selectingFor === 'pay' ? setPayToken(t) : setReceiveToken(t); setShowTokenList(false); }} style={s.tokenRow}>
+                  <span>{t.icon} {t.symbol}</span>
+                  <span>${t.price}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {isProcessing && <div style={s.loader}>TRANSACTION IN PROGRESS...</div>}
+        {toast && <div style={{...s.toast, background: toast.type === 'error' ? '#ff4d4d' : '#39f2af'}}>{toast.text}</div>}
       </div>
-
-      {view === 'main' && !activeDex && (
-        <div style={{ padding: '0 20px' }}>
-          <div style={styles.balanceSection}>
-            <h1 style={{ fontSize: 45, margin: 0 }}>${balanceUSDT.toFixed(2)}</h1>
-            <p style={{ opacity: 0.5, fontSize: 10, letterSpacing: 1 }}>USDT BALANCE</p>
-          </div>
-
-          <div style={styles.walletBox}>
-            <p style={{ fontSize: 10, color: '#39f2af', marginBottom: 10, fontWeight: 'bold' }}>MY WALLET</p>
-            {Object.keys(wallet).length === 0 || Object.values(wallet).every(v => v === 0) ? 
-              <p style={{fontSize: 12, opacity: 0.3}}>No assets yet</p> :
-              Object.keys(wallet).map(coin => wallet[coin] > 0 && (
-                <div key={coin} style={styles.assetRow}>
-                  <span>{ASSETS[coin]?.icon} {coin}</span>
-                  <b>{wallet[coin].toFixed(4)}</b>
-                </div>
-              ))
-            }
-          </div>
-
-          {signal && (
-            <div style={styles.signalCard}>
-              <p style={{ color: '#39f2af', fontSize: 10, fontWeight: 'bold' }}>SIGNAL FOUND</p>
-              <div style={{ fontSize: 14 }}>Buy {signal.coin.symbol} on {signal.buyAt}</div>
-              <div style={{ fontSize: 14 }}>Sell on {signal.sellAt} <span style={{ color: '#39f2af' }}>+{signal.profit}%</span></div>
-            </div>
-          )}
-
-          <div style={styles.grid}>
-            {['UNISWAP', 'PANCAKE', 'RAYDIUM', '1INCH'].map(d => (
-              <button key={d} onTouchStart={() => setActiveDex(d)} onClick={() => setActiveDex(d)} style={styles.dexBtn}>{d}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeDex && (
-        <div style={styles.overlay}>
-          <div style={styles.header}>
-            <button onTouchStart={() => setActiveDex(null)} onClick={() => setActiveDex(null)} style={styles.back}>←</button>
-            <b>{activeDex} EXCHANGE</b>
-            <div style={{ width: 24 }} />
-          </div>
-          <div style={{ padding: 20 }}>
-            <div style={styles.inputGroup}>
-              <div style={styles.inputLabels}>
-                <span>You Pay</span>
-                <span onTouchStart={handleMax} onClick={handleMax} style={{ color: '#39f2af', fontWeight: 'bold' }}>
-                  MAX: {payToken.symbol === 'USDT' ? balanceUSDT.toFixed(2) : (wallet[payToken.symbol] || 0).toFixed(4)}
-                </span>
-              </div>
-              <div style={styles.inputRow}>
-                <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} style={styles.field} placeholder="0.0" />
-                <button onTouchStart={() => openTokenList('pay')} onClick={() => openTokenList('pay')} style={styles.tokenSel}>{payToken.symbol} ▾</button>
-              </div>
-            </div>
-            
-            <div style={{ textAlign: 'center', margin: '15px 0', fontSize: 24, opacity: 0.5 }}>↓</div>
-
-            <div style={styles.inputGroup}>
-              <div style={styles.inputLabels}><span>You Receive</span></div>
-              <div style={styles.inputRow}>
-                <div style={{ fontSize: 22, fontWeight: 'bold' }}>
-                    {amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}
-                </div>
-                <button onTouchStart={() => openTokenList('receive')} onClick={() => openTokenList('receive')} style={styles.tokenSel}>{receiveToken.symbol} ▾</button>
-              </div>
-            </div>
-
-            <button onTouchStart={startSwap} onClick={startSwap} style={styles.actionBtn}>CONFIRM TRANSACTION</button>
-          </div>
-        </div>
-      )}
-
-      {showTokenList && (
-        <div style={{ ...styles.overlay, zIndex: 200 }}>
-          <div style={styles.header}>
-            <button onTouchStart={() => setShowTokenList(false)} onClick={() => setShowTokenList(false)} style={styles.back}>×</button>
-            <h3>Select Token</h3>
-            <div style={{width:20}}/>
-          </div>
-          <div style={{ padding: 10 }}>
-            {Object.values(ASSETS).map(t => (
-              <div key={t.symbol} onTouchStart={() => selectToken(t)} onClick={() => selectToken(t)} style={styles.tokenItem}>
-                <span style={{fontSize: 24}}>{t.icon}</span>
-                <div style={{marginLeft: 15, flex: 1}}>
-                  <div style={{fontWeight: 'bold'}}>{t.symbol}</div>
-                  <div style={{fontSize: 10, opacity: 0.5}}>${t.price}</div>
-                </div>
-                <div style={{textAlign: 'right'}}>
-                   {t.symbol === 'USDT' ? balanceUSDT.toFixed(2) : (wallet[t.symbol] || 0).toFixed(4)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {view === 'settings' && (
-        <div style={styles.overlay}>
-          <div style={styles.header}><button onTouchStart={() => setView('main')} onClick={() => setView('main')} style={styles.back}>←</button><h2>Settings</h2><div/></div>
-          <div style={{ padding: 20, textAlign: 'center' }}>
-             <p style={{opacity: 0.5}}>Logged as: {userId}</p>
-             <button onTouchStart={() => setLang(lang === 'RU' ? 'EN' : 'RU')} onClick={() => setLang(lang === 'RU' ? 'EN' : 'RU')} style={styles.actionBtn}>Language: {lang}</button>
-             <p style={{marginTop: 40, fontSize: 12, opacity: 0.3}}>Arbitrage Pro v2.0.6</p>
-             <a href="https://t.me/kriptoalians" style={{ color: '#39f2af', textDecoration: 'none', display: 'block', marginTop: 10 }}>Support @kriptoalians</a>
-          </div>
-        </div>
-      )}
-
-      {isProcessing && <div style={styles.loader}><div className="spinner"></div><p>PROCESSING...</p></div>}
-      <style>{`.spinner { width: 30px; height: 30px; border: 3px solid #111; border-top-color: #39f2af; border-radius: 50%; animation: s 1s linear infinite; margin-bottom: 10px; } @keyframes s { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-const styles = {
-  app: { width: '100%', height: '100vh', background: '#000', color: '#fff', fontFamily: '-apple-system, system-ui, sans-serif', overflowX: 'hidden' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: '#000' },
-  btnIcon: { background: '#111', border: '1px solid #222', color: '#fff', fontSize: 18, borderRadius: 12, padding: 10, cursor: 'pointer' },
-  balanceSection: { textAlign: 'center', margin: '20px 0 30px' },
-  walletBox: { background: '#0a0a0a', borderRadius: 20, padding: 20, marginBottom: 20, border: '1px solid #1a1a1a' },
-  assetRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' },
-  signalCard: { background: 'rgba(57,242,175,0.05)', border: '1px solid rgba(57,242,175,0.3)', padding: 15, borderRadius: 15, marginBottom: 20 },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
-  dexBtn: { background: '#111', border: '1px solid #222', color: '#fff', padding: '25px 0', borderRadius: 20, fontWeight: 'bold', fontSize: 14, cursor: 'pointer' },
-  overlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: '#000', zIndex: 100, overflowY: 'auto' },
-  back: { background: 'none', border: 'none', color: '#fff', fontSize: 28, cursor: 'pointer' },
-  inputGroup: { background: '#111', padding: 20, borderRadius: 20, border: '1px solid #222' },
-  inputLabels: { display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 10, opacity: 0.6 },
+const s = {
+  pageWrapper: { background: '#050505', minHeight: '100vh', display: 'flex', justifyContent: 'center' },
+  container: { width: '100%', maxWidth: '450px', height: '100vh', background: '#000', color: '#fff', fontFamily: 'sans-serif', position: 'relative', overflow: 'hidden' },
+  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px' },
+  online: { color: '#39f2af', fontSize: 10, fontWeight: 'bold', background: 'rgba(57,242,175,0.1)', padding: '4px 10px', borderRadius: 20 },
+  btnIcon: { background: '#111', border: 'none', color: '#fff', padding: 8, borderRadius: 10, cursor: 'pointer' },
+  balanceBox: { textAlign: 'center', margin: '30px 0' },
+  card: { background: '#0a0a0a', padding: 15, borderRadius: 15, border: '1px solid #111', marginBottom: 15 },
+  row: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #111' },
+  signal: { background: 'rgba(57,242,175,0.05)', border: '1px solid rgba(57,242,175,0.2)', padding: 15, borderRadius: 15, marginBottom: 15 },
+  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
+  dexBtn: { background: '#0a0a0a', border: '1px solid #1a1a1a', color: '#fff', padding: 20, borderRadius: 15, fontWeight: 'bold', cursor: 'pointer' },
+  overlay: { position: 'absolute', inset: 0, background: '#000', zIndex: 50 },
+  back: { background: 'none', border: 'none', color: '#fff', fontSize: 24, cursor: 'pointer' },
+  inputBox: { background: '#0a0a0a', padding: 15, borderRadius: 15, border: '1px solid #1a1a1a' },
+  labelRow: { display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 8, opacity: 0.5 },
+  maxBtn: { color: '#39f2af', fontWeight: 'bold', cursor: 'pointer' },
   inputRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  field: { background: 'none', border: 'none', color: '#fff', fontSize: 26, outline: 'none', width: '60%', fontWeight: 'bold' },
-  tokenSel: { background: '#222', border: 'none', color: '#fff', padding: '10px 16px', borderRadius: 12, fontWeight: 'bold', cursor: 'pointer' },
-  actionBtn: { width: '100%', background: '#39f2af', color: '#000', border: 'none', padding: 20, borderRadius: 20, fontWeight: '900', fontSize: 16, marginTop: 25, cursor: 'pointer' },
-  tokenItem: { display: 'flex', alignItems: 'center', padding: '15px 20px', borderBottom: '1px solid #111', cursor: 'pointer' },
-  loader: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.95)', zIndex: 1000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#39f2af', fontWeight: 'bold' }
+  input: { background: 'none', border: 'none', color: '#fff', fontSize: 24, width: '60%', outline: 'none' },
+  tokenBtn: { background: '#1a1a1a', border: 'none', color: '#fff', padding: '8px 12px', borderRadius: 10, cursor: 'pointer' },
+  mainBtn: { width: '100%', background: '#39f2af', color: '#000', padding: 18, borderRadius: 15, fontWeight: 'bold', fontSize: 16, marginTop: 20, border: 'none', cursor: 'pointer' },
+  tokenRow: { display: 'flex', justifyContent: 'space-between', padding: 20, borderBottom: '1px solid #111', cursor: 'pointer' },
+  loader: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#39f2af', fontWeight: 'bold' },
+  toast: { position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', padding: '12px 25px', borderRadius: 10, color: '#000', fontWeight: 'bold', zIndex: 6000, whiteSpace: 'nowrap' },
+  adminInput: { width: '100%', padding: 15, background: '#111', border: '1px solid #222', color: '#fff', borderRadius: 10, marginBottom: 10 },
+  adminPanel: { marginTop: 20, background: '#050505', padding: 10, borderRadius: 10, maxHeight: '300px', overflowY: 'auto' },
+  adminRow: { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111' },
+  miniBtn: { background: '#39f2af', border: 'none', padding: '4px 8px', borderRadius: 5, fontSize: 10, cursor: 'pointer' }
 };
