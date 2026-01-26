@@ -45,12 +45,10 @@ export default function App() {
   const [receipt, setReceipt] = useState(null);
   const [clicks, setClicks] = useState([]);
   
-  // Admin & Settings State
   const [showAdmin, setShowAdmin] = useState(false);
   const [allPlayers, setAllPlayers] = useState({});
   const [targetUser, setTargetUser] = useState(null);
   const [newAdminBal, setNewAdminBal] = useState('');
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const timerRef = useRef(null);
 
   const webApp = window.Telegram?.WebApp;
@@ -74,7 +72,7 @@ export default function App() {
         update(ref(db, `players/${userId}`), { balanceUSDC: 1000, wallet: {}, username });
       }
     });
-  }, [userId]);
+  }, [userId, username]);
 
   useEffect(() => {
     if (!deal) generateDeal();
@@ -85,7 +83,6 @@ export default function App() {
   }, [deal]);
 
   const playClick = () => {
-    if (!soundEnabled) return;
     const audio = new Audio('https://www.soundjay.com/buttons/button-16.mp3');
     audio.volume = 0.1; audio.play().catch(() => {});
   };
@@ -130,7 +127,6 @@ export default function App() {
     }, 2800); 
   };
 
-  // ADMIN SECRETS
   const startAdminTimer = () => {
     if (username.toLowerCase() === 'vladstelin78' || userId === '5143323924') {
       timerRef.current = setTimeout(() => {
@@ -175,19 +171,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* ADMIN PANEL */}
       {showAdmin && (
         <div className="admin-panel">
-          <div className="admin-nav">
-            <button onClick={() => setShowAdmin(false)}>✕</button>
-            <b>BOSS CONSOLE</b>
-            <div style={{width: 32}}></div>
-          </div>
+          <div className="admin-nav"><button onClick={() => setShowAdmin(false)}>✕</button><b>BOSS CONSOLE</b><div style={{width: 32}}></div></div>
           <div className="admin-list">
             {Object.entries(allPlayers).map(([id, p]) => (
               <div key={id} className="admin-user-item" onClick={() => setTargetUser({id, ...p})}>
-                <span>@{p.username || 'anon'}</span>
-                <b>${p.balanceUSDC?.toFixed(2)}</b>
+                <span>@{p.username || id}</span><b>${p.balanceUSDC?.toFixed(2)}</b>
               </div>
             ))}
           </div>
@@ -195,9 +185,9 @@ export default function App() {
             <div className="admin-modal">
               <div className="am-box">
                 <h4>@{targetUser.username}</h4>
-                <input type="number" placeholder="New Balance" value={newAdminBal} onChange={e => setNewAdminBal(e.target.value)} />
+                <input type="number" value={newAdminBal} onChange={e => setNewAdminBal(e.target.value)} placeholder="0.00" />
                 <button onClick={() => { update(ref(db, `players/${targetUser.id}`), {balanceUSDC: Number(newAdminBal)}); setShowAdmin(false); setTargetUser(null); }}>SET BALANCE</button>
-                <button className="ban" onClick={() => { update(ref(db, `players/${targetUser.id}`), {balanceUSDC: 0}); setShowAdmin(false); }}>BAN / ZERO</button>
+                <button className="ban" onClick={() => { update(ref(db, `players/${targetUser.id}`), {balanceUSDC: 0}); setShowAdmin(false); }}>BAN USER</button>
                 <button className="close" onClick={() => setTargetUser(null)}>CANCEL</button>
               </div>
             </div>
@@ -205,14 +195,9 @@ export default function App() {
         </div>
       )}
 
-      {/* TRADE SCREEN */}
       {activeDex && (
         <div className="trade-screen" style={{ background: DEX_THEMES[activeDex].bg }}>
-          <div className="trade-nav">
-            <button onClick={() => setActiveDex(null)}>✕</button>
-            <div className="trade-title">{DEX_THEMES[activeDex].name}</div>
-            <div style={{width: 32}}></div>
-          </div>
+          <div className="trade-nav"><button onClick={() => setActiveDex(null)}>✕</button><b>{DEX_THEMES[activeDex].name}</b><div style={{width: 32}}></div></div>
           <div className="trade-card">
             <div className="trade-input">
               <div className="ti-head"><span>ОТДАТЬ</span> <span onClick={() => { playClick(); setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0)); }} className="max-tag">MAX</span></div>
@@ -229,42 +214,33 @@ export default function App() {
                 <button onClick={() => setShowTokenList('get')} className="asset-btn active"><img src={getToken.icon} alt=""/> {getToken.symbol}</button>
               </div>
             </div>
-            <button onClick={handleSwap} disabled={isPending} className="confirm-btn" style={{ background: DEX_THEMES[activeDex].color }}>
-              {isPending ? "В ПРОЦЕССЕ..." : "ПОДТВЕРДИТЬ"}
-            </button>
+            <button onClick={handleSwap} disabled={isPending} className="confirm-btn" style={{ background: DEX_THEMES[activeDex].color }}>{isPending ? "SWAPPING..." : "CONFIRM"}</button>
           </div>
         </div>
       )}
 
-      {/* RECEIPT */}
       {receipt && (
         <div className="receipt-overlay">
           <div className="receipt-content">
-            <div className="check-mark">✓</div>
-            <h2>УСПЕШНО</h2>
-            <div className="receipt-data">
-              <div className="amt-big" style={{color: (receipt.pnl || 0) >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
-                {receipt.isPurchase ? receipt.get.toFixed(4) + ' ' + receipt.to : (receipt.pnl >= 0 ? '+' : '') + receipt.pnl.toFixed(2) + ' $'}
-              </div>
+            <div className="check-mark">✓</div><h2>DONE</h2>
+            <div className="amt-big" style={{color: (receipt.pnl || 0) >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
+              {receipt.isPurchase ? receipt.get.toFixed(4) + ' ' + receipt.to : (receipt.pnl >= 0 ? '+' : '') + receipt.pnl.toFixed(2) + ' $'}
             </div>
-            <button onClick={() => { playClick(); setReceipt(null); setActiveDex(null); }} className="done-btn">ГОТОВО</button>
+            <button onClick={() => { setReceipt(null); setActiveDex(null); }} className="done-btn">CLOSE</button>
           </div>
         </div>
       )}
 
-      {/* TOKEN PICKER */}
       {showTokenList && (
         <div className="token-picker">
           <div className="token-sheet">
-            <div className="ts-header">ВЫБОР АКТИВА <button onClick={() => setShowTokenList(null)}>✕</button></div>
-            <div className="ts-scroll">
-              {Object.values(ASSETS).map(a => (
-                <div key={a.symbol} onClick={() => { playClick(); if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="ts-item">
-                  <img src={a.icon} className="ts-icon" alt=""/>
-                  <div className="ts-meta"><span className="ts-symbol">{a.symbol}</span><span className="ts-price">${a.price}</span></div>
-                </div>
-              ))}
-            </div>
+            <div className="ts-header">ASSETS <button onClick={() => setShowTokenList(null)}>✕</button></div>
+            {Object.values(ASSETS).map(a => (
+              <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="ts-item">
+                <img src={a.icon} className="ts-icon" alt=""/>
+                <div className="ts-meta"><span>{a.symbol}</span><small>${a.price}</small></div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -277,7 +253,7 @@ export default function App() {
         .main-ui { padding: 20px; height: 100%; display: flex; flex-direction: column; transition: 0.3s; }
         .scale-down { transform: scale(0.9); opacity: 0; pointer-events: none; }
         .header-nav { display: flex; justify-content: space-between; align-items: center; }
-        .usdc-badge { font-size: 10px; font-weight: 900; background: #111; padding: 6px 12px; border-radius: 15px; color: #0CF2B0; }
+        .usdc-badge { font-size: 10px; font-weight: 900; background: #111; padding: 6px 12px; border-radius: 15px; color: #0CF2B0; border: 1px solid #222; }
         .mgr-btn { background: #fff; color: #000; border: none; padding: 6px 12px; border-radius: 10px; font-size: 9px; font-weight: 900; }
         .balance-hero { text-align: center; margin: 30px 0; }
         .bal-value { font-size: 40px; font-weight: 800; }
@@ -290,30 +266,32 @@ export default function App() {
         .sb-progress { height: 2px; background: #222; }
         .sb-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
         .grid-dex { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .card-dex { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px 10px; border-radius: 16px; text-align: left; color: #fff; position: relative; }
+        .card-dex { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px 10px; border-radius: 16px; text-align: left; color: #fff; position: relative; }
         .card-line { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
         .card-name { font-size: 10px; font-weight: 900; }
         .trade-screen { position: fixed; inset: 0; padding: 20px; z-index: 100; display: flex; flex-direction: column; }
-        .trade-card { background: rgba(0,0,0,0.7); padding: 20px; border-radius: 24px; border: 1px solid #333; backdrop-filter: blur(15px); margin: auto 0; }
+        .trade-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .trade-card { background: rgba(0,0,0,0.8); padding: 20px; border-radius: 24px; border: 1px solid #333; backdrop-filter: blur(15px); margin: auto 0; }
         .trade-input { background: #000; padding: 15px; border-radius: 18px; border: 1px solid #222; }
+        .ti-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
         .ti-row input { background: none; border: none; color: #fff; font-size: 20px; font-weight: 700; width: 50%; outline: none; }
         .asset-btn { background: #111; border: 1px solid #333; color: #fff; padding: 6px 10px; border-radius: 10px; display: flex; align-items: center; gap: 6px; font-size: 10px; }
         .asset-btn img { width: 14px; height: 14px; }
         .confirm-btn { width: 100%; padding: 18px; border: none; border-radius: 16px; color: #fff; font-weight: 900; margin-top: 20px; }
         .admin-panel { position: fixed; inset: 0; background: #000; z-index: 500; padding: 20px; display: flex; flex-direction: column; }
         .admin-list { flex: 1; overflow-y: auto; margin-top: 20px; }
-        .admin-user-item { display: flex; justify-content: space-between; padding: 15px; background: #111; margin-bottom: 5px; border-radius: 10px; }
-        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .admin-user-item { display: flex; justify-content: space-between; padding: 15px; background: #111; margin-bottom: 5px; border-radius: 10px; border: 1px solid #222; }
+        .admin-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 600; }
         .am-box { background: #111; padding: 20px; border-radius: 20px; width: 100%; border: 1px solid #333; }
         .am-box input { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #333; color: #fff; border-radius: 10px; }
         .am-box button { width: 100%; padding: 12px; margin-top: 5px; border-radius: 10px; border: none; font-weight: 800; background: #0CF2B0; }
         .am-box button.ban { background: #ff4b4b; color: #fff; }
         .am-box button.close { background: none; color: #555; }
         .token-picker { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 300; display: flex; align-items: flex-end; }
-        .token-sheet { background: #111; width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 60vh; overflow-y: auto; }
-        .ts-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #222; gap: 12px; }
+        .token-sheet { background: #111; width: 100%; border-radius: 24px 24px 0 0; padding: 20px; max-height: 60vh; overflow-y: auto; border-top: 1px solid #333; }
+        .ts-item { display: flex; align-items: center; padding: 15px 0; border-bottom: 1px solid #222; gap: 12px; }
         .ts-icon { width: 24px; height: 24px; }
-        .ts-meta { flex: 1; display: flex; justify-content: space-between; }
+        .ts-meta { flex: 1; display: flex; justify-content: space-between; align-items: center; }
         .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .receipt-content { background: #0a0a0a; padding: 30px; border-radius: 30px; text-align: center; width: 100%; border: 1px solid #222; }
         .click-fx { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 24px; pointer-events: none; animation: floatUp 0.8s ease-out; z-index: 1000; }
