@@ -12,11 +12,11 @@ const firebaseConfig = {
 };
 
 const ASSETS = {
-  USDC: { symbol: 'USDC', price: 1, icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=024', color: '#2775CA' },
-  BTC: { symbol: 'BTC', price: 65000, icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=024', color: '#F7931A' },
-  ETH: { symbol: 'ETH', price: 2600, icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=024', color: '#627EEA' },
-  LINK: { symbol: 'LINK', price: 18.2, icon: 'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=024', color: '#2A5ADA' },
-  AAVE: { symbol: 'AAVE', price: 145.5, icon: 'https://cryptologos.cc/logos/aave-aave-logo.svg?v=024', color: '#B6509E' }
+  USDC: { symbol: 'USDC', price: 1, icon: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=024' },
+  BTC: { symbol: 'BTC', price: 65000, icon: 'https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=024' },
+  ETH: { symbol: 'ETH', price: 2600, icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.svg?v=024' },
+  LINK: { symbol: 'LINK', price: 18.2, icon: 'https://cryptologos.cc/logos/chainlink-link-logo.svg?v=024' },
+  AAVE: { symbol: 'AAVE', price: 145.5, icon: 'https://cryptologos.cc/logos/aave-aave-logo.svg?v=024' }
 };
 
 const DEX_THEMES = {
@@ -56,9 +56,15 @@ export default function App() {
 
   const t = TRANSLATIONS[lang];
 
+  // Реактивный расчет текущего баланса для поля "Pay"
+  const currentAvailableBalance = useMemo(() => {
+    if (payToken.symbol === 'USDC') return balanceUSDC;
+    return wallet[payToken.symbol] || 0;
+  }, [payToken, balanceUSDC, wallet]);
+
   const userId = useMemo(() => {
     const tg = window.Telegram?.WebApp?.initDataUnsafe?.user;
-    return tg ? (tg.username || tg.id.toString()) : 'User_' + Math.floor(Math.random()*99);
+    return tg ? (tg.username || tg.id.toString()) : 'Trader_' + Math.floor(Math.random()*99);
   }, []);
 
   useEffect(() => {
@@ -66,8 +72,9 @@ export default function App() {
     const db = getDatabase(app);
     onValue(ref(db, 'players/' + userId), (s) => {
       if (s.exists()) {
-        setBalanceUSDC(s.val().balanceUSDC ?? 1000);
-        setWallet(s.val().wallet ?? {});
+        const data = s.val();
+        setBalanceUSDC(data.balanceUSDC ?? 1000);
+        setWallet(data.wallet ?? {});
       }
     });
     const inv = setInterval(() => {
@@ -88,26 +95,25 @@ export default function App() {
     }
   }, [signal]);
 
-  // Умная логика получения баланса выбранного токена
-  const getCurrentPayBalance = () => {
-    return payToken.symbol === 'USDC' ? balanceUSDC : (wallet[payToken.symbol] || 0);
-  };
-
   const handleSwap = () => {
     const amount = Number(payAmount);
-    const maxAvailable = getCurrentPayBalance();
-    if (!amount || amount <= 0 || amount > maxAvailable) return;
+    if (!amount || amount <= 0 || amount > currentAvailableBalance) return alert("Insufficient balance");
 
     setIsProcessing(true);
     setTimeout(() => {
       let gotAmount = (amount * payToken.price) / receiveToken.price;
+      
+      // Арбитражная логика при продаже в USDC
       if (receiveToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
           const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
-          gotAmount = gotAmount * (isCorrect ? (1 + signal.profit / 100) : 0.985);
+          gotAmount *= isCorrect ? (1 + signal.profit / 100) : 0.985;
           if (isCorrect) setSignal(null);
       }
+
+      // Обновление
       if (payToken.symbol === 'USDC') setBalanceUSDC(p => p - amount);
       else setWallet(p => ({ ...p, [payToken.symbol]: (p[payToken.symbol] || 0) - amount }));
+
       if (receiveToken.symbol === 'USDC') setBalanceUSDC(p => p + gotAmount);
       else setWallet(p => ({ ...p, [receiveToken.symbol]: (p[receiveToken.symbol] || 0) + gotAmount }));
 
@@ -126,36 +132,36 @@ export default function App() {
           <button onClick={() => setView('settings')} style={{ background: '#111', border: 'none', color: '#fff', padding: '10px', borderRadius: '12px' }}>⚙️</button>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 80px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 100px' }}>
           {view === 'main' && !activeDex && (
             <>
               <div style={{ textAlign: 'center', margin: '20px 0' }}>
                 <h1 style={{ fontSize: '42px', margin: 0 }}>${balanceUSDC.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
-                <p style={{ opacity: 0.3 }}>USDC</p>
+                <p style={{ opacity: 0.3 }}>USDC Balance</p>
               </div>
 
               {/* Banner Manager */}
-              <div onClick={() => window.open('https://t.me/kriptoalians')} style={{ background: 'linear-gradient(90deg, #0CF2B022, #0CF2B044)', padding: '15px', borderRadius: '15px', marginBottom: '20px', border: '1px solid #0CF2B044', cursor: 'pointer' }}>
+              <div onClick={() => window.open('https://t.me/kriptoalians')} style={{ background: 'linear-gradient(90deg, #0CF2B011, #0CF2B022)', padding: '15px', borderRadius: '15px', marginBottom: '20px', border: '1px solid #0CF2B033', cursor: 'pointer' }}>
                 <div style={{fontSize: 14, fontWeight: 'bold', color: '#0CF2B0'}}>💎 {t.manager}</div>
-                <div style={{fontSize: 11, opacity: 0.7}}>Свяжитесь для вывода или помощи</div>
+                <div style={{fontSize: 11, opacity: 0.6}}>Support & Withdrawals</div>
               </div>
 
               {signal && (
-                <div style={{ background: '#111', border: '1px left 4px solid #0CF2B0', padding: '15px', borderRadius: '15px', marginBottom: '20px' }}>
+                <div style={{ background: '#111', padding: '15px', borderRadius: '15px', marginBottom: '20px', borderLeft: '4px solid #0CF2B0' }}>
                   <div style={{ fontSize: '10px', color: '#0CF2B0' }}>{t.signal}</div>
-                  <div style={{ fontWeight: 'bold' }}>{signal.coin.symbol}: {signal.buyAt} → {signal.sellAt} (+{signal.profit}%)</div>
+                  <div style={{ fontWeight: 'bold' }}>{signal.coin.symbol}: {signal.buyAt} → <span style={{color:'#0CF2B0'}}>{signal.sellAt}</span></div>
+                  <div style={{ fontSize: '12px' }}>Profit: +{signal.profit}%</div>
                 </div>
               )}
 
               <div style={{ background: '#0a0a0a', padding: '15px', borderRadius: '20px', border: '1px solid #1a1a1a', marginBottom: '20px' }}>
-                <p style={{ fontSize: '10px', opacity: 0.5 }}>{t.portfolio}</p>
-                {Object.keys(wallet).filter(k => wallet[k] > 0.000001).length === 0 ? <p style={{opacity:0.2}}>{t.wallet_empty}</p> : 
-                  Object.keys(wallet).map(c => wallet[c] > 0.000001 && (
-                    <div key={c} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111' }}>
-                      <span>{c}</span><b>{wallet[c].toFixed(6)}</b>
-                    </div>
-                  ))
-                }
+                <p style={{ fontSize: '10px', opacity: 0.5, marginBottom: '10px' }}>{t.portfolio}</p>
+                {Object.keys(wallet).filter(k => wallet[k] > 0.000001).map(c => (
+                  <div key={c} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #111' }}>
+                    <span>{c}</span><b>{wallet[c].toFixed(6)}</b>
+                  </div>
+                ))}
+                {Object.keys(wallet).filter(k => wallet[k] > 0.000001).length === 0 && <p style={{opacity:0.2}}>{t.wallet_empty}</p>}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -167,42 +173,61 @@ export default function App() {
           )}
         </div>
 
-        {/* Swap Interface */}
+        {/* Swap Window */}
         {activeDex && (
           <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 100, padding: '20px' }}>
             <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px' }}>←</button>
             <h2 style={{ textAlign: 'center', color: DEX_THEMES[activeDex].color }}>{activeDex}</h2>
             
+            {/* PAY BOX */}
             <div style={{ marginTop: '20px', background: '#0f0f0f', padding: '20px', borderRadius: '25px', border: '1px solid #222' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '12px' }}>
                 <span style={{opacity: 0.5}}>{t.pay}</span>
-                <span onClick={() => setPayAmount(getCurrentPayBalance().toString())} style={{color: '#0CF2B0', fontWeight: 'bold', cursor: 'pointer'}}>
-                  {t.max}: {getCurrentPayBalance().toFixed(4)} {payToken.symbol}
+                <span onClick={() => setPayAmount(currentAvailableBalance.toString())} style={{color: '#0CF2B0', fontWeight: 'bold', cursor: 'pointer'}}>
+                  {t.max}: {currentAvailableBalance.toFixed(6)} {payToken.symbol}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '28px', width: '60%', outline: 'none' }} placeholder="0.0"/>
-                <button onClick={() => setShowTokenList('pay')} style={{ background: '#222', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '15px' }}>{payToken.symbol} ▾</button>
+                <button onClick={() => setShowTokenList('pay')} style={{ background: '#222', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '15px', fontWeight: 'bold' }}>{payToken.symbol} ▾</button>
               </div>
             </div>
 
             <div style={{ textAlign: 'center', margin: '-15px 0', position: 'relative', zIndex: 2 }}>
-              <button onClick={() => { const temp = payToken; setPayToken(receiveToken); setReceiveToken(temp); }} style={{ background: '#111', border: '4px solid #000', borderRadius: '12px', padding: '8px', color: '#fff' }}>⇅</button>
+              <button onClick={() => { const tmp = payToken; setPayToken(receiveToken); setReceiveToken(tmp); setPayAmount(''); }} style={{ background: '#111', border: '4px solid #000', borderRadius: '12px', padding: '8px', color: '#fff' }}>⇅</button>
             </div>
 
+            {/* GET BOX */}
             <div style={{ background: '#0f0f0f', padding: '20px', borderRadius: '25px', border: '1px solid #222', marginTop: '5px' }}>
               <div style={{ fontSize: '12px', opacity: 0.5, marginBottom: '10px' }}>{t.get}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '28px' }}>{payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(6) : '0.0'}</div>
-                <button onClick={() => setShowTokenList('receive')} style={{ background: '#222', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '15px' }}>{receiveToken.symbol} ▾</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '28px', color: payAmount ? '#fff' : '#444' }}>
+                  {payAmount ? ((payAmount * payToken.price) / receiveToken.price).toFixed(6) : '0.0'}
+                </div>
+                <button onClick={() => setShowTokenList('receive')} style={{ background: '#222', border: 'none', color: '#fff', padding: '8px 15px', borderRadius: '15px', fontWeight: 'bold' }}>{receiveToken.symbol} ▾</button>
               </div>
             </div>
 
-            <button onClick={handleSwap} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: '20px', borderRadius: '20px', marginTop: '20px', fontWeight: 'bold', border: 'none' }}>{t.swap}</button>
+            <button onClick={handleSwap} style={{ width: '100%', background: DEX_THEMES[activeDex].color, color: '#fff', padding: '20px', borderRadius: '20px', marginTop: '25px', fontWeight: 'bold', border: 'none' }}>{t.swap}</button>
           </div>
         )}
 
-        {/* Settings View */}
+        {/* Token Selector */}
+        {showTokenList && (
+          <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 1000, padding: '20px' }}>
+             <button onClick={() => setShowTokenList(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px' }}>×</button>
+             <div style={{ marginTop: '20px' }}>
+               {Object.values(ASSETS).map(item => (
+                 <div key={item.symbol} onClick={() => { if(showTokenList === 'pay') setPayToken(item); else setReceiveToken(item); setShowTokenList(null); setPayAmount(''); }} style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', borderBottom: '1px solid #111', alignItems: 'center' }}>
+                    <div style={{display:'flex', alignItems:'center', gap: 12}}><img src={item.icon} width="28"/> <b>{item.symbol}</b></div>
+                    <span style={{opacity: 0.5}}>${item.price.toLocaleString()}</span>
+                 </div>
+               ))}
+             </div>
+          </div>
+        )}
+
+        {/* Settings */}
         {view === 'settings' && (
           <div style={{ position: 'absolute', inset: 0, background: '#000', zIndex: 100, padding: '20px' }}>
             <button onClick={() => setView('main')} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px' }}>←</button>
@@ -215,37 +240,25 @@ export default function App() {
                   <span>{t.creators}</span>
                   <span style={{color: '#0CF2B0'}}>@kriptoalians</span>
                </div>
-               <button onClick={() => window.open('https://t.me/kriptoalians')} style={{ width: '100%', background: '#0CF2B0', color: '#000', padding: '15px', borderRadius: '15px', border: 'none', fontWeight: 'bold' }}>{t.manager}</button>
             </div>
           </div>
         )}
 
-        {/* Token Selector */}
-        {showTokenList && (
-          <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 1000, padding: '20px' }}>
-             <button onClick={() => setShowTokenList(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '32px' }}>×</button>
-             <div style={{ marginTop: '20px' }}>
-               {Object.values(ASSETS).map(item => (
-                 <div key={item.symbol} onClick={() => { if(showTokenList === 'pay') setPayToken(item); else setReceiveToken(item); setShowTokenList(null); }} style={{ display: 'flex', justifyContent: 'space-between', padding: '20px', borderBottom: '1px solid #111', alignItems: 'center' }}>
-                    <div style={{display:'flex', alignItems:'center', gap: 10}}><img src={item.icon} width="24"/> <b>{item.symbol}</b></div>
-                    <span style={{opacity: 0.5}}>${item.price}</span>
-                 </div>
-               ))}
-             </div>
-          </div>
-        )}
-
+        {/* Receipt Modal */}
         {receipt && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            <div style={{ background: '#111', padding: '30px', borderRadius: '30px', width: '100%', textAlign: 'center' }}>
-              <h2>Сделка завершена</h2>
-              <p>{receipt.spent.toFixed(4)} {receipt.from} → {receipt.got.toFixed(6)} {receipt.to}</p>
-              <button onClick={() => setReceipt(null)} style={{ width: '100%', background: '#fff', color: '#000', padding: '15px', borderRadius: '15px', marginTop: '20px', border: 'none' }}>ЗАКРЫТЬ</button>
+            <div style={{ background: '#111', padding: '30px', borderRadius: '30px', width: '100%', textAlign: 'center', border: '1px solid #333' }}>
+              <div style={{fontSize: 40, marginBottom: 10}}>✅</div>
+              <h2 style={{margin: 0}}>Success</h2>
+              <p style={{opacity: 0.7, margin: '15px 0'}}>
+                {receipt.spent.toFixed(4)} {receipt.from} <br/> ↓ <br/> {receipt.got.toFixed(6)} {receipt.to}
+              </p>
+              <button onClick={() => setReceipt(null)} style={{ width: '100%', background: '#fff', color: '#000', padding: '15px', borderRadius: '15px', fontWeight: 'bold', border: 'none' }}>CLOSE</button>
             </div>
           </div>
         )}
 
-        {isProcessing && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>В ОБРАБОТКЕ...</div>}
+        {isProcessing && <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 5000, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>WAITING...</div>}
       </div>
     </div>
   );
