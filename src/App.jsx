@@ -20,10 +20,10 @@ const ASSETS = {
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 0%, #2a0014 0%, #000 100%)' },
-  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 0%, #002a1e 0%, #000 100%)' },
-  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 0%, #2a001a 0%, #000 100%)' },
-  '1INCH': { name: '1inch Network', color: '#31569c', bg: 'radial-gradient(circle at 50% 0%, #00082a 0%, #000 100%)' }
+  UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% -20%, #4a0024 0%, #000 80%)', icon: '🦄' },
+  ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% -20%, #004a35 0%, #000 80%)', icon: '🌀' },
+  SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 50% -20%, #4a002b 0%, #000 80%)', icon: '🍣' },
+  '1INCH': { name: '1inch Net', color: '#31569c', bg: 'radial-gradient(circle at 50% -20%, #001a4a 0%, #000 80%)', icon: '🛡️' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -72,34 +72,31 @@ export default function App() {
     setDeal({
       coin: ASSETS[assets[Math.floor(Math.random() * assets.length)]],
       buyAt, sellAt,
-      profit: (Math.random() * 0.5 + 2.5).toFixed(2) // Макс профит 3%
+      profit: (Math.random() * 0.4 + 2.7).toFixed(2)
     });
   };
 
   const handleSwap = () => {
     const amount = Number(payAmount);
-    const currentHoldings = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
-    
-    if (!amount || amount > currentHoldings) return;
+    const currentMax = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
+    if (!amount || amount > currentMax) return;
 
     setIsPending(true);
     setTimeout(() => {
       let receiveAmount = (amount * payToken.price) / getToken.price;
       let pnl = 0;
 
-      // Логика профита/убытка
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
         const isCorrect = activeDex === deal.sellAt && payToken.symbol === deal.coin.symbol;
         if (isCorrect) {
           receiveAmount *= (1 + Number(deal.profit) / 100);
+          generateDeal();
         } else {
-          receiveAmount *= (1 - (Math.random() * 0.015)); // Минус до 1.5%
+          receiveAmount *= (1 - (Math.random() * 0.015));
         }
         pnl = receiveAmount - (amount * payToken.price);
-        if (isCorrect) generateDeal();
       }
 
-      // ОБНОВЛЕНИЕ БАЛАНСОВ
       const newBalance = payToken.symbol === 'USDC' ? balance - amount : (getToken.symbol === 'USDC' ? balance + receiveAmount : balance);
       const newWallet = { ...wallet };
       if (payToken.symbol !== 'USDC') newWallet[payToken.symbol] = (newWallet[payToken.symbol] || 0) - amount;
@@ -108,134 +105,201 @@ export default function App() {
       update(ref(db, `players/${userId}`), { balanceUSDC: newBalance, wallet: newWallet });
       setReceipt({ pnl, get: receiveAmount, from: payToken.symbol, to: getToken.symbol, amount, dex: activeDex });
       setIsPending(false); setPayAmount('');
-    }, 1500);
+    }, 2000);
   };
 
   return (
-    <div className="app">
-      <header className="header">
-        <div className="liq-info">LIQUIDITY: <b>${balance.toFixed(2)}</b></div>
-        <button onClick={() => window.open('https://t.me/vladstelin78')} className="mgr-link">@vladstelin78</button>
-      </header>
+    <div className="app-shell">
+      <div className="glass-blob"></div>
+      
+      <div className="main-content">
+        <header className="top-bar">
+          <div className="status-chip"><span className="online-dot"></span> NETWORK ONLINE</div>
+          <button onClick={() => window.open('https://t.me/vladstelin78')} className="manager-chip">MANAGER</button>
+        </header>
 
-      {/* ТЕКСТОВАЯ СДЕЛКА */}
-      {deal && (
-        <div className="deal-card">
-          <div className="deal-head">СИГНАЛ: {deal.coin.symbol} <span className="p-tag">+{deal.profit}%</span></div>
-          <div className="route-box">
-            <div className="route-item">
-              <small>КУПИТЬ НА:</small>
-              <div className="dex-name">{DEX_THEMES[deal.buyAt].name}</div>
+        <section className="balance-hero">
+          <div className="total-label">AVAILABLE LIQUIDITY</div>
+          <div className="main-amount">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </section>
+
+        {/* ДЕТАЛИЗИРОВАННАЯ ТЕКСТОВАЯ СДЕЛКА */}
+        {deal && (
+          <div className="signal-card">
+            <div className="signal-header">
+              <span className="signal-tag">LIVE SIGNAL</span>
+              <span className="signal-profit">+{deal.profit}%</span>
             </div>
-            <div className="route-arrow">→</div>
-            <div className="route-item">
-              <small>ПРОДАТЬ НА:</small>
-              <div className="dex-name" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</div>
-            </div>
-          </div>
-          <div className="timer-bar"><div className="fill" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
-        </div>
-      )}
+            
+            <div className="signal-route">
+              <div className="route-step">
+                <small>КУПИТЬ НА</small>
+                <div className="step-name">{DEX_THEMES[deal.buyAt].name.toUpperCase()}</div>
+              </div>
+              
+              <div className="route-coin">
+                <img src={deal.coin.icon} alt="coin" />
+                <span>{deal.coin.symbol}</span>
+              </div>
 
-      <div className="dex-grid">
-        {Object.keys(DEX_THEMES).map(k => (
-          <button key={k} onClick={() => setActiveDex(k)} className="dex-btn" style={{borderLeft: `4px solid ${DEX_THEMES[k].color}`}}>
-            <div className="dex-btn-title">{DEX_THEMES[k].name}</div>
-            <div className="dex-btn-sub">API CONNECTED</div>
-          </button>
-        ))}
-      </div>
-
-      {activeDex && (
-        <div className="dex-overlay" style={{ background: DEX_THEMES[activeDex].bg }}>
-          <div className="dex-nav">
-            <button onClick={() => setActiveDex(null)}>✕ BACK</button>
-            <div className="dex-title">{DEX_THEMES[activeDex].name}</div>
-            <div style={{width: 50}}></div>
-          </div>
-
-          <div className="swap-form">
-            <div className="input-box">
-              <div className="ib-head">PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))} className="max-btn">MAX</span></div>
-              <div className="ib-main">
-                <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                <div className="asset-tag"><img src={payToken.icon} width="16"/> {payToken.symbol}</div>
+              <div className="route-step">
+                <small>ПРОДАТЬ НА</small>
+                <div className="step-name" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name.toUpperCase()}</div>
               </div>
             </div>
 
-            <div className="swap-mid">↓</div>
+            <div className="signal-timer">
+              <div className="timer-track"><div className="timer-fill" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
+              <span>REFRESH IN {timeLeft}s</span>
+            </div>
+          </div>
+        )}
 
-            <div className="input-box">
-              <div className="ib-head">RECEIVE</div>
-              <div className="ib-main">
-                <div className="res-val">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
-                <button onClick={() => setGetToken(getToken.symbol === 'USDC' ? deal.coin : ASSETS.USDC)} className="asset-tag-btn">
-                  <img src={getToken.icon} width="16"/> {getToken.symbol} ⇅
+        <div className="dex-menu">
+          {Object.keys(DEX_THEMES).map(k => (
+            <button key={k} onClick={() => setActiveDex(k)} className="dex-tile">
+              <div className="tile-glow" style={{background: DEX_THEMES[k].color}}></div>
+              <div className="tile-content">
+                <div className="tile-icon">{DEX_THEMES[k].icon}</div>
+                <div className="tile-name">{DEX_THEMES[k].name}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ДЕТАЛИЗИРОВАННАЯ БИРЖА */}
+      {activeDex && (
+        <div className="dex-view" style={{ background: DEX_THEMES[activeDex].bg }}>
+          <header className="dex-nav">
+            <button onClick={() => setActiveDex(null)} className="back-btn">←</button>
+            <div className="dex-info-title">{DEX_THEMES[activeDex].name}</div>
+            <div className="dex-icon-top">{DEX_THEMES[activeDex].icon}</div>
+          </header>
+
+          <div className="swap-interface">
+            <div className="glass-panel">
+              <div className="panel-sub"><span>YOU PAY</span> <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))} className="max-tag">MAX</span></div>
+              <div className="panel-row">
+                <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
+                <button className="asset-select"><img src={payToken.icon} /> {payToken.symbol}</button>
+              </div>
+            </div>
+
+            <div className="swap-divider">
+               <div className="divider-circle" style={{borderColor: DEX_THEMES[activeDex].color}}>↓</div>
+            </div>
+
+            <div className="glass-panel">
+              <div className="panel-sub">YOU RECEIVE</div>
+              <div className="panel-row">
+                <div className="receive-val">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(6) : '0.00'}</div>
+                <button onClick={() => {
+                  setGetToken(getToken.symbol === 'USDC' ? deal.coin : ASSETS.USDC);
+                  setPayToken(payToken.symbol === 'USDC' ? ASSETS.USDC : deal.coin);
+                }} className="asset-select-active">
+                  <img src={getToken.icon} /> {getToken.symbol} ⇅
                 </button>
               </div>
             </div>
 
-            <button onClick={handleSwap} disabled={isPending} className="exe-btn" style={{ background: DEX_THEMES[activeDex].color }}>
-              {isPending ? "PROCESSING..." : "SWAP ASSETS"}
+            <div className="details-box">
+              <div className="det-row"><span>Exchange Fee</span> <span>$0.12</span></div>
+              <div className="det-row"><span>Slippage Tolerance</span> <span>0.5%</span></div>
+            </div>
+
+            <button onClick={handleSwap} disabled={isPending} className="main-swap-btn" style={{ background: DEX_THEMES[activeDex].color }}>
+              {isPending ? <div className="loader"></div> : "CONFIRM SWAP"}
             </button>
           </div>
         </div>
       )}
 
+      {/* КВИТАНЦИЯ */}
       {receipt && (
-        <div className="modal">
-          <div className="receipt">
-            <h3>TRANSACTION SUCCESS</h3>
-            <div className="r-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
+        <div className="receipt-overlay">
+          <div className="receipt-check">
+            <div className="check-status">TRANSACTION EXECUTED</div>
+            <div className="check-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
             </div>
-            <p>Exchange: {DEX_THEMES[receipt.dex].name}</p>
-            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="r-btn">OK</button>
+            <div className="check-list">
+              <div className="check-li"><span>DEX</span> <span>{DEX_THEMES[receipt.dex].name}</span></div>
+              <div className="check-li"><span>Asset</span> <span>{receipt.to}</span></div>
+              <div className="check-li"><span>Status</span> <span style={{color: '#0CF2B0'}}>Success</span></div>
+            </div>
+            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="check-close">DONE</button>
           </div>
         </div>
       )}
 
       <style>{`
-        .app { background: #000; height: 100vh; color: #fff; font-family: sans-serif; padding: 20px; overflow: hidden; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .liq-info { font-size: 12px; color: #0CF2B0; }
-        .mgr-link { background: #111; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 10px; font-size: 11px; }
-        
-        .deal-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 20px; margin-bottom: 25px; }
-        .deal-head { font-size: 12px; font-weight: bold; margin-bottom: 15px; display: flex; justify-content: space-between; }
-        .p-tag { background: #0CF2B0; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 10px; }
-        .route-box { display: flex; align-items: center; justify-content: space-between; text-align: center; }
-        .route-item small { font-size: 8px; opacity: 0.5; display: block; margin-bottom: 5px; }
-        .dex-name { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }
-        .route-arrow { opacity: 0.2; font-size: 20px; }
-        .timer-bar { height: 2px; background: #111; margin-top: 15px; border-radius: 2px; }
-        .fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
+        .app-shell { background: #000; height: 100vh; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; position: relative; }
+        .glass-blob { position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 400px; background: radial-gradient(circle, #0CF2B015 0%, transparent 70%); filter: blur(40px); }
+        .main-content { position: relative; z-index: 10; padding: 20px; display: flex; flex-direction: column; height: 100%; }
 
-        .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .dex-btn { background: #0a0a0a; border: none; padding: 18px; border-radius: 15px; text-align: left; color: #fff; }
-        .dex-btn-title { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
-        .dex-btn-sub { font-size: 8px; opacity: 0.3; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .status-chip { background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 20px; font-size: 9px; font-weight: 900; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+        .online-dot { width: 5px; height: 5px; background: #0CF2B0; border-radius: 50%; box-shadow: 0 0 10px #0CF2B0; }
+        .manager-chip { background: #fff; color: #000; border: none; padding: 6px 12px; border-radius: 20px; font-size: 9px; font-weight: 900; }
 
-        .dex-overlay { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; }
-        .dex-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .dex-nav button { background: none; border: none; color: #fff; font-weight: bold; }
-        .dex-title { font-weight: 900; letter-spacing: 1px; }
+        .balance-hero { text-align: center; margin-bottom: 30px; }
+        .total-label { font-size: 10px; opacity: 0.3; letter-spacing: 2px; margin-bottom: 5px; }
+        .main-amount { font-size: 52px; font-weight: 900; letter-spacing: -2px; }
 
-        .swap-form { background: rgba(0,0,0,0.5); padding: 20px; border-radius: 25px; border: 1px solid rgba(255,255,255,0.05); }
-        .input-box { background: #000; padding: 15px; border-radius: 18px; border: 1px solid #222; }
-        .ib-head { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.5; margin-bottom: 10px; }
-        .max-btn { color: #0CF2B0; font-weight: bold; }
-        .ib-main { display: flex; justify-content: space-between; align-items: center; }
-        .ib-main input { background: none; border: none; color: #fff; font-size: 24px; width: 60%; outline: none; }
-        .asset-tag { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
-        .asset-tag-btn { background: #111; border: 1px solid #333; color: #fff; padding: 8px 12px; border-radius: 10px; display: flex; align-items: center; gap: 8px; }
-        .swap-mid { text-align: center; margin: 10px 0; opacity: 0.3; }
-        .exe-btn { width: 100%; padding: 20px; border: none; border-radius: 18px; color: #fff; font-weight: 900; margin-top: 20px; }
+        /* SIGNAL CARD */
+        .signal-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 28px; padding: 20px; margin-bottom: 25px; backdrop-filter: blur(10px); }
+        .signal-header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .signal-tag { font-size: 9px; font-weight: 900; color: #0CF2B0; background: rgba(12, 242, 176, 0.1); padding: 4px 8px; border-radius: 6px; }
+        .signal-profit { font-weight: 900; color: #0CF2B0; font-size: 18px; }
+        .signal-route { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .route-step { display: flex; flex-direction: column; gap: 4px; }
+        .route-step small { font-size: 8px; opacity: 0.4; }
+        .step-name { font-size: 13px; font-weight: 900; }
+        .route-coin { display: flex; flex-direction: column; align-items: center; gap: 5px; background: #fff; color: #000; padding: 10px; border-radius: 15px; min-width: 60px; }
+        .route-coin img { width: 22px; height: 22px; }
+        .route-coin span { font-size: 10px; font-weight: 900; }
+        .signal-timer { font-size: 9px; text-align: center; opacity: 0.4; }
+        .timer-track { height: 3px; background: rgba(255,255,255,0.05); border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+        .timer-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
 
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-        .receipt { background: #111; padding: 30px; border-radius: 30px; text-align: center; width: 100%; border: 1px solid #222; }
-        .r-pnl { font-size: 32px; font-weight: 900; margin: 15px 0; }
-        .r-btn { background: #fff; color: #000; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: bold; }
+        /* DEX MENU */
+        .dex-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .dex-tile { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 24px; padding: 25px; position: relative; overflow: hidden; }
+        .tile-glow { position: absolute; top: -50%; left: -50%; width: 100%; height: 100%; filter: blur(40px); opacity: 0.1; }
+        .tile-content { position: relative; z-index: 2; text-align: center; }
+        .tile-icon { font-size: 24px; margin-bottom: 10px; }
+        .tile-name { font-size: 12px; font-weight: 800; }
+
+        /* DEX VIEW */
+        .dex-view { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0,0,0.2,1); }
+        .dex-nav { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { background: rgba(255,255,255,0.1); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; }
+        .dex-info-title { font-weight: 900; font-size: 16px; letter-spacing: 1px; }
+        .swap-interface { padding: 20px; }
+        .glass-panel { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 24px; }
+        .panel-sub { display: flex; justify-content: space-between; font-size: 10px; font-weight: 800; opacity: 0.4; margin-bottom: 15px; }
+        .max-tag { color: #0CF2B0; cursor: pointer; }
+        .panel-row { display: flex; justify-content: space-between; align-items: center; }
+        .panel-row input { background: none; border: none; color: #fff; font-size: 32px; font-weight: 700; width: 60%; outline: none; }
+        .asset-select, .asset-select-active { background: #000; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 14px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; }
+        .asset-select img, .asset-select-active img { width: 18px; height: 18px; }
+        .swap-divider { display: flex; justify-content: center; margin: -15px 0; position: relative; z-index: 5; }
+        .divider-circle { background: #000; width: 40px; height: 40px; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; }
+        .details-box { margin: 20px 0; padding: 0 10px; }
+        .det-row { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.4; margin-bottom: 8px; }
+        .main-swap-btn { width: 100%; padding: 22px; border-radius: 24px; border: none; color: #fff; font-weight: 900; font-size: 18px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+
+        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 30px; }
+        .receipt-check { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 35px; padding: 30px; width: 100%; text-align: center; }
+        .check-pnl { font-size: 42px; font-weight: 900; margin: 20px 0; }
+        .check-list { background: #000; padding: 20px; border-radius: 20px; text-align: left; }
+        .check-li { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; opacity: 0.6; }
+        .check-close { background: #fff; color: #000; width: 100%; padding: 18px; border-radius: 18px; border: none; font-weight: 900; margin-top: 30px; }
+
+        .loader { width: 24px; height: 24px; border: 3px solid #fff; border-bottom-color: transparent; border-radius: 50%; animation: rot 0.8s linear infinite; margin: auto; }
+        @keyframes rot { to { transform: rotate(360deg); } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
       `}</style>
     </div>
   );
