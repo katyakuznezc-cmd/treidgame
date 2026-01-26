@@ -1,239 +1,154 @@
-
 import React, { useState, useEffect } from 'react';
 
-// --- Данные активов и бирж ---
 const ASSETS = {
-  USDT: { symbol: 'USDT', name: 'Tether', price: 1, icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
-  SOL: { symbol: 'SOL', name: 'Solana', price: 145.50, icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
-  ETH: { symbol: 'ETH', name: 'Ethereum', price: 2600.00, icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png' },
-  BNB: { symbol: 'BNB', name: 'BNB', price: 605.20, icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
-  DOGE: { symbol: 'DOGE', name: 'Dogecoin', price: 0.16, icon: 'https://cryptologos.cc/logos/dogecoin-doge-logo.png' },
-  XRP: { symbol: 'XRP', name: 'XRP', price: 0.62, icon: 'https://cryptologos.cc/logos/xrp-xrp-logo.png' },
-  ADA: { symbol: 'ADA', name: 'Cardano', price: 0.45, icon: 'https://cryptologos.cc/logos/cardano-ada-logo.png' },
-  AVAX: { symbol: 'AVAX', name: 'Avalanche', price: 35.80, icon: 'https://cryptologos.cc/logos/avalanche-avax-logo.png' },
-  MATIC: { symbol: 'MATIC', name: 'Polygon', price: 0.72, icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png' },
-  DOT: { symbol: 'DOT', name: 'Polkadot', price: 7.10, icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png' },
-  TRX: { symbol: 'TRX', name: 'TRON', price: 0.12, icon: 'https://cryptologos.cc/logos/tron-trx-logo.png' }
+  USDT: { symbol: 'USDT', price: 1, icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
+  SOL: { symbol: 'SOL', price: 145.50, icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
+  ETH: { symbol: 'ETH', price: 2600.00, icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png' },
+  BNB: { symbol: 'BNB', price: 605.20, icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
+  DOGE: { symbol: 'DOGE', price: 0.16, icon: 'https://cryptologos.cc/logos/dogecoin-doge-logo.png' },
+  XRP: { symbol: 'XRP', price: 0.62, icon: 'https://cryptologos.cc/logos/xrp-xrp-logo.png' },
+  ADA: { symbol: 'ADA', price: 0.45, icon: 'https://cryptologos.cc/logos/cardano-ada-logo.png' },
+  AVAX: { symbol: 'AVAX', price: 35.80, icon: 'https://cryptologos.cc/logos/avalanche-avax-logo.png' },
+  MATIC: { symbol: 'MATIC', price: 0.72, icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png' },
+  DOT: { symbol: 'DOT', price: 7.10, icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png' },
+  TRX: { symbol: 'TRX', price: 0.12, icon: 'https://cryptologos.cc/logos/tron-trx-logo.png' }
 };
+
 const DEXES = ['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'];
 
-export default function FullAppWithTutorial() {
-  const [balanceUSDT, setBalanceUSDT] = useState(() => Number(localStorage.getItem('arb_balance'))  1000.00);
-  const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet'))  {});
-  const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('arb_history'))  []);
-  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('arb_tut_done'));
-  const [tutStep, setTutStep] = useState(0);
-
+export default function FastTradeApp() {
+  const [balanceUSDT, setBalanceUSDT] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
+  const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet')) || {});
   const [activeDex, setActiveDex] = useState(null);
-  const [view, setView] = useState('main');
-  const [signal, setSignal] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [notification, setNotification] = useState(null);
-  const [showTokenList, setShowTokenList] = useState(false);
-  const [selectingFor, setSelectingFor] = useState('pay');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastTrade, setLastTrade] = useState(null);
+  const [amount, setAmount] = useState('');
   const [payToken, setPayToken] = useState(ASSETS.USDT);
   const [receiveToken, setReceiveToken] = useState(ASSETS.SOL);
-  const [amount, setAmount] = useState('');
 
   useEffect(() => {
     localStorage.setItem('arb_balance', balanceUSDT);
     localStorage.setItem('arb_wallet', JSON.stringify(wallet));
-    localStorage.setItem('arb_history', JSON.stringify(history));
-  }, [balanceUSDT, wallet, history]);
-
-  useEffect(() => {
-    if (!signal) {
-      const available = Object.values(ASSETS).filter(t => t.symbol !== 'USDT');
-      const coin = available[Math.floor(Math.random() * available.length)];
-      const shuffled = [...DEXES].sort(() => 0.5 - Math.random());
-      const profit = (Math.random() * 1.6 + 1.4).toFixed(2);
-      setSignal({ coin, buyAt: shuffled[0], sellAt: shuffled[1], profit: parseFloat(profit) });
-    }
-  }, [signal]);
-
-  const closeTutorial = () => {
-    setShowTutorial(false);
-    localStorage.setItem('arb_tut_done', 'true');
-  };
-
-  const tutorialSteps = [
-    { t: "Добро пожаловать!", d: "Это симулятор межбиржевого арбитража. Мы научим тебя зарабатывать на разнице курсов." },
-    { t: "Твой баланс", d: "Мы начислили тебе $1000 демо-средств. Используй их для первой сделки." },
-    { t: "Следи за сигналами", d: "В центре экрана появляются 'связки'. Купи монету на одной бирже и продай на другой, чтобы получить профит." },
-    { t: "Реальный счет", d: "Когда наберешься опыта — жми на кнопку связи с менеджером для торговли реальными активами!" }
-  ];
+  }, [balanceUSDT, wallet]);
 
   const handleSwap = () => {
-    if (!amount  amount <= 0) return;
+    if (!amount || amount <= 0) return;
     setIsProcessing(true);
+
+    // СОКРАЩЕННОЕ ВРЕМЯ: 2000мс (2 секунды)
     setTimeout(() => {
       const num = Number(amount);
+      let outAmount = 0;
+
       if (payToken.symbol === 'USDT') {
         if (balanceUSDT >= num) {
-          setBalanceUSDT(b => b - num);
-
-Глеб Данилов, [26.01.2026 12:31]
-setWallet(w => ({ ...w, [receiveToken.symbol]: (w[receiveToken.symbol]  0) + (num / receiveToken.price) }));
-          setHistory(h => [{ id: Date.now(), details: `Куплено ${receiveToken.symbol}`, valStr: `-$${num.toFixed(2)}`, isPlus: false, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }, ...h].slice(0, 30));
-          setNotification("Успешно куплено");
+          outAmount = (num / receiveToken.price).toFixed(4);
+          setBalanceUSDT(prev => prev - num);
+          setWallet(w => ({ ...w, [receiveToken.symbol]: (w[receiveToken.symbol] || 0) + Number(outAmount) }));
+          setLastTrade({ from: `${num} USDT`, to: `${outAmount} ${receiveToken.symbol}` });
         }
       } else {
-        const has = wallet[payToken.symbol]  0;
+        const has = wallet[payToken.symbol] || 0;
         if (has >= num) {
-          const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
-          const prof = isCorrect ? signal.profit : 0;
-          const finalVal = (num * payToken.price) * (1 + prof/100);
-          setBalanceUSDT(b => b + finalVal);
+          outAmount = (num * payToken.price * 1.025).toFixed(2);
+          setBalanceUSDT(prev => prev + Number(outAmount));
           setWallet(w => ({ ...w, [payToken.symbol]: has - num }));
-          setHistory(h => [{ id: Date.now(), details: Продажа ${payToken.symbol}, valStr: +$${finalVal.toFixed(2)}, isPlus: true, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }, ...h].slice(0, 30));
-          setNotification(prof > 0 ? Профит: +$${(finalVal - (num * payToken.price)).toFixed(2)} : "Сделка завершена");
-          setSignal(null);
+          setLastTrade({ from: `${num} ${payToken.symbol}`, to: `${outAmount} USDT` });
         }
       }
+
       setIsProcessing(false);
+      if (outAmount > 0) {
+        setShowReceipt(true);
+        setLastTrade(prev => ({ ...prev, hash: '0x' + Math.random().toString(16).slice(2, 12) + '...f2e4', dex: activeDex }));
+      }
       setAmount('');
-      setTimeout(() => setNotification(null), 3000);
-    }, 6000);
+    }, 2000); 
   };
 
-  const theme = activeDex === 'PANCAKE' ? { bg: '#f6f6f9', text: '#280d5f', card: '#fff', input: '#eeeaf4' } :
-                activeDex === 'UNISWAP' ? { bg: '#fff', text: '#000', card: '#f7f8fa', input: '#fff' } :
-                { bg: '#0c0d21', text: '#fff', card: '#14162e', input: 'rgba(0,0,0,0.3)' };
+  const getTheme = () => {
+    if (activeDex === 'UNISWAP') return { bg: '#fff', text: '#000', card: '#f7f8fa', btn: '#ff007a' };
+    if (activeDex === 'PANCAKE') return { bg: '#f6f6f9', text: '#280d5f', card: '#fff', btn: '#1fc7d4' };
+    if (activeDex === 'RAYDIUM') return { bg: '#0c0d21', text: '#fff', card: '#14162e', btn: '#39f2af' };
+    return { bg: '#060814', text: '#fff', card: '#131823', btn: '#2f8af5' };
+  };
+
+  const theme = getTheme();
 
   return (
-    <div style={{ width: '100vw', height: '100dvh', background: '#000', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
+    <div style={{ width: '100vw', height: '100dvh', background: activeDex ? theme.bg : '#000', color: activeDex ? theme.text : '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       
-      {/* ТУТОРИАЛ */}
-      {showTutorial && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
-          <div style={{ background: '#111', padding: 25, borderRadius: 30, border: '1px solid #222', textAlign: 'center', width: '100%' }}>
-            <div style={{ fontSize: 40, marginBottom: 15 }}>{['👋', '💰', '📉', '🚀'][tutStep]}</div>
-            <h3 style={{ margin: '0 0 10px 0', fontSize: 20 }}>{tutorialSteps[tutStep].t}</h3>
-            <p style={{ opacity: 0.6, fontSize: 14, lineHeight: '1.5', marginBottom: 25 }}>{tutorialSteps[tutStep].d}</p>
-            <button onClick={() => tutStep < 3 ? setTutStep(tutStep + 1) : closeTutorial()} 
-                    style={{ width: '100%', background: '#39f2af', color: '#000', border: 'none', padding: 15, borderRadius: 15, fontWeight: 'bold' }}>
-              {tutStep < 3 ? "Далее" : "Понятно!"}
-            </button>
-          </div>
-        </div>
-      )}
-
-Глеб Данилов, [26.01.2026 12:31]
-{/* Лист токенов (как в прошлом коде) */}
-      {showTokenList && (
-        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 2000, padding: 20, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}><h3>Токены</h3><button onClick={() => setShowTokenList(false)} style={{ color: '#fff', background: 'none', border: 'none', fontSize: 30 }}>&times;</button></div>
-          <div style={{ overflowY: 'auto' }}>
-            {Object.values(ASSETS).map(t => (
-              <div key={t.symbol} onClick={() => { if (selectingFor === 'pay') setPayToken(t); else setReceiveToken(t); setShowTokenList(false); }} 
-                   style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '15px 0', borderBottom: '1px solid #111' }}>
-                <img src={t.icon} width="30" height="30" />
-                <div style={{ flex: 1 }}><b>{t.symbol}</b></div>
-                <div style={{ color: '#39f2af' }}>{t.symbol === 'USDT' ? balanceUSDT.toFixed(2) : (wallet[t.symbol]  0).toFixed(4)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {notification && (
-        <div style={{ position: 'fixed', top: 20, left: '5%', width: '90%', background: '#39f2af', color: '#000', padding: 15, borderRadius: 15, zIndex: 3000, textAlign: 'center', fontWeight: 'bold' }}>{notification}</div>
-      )}
-
-      {/* Экран Истории */}
-      {view === 'history' && (
-        <div style={{ height: '100%', padding: 20, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h2 style={{ margin: 0 }}>История</h2>
-            <button onClick={() => setView('main')} style={{ color: '#fff', background: '#222', border: 'none', padding: '8px 15px', borderRadius: 10 }}>Назад</button>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {history.map(h => (
-              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #111' }}>
-                <div><div>{h.details}</div><div style={{ fontSize: 10, opacity: 0.5 }}>{h.time}</div></div>
-                <div style={{ color: h.isPlus ? '#39f2af' : '#ff4d4d', fontWeight: 'bold' }}>{h.valStr}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Главный экран */}
-      {view === 'main' && !activeDex && (
-        <div style={{ padding: 20, height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 15 }}>
-            <button onClick={() => setView('history')} style={{ background: '#111', color: '#fff', border: '1px solid #222', padding: '8px 12px', borderRadius: 10, fontSize: 12 }}>📜 История</button>
-          </div>
-          <div style={{ textAlign: 'center', marginBottom: 25 }}>
-            <h1 style={{ fontSize: 40, margin: 0 }}>${balanceUSDT.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
-            <div style={{ opacity: 0.4, fontSize: 10 }}>ДЕМО СЧЕТ</div>
-          </div>
-          {signal && (
-            <div style={{ background: '#111', padding: 15, borderRadius: 20, border: '1px solid #222', marginBottom: 20 }}>
-              <div style={{ color: '#39f2af', fontSize: 10, fontWeight: 'bold', marginBottom: 5 }}>СИГНАЛ ОБНАРУЖЕН</div>
-              <div style={{ fontSize: 15 }}>Купи {signal.coin.symbol} на {signal.buyAt}</div>
-              <div style={{ fontSize: 15 }}>Продай на {signal.sellAt} <span style={{ color: '#39f2af' }}>+{signal.profit}%</span></div>
+      {/* ЧЕК ТРАНЗАКЦИИ */}
+      {showReceipt && lastTrade && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 25 }}>
+          <div style={{ background: '#111', width: '100%', borderRadius: 30, padding: 25, border: '1px solid #222', textAlign: 'center', color: '#fff' }}>
+            <div style={{ width: 50, height: 50, background: '#39f2af22', color: '#39f2af', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, margin: '0 auto 15px' }}>✓</div>
+            <h3 style={{ margin: '0 0 5px' }}>Успешно</h3>
+            <p style={{ fontSize: 12, opacity: 0.5, marginBottom: 20 }}>Транзакция подтверждена в {lastTrade.dex}</p>
+            <div style={{ background: '#000', borderRadius: 20, padding: 15, marginBottom: 20, textAlign: 'left', fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>Отдано:</span><b>{lastTrade.from}</b></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>Получено:</span><b style={{ color: '#39f2af' }}>{lastTrade.to}</b></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Hash:</span><code style={{ fontSize: 10, color: '#39f2af' }}>{lastTrade.hash}</code></div>
             </div>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 'auto' }}>
-            {DEXES.map(d => <button key={d} onClick={() => setActiveDex(d)} style={{ background: '#111', border: '1px solid #222', color: '#fff', padding: '18px 0', borderRadius: 15,
-
-Глеб Данилов, [26.01.2026 12:31]
-fontWeight: 'bold' }}>{d}</button>)}
-          </div>
-          {/* Баннер */}
-          <div style={{ background: 'linear-gradient(90deg, #111, #1a1a1a)', padding: '15px 20px', borderRadius: 20, border: '1px solid #222', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 'bold' }}>Готов к реальным сделкам?</div><div style={{ fontSize: 10, opacity: 0.5 }}>Свяжись с @vladstelin78</div></div>
-            <a href="https://t.me/vladstelin78" style={{ background: '#39f2af', color: '#000', textDecoration: 'none', padding: '10px 15px', borderRadius: 10, fontSize: 11, fontWeight: 'bold' }}>НАЧАТЬ</a>
+            <button onClick={() => setShowReceipt(false)} style={{ width: '100%', background: '#fff', color: '#000', border: 'none', padding: 15, borderRadius: 15, fontWeight: 'bold' }}>Готово</button>
           </div>
         </div>
       )}
 
-      {/* Биржа */}
-      {activeDex && view === 'main' && (
-        <div style={{ height: '100%', background: theme.bg, color: theme.text, animation: 'slideIn 0.3s', boxSizing: 'border-box' }}>
-          <div style={{ padding: 15, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <b style={{ fontSize: 18 }}>{activeDex}</b>
-            <button onClick={() => setActiveDex(null)} style={{ background: 'rgba(0,0,0,0.1)', border: 'none', color: 'inherit', padding: '6px 12px', borderRadius: 10 }}>Назад</button>
+      {/* ГЛАВНЫЙ ЭКРАН */}
+      {!activeDex && (
+        <div style={{ padding: 25, textAlign: 'center' }}>
+          <h1 style={{ fontSize: 42, margin: '40px 0 10px' }}>${balanceUSDT.toFixed(2)}</h1>
+          <p style={{ opacity: 0.4, marginBottom: 40, fontSize: 12 }}>ДОСТУПНЫЙ БАЛАНС</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {DEXES.map(d => <button key={d} onClick={() => setActiveDex(d)} style={{ background: '#111', border: '1px solid #222', color: '#fff', padding: 25, borderRadius: 20, fontWeight: 'bold' }}>{d}</button>)}
+          </div>
+        </div>
+      )}
+
+      {/* ТЕРМИНАЛ */}
+      {activeDex && (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <b style={{ fontSize: 20 }}>{activeDex}</b>
+            <button onClick={() => setActiveDex(null)} style={{ background: 'rgba(128,128,128,0.1)', border: 'none', color: 'inherit', padding: '8px 15px', borderRadius: 12 }}>Назад</button>
           </div>
           <div style={{ padding: 15 }}>
-            <div style={{ background: theme.card, padding: 20, borderRadius: 28 }}>
-              <div style={{ background: theme.input, padding: 15, borderRadius: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, opacity: 0.7 }}><span>ОТДАЕТЕ</span><span onClick={() => setAmount(payToken.symbol === 'USDT' ? balanceUSDT : (wallet[payToken.symbol]  0))} style={{ color: '#39f2af', fontWeight: 'bold' }}>МАКС</span></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 24, color: 'inherit', outline: 'none', width: '60%' }} />
-                  <button onClick={() => {setShowTokenList(true); setSelectingFor('pay')}} style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: 'bold' }}>{payToken.symbol} ▾</button>
+            <div style={{ background: theme.card, padding: 20, borderRadius: 30, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+              <div style={{ background: 'rgba(128,128,128,0.08)', padding: 15, borderRadius: 20 }}>
+                <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 8 }}>ВЫ ОТДАЕТЕ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 26, color: 'inherit', outline: 'none', width: '60%' }} />
+                  <b>{payToken.symbol}</b>
                 </div>
               </div>
-              <div style={{ textAlign: 'center', margin: '10px 0' }}>↓</div>
-              <div style={{ background: theme.input, padding: 15, borderRadius: 20, marginBottom: 20 }}>
-                <div style={{ fontSize: 10, opacity: 0.7 }}>ПОЛУЧАЕТЕ</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                  <div style={{ fontSize: 24 }}>{amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}</div>
-                  <button onClick={() => {setShowTokenList(true); setSelectingFor('receive')}} style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: 'bold' }}>{receiveToken.symbol} ▾</button>
+              <div style={{ textAlign: 'center', margin: '10px 0', opacity: 0.3 }}>↓</div>
+              <div style={{ background: 'rgba(128,128,128,0.08)', padding: 15, borderRadius: 20, marginBottom: 25 }}>
+                <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 8 }}>ВЫ ПОЛУЧАЕТЕ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: 26 }}>{amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}</div>
+                  <b>{receiveToken.symbol}</b>
                 </div>
               </div>
-              <button onClick={handleSwap} style={{ width: '100%', padding: 20, borderRadius: 20, border: 'none', fontSize: 16, fontWeight: 'bold', background: activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af', color: activeDex === 'UNISWAP' ? '#fff' : '#000' }}>
-                {isProcessing ? 'ОБРАБОТКА...' : 'ПОДТВЕРДИТЬ'}
+              <button onClick={handleSwap} style={{ width: '100%', padding: 20, borderRadius: 20, border: 'none', background: theme.btn, color: activeDex === 'RAYDIUM' ? '#000' : '#fff', fontWeight: 'bold', fontSize: 16 }}>
+                {isProcessing ? 'СЕТЬ ОБРАБАТЫВАЕТ...' : 'ПОДТВЕРДИТЬ'}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ЛОАДЕР (2 секунды) */}
       {isProcessing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)', zIndex: 5000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="loader"></div>
-          <div style={{ marginTop: 20 }}>ПРОВЕРКА В СЕТИ...</div>
         </div>
       )}
 
-Глеб Данилов, [26.01.2026 12:31]
-<style>{`
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-        .loader { width: 40px; height: 40px; border: 3px solid #111; border-top-color: #39f2af; border-radius: 50%; animation: spin 0.8s linear infinite; }
+      <style>{`
+        .loader { width: 45px; height: 45px; border: 3px solid #222; border-top-color: #39f2af; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        * { box-sizing: border-box; }
       `}</style>
     </div>
   );
