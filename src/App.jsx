@@ -25,7 +25,9 @@ const DEX_THEMES = {
   UNISWAP: { name: 'Uniswap V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 0%, #2d0016 0%, #000 100%)', icon: '🦄' },
   ODOS: { name: 'Odos Router', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 0%, #002d21 0%, #000 100%)', icon: '🌀' },
   SUSHI: { name: 'SushiSwap', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 0%, #2d001a 0%, #000 100%)', icon: '🍣' },
-  '1INCH': { name: '1inch Net', color: '#31569c', bg: 'radial-gradient(circle at 50% 0%, #000c2d 0%, #000 100%)', icon: '🛡️' }
+  '1INCH': { name: '1inch Net', color: '#31569c', bg: 'radial-gradient(circle at 50% 0%, #000c2d 0%, #000 100%)', icon: '🛡️' },
+  PANCAKE: { name: 'PancakeSwap', color: '#D1884F', bg: 'radial-gradient(circle at 50% 0%, #2d1a00 0%, #000 100%)', icon: '🥞' },
+  JUPITER: { name: 'Jupiter AG', color: '#C7F284', bg: 'radial-gradient(circle at 50% 0%, #1a2d00 0%, #000 100%)', icon: '🪐' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -82,7 +84,7 @@ export default function App() {
     setDeal({
       coin: ASSETS[assets[Math.floor(Math.random()*assets.length)]],
       buyAt, sellAt,
-      profit: (Math.random()*0.5 + 2.6).toFixed(2)
+      profit: (Math.random()*0.5 + 2.7).toFixed(2)
     });
     setTimeLeft(120);
   };
@@ -131,23 +133,22 @@ export default function App() {
 
         <section className="balance-section">
           <h1 className="balance-text">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
-          <div className="balance-sub">USDC LIQUIDITY POOL</div>
+          <div className="balance-sub">WEB3 LIQUIDITY MULTI-CHAIN</div>
         </section>
 
-        {/* НОВЫЙ ДЕТАЛИЗИРОВАННЫЙ БЛОК СДЕЛКИ */}
         {deal && (
           <div className="deal-card-ultra">
             <div className="deal-top">
               <span className="deal-title">{t.deal}</span>
-              <span className="deal-timer">EXPIRES: {timeLeft}s</span>
+              <span className="deal-timer">REFRESH: {timeLeft}s</span>
             </div>
             
             <div className="deal-route">
               <div className="route-node">
-                <div className="node-icon">{DEX_THEMES[deal.buyAt].icon}</div>
+                <div className="node-icon" style={{color: DEX_THEMES[deal.buyAt].color}}>{DEX_THEMES[deal.buyAt].icon}</div>
                 <div className="node-info">
                   <span className="node-label">{t.buy}</span>
-                  <span className="node-name">{DEX_THEMES[deal.buyAt].name}</span>
+                  <span className="node-name">{DEX_THEMES[deal.buyAt].name.split(' ')[0]}</span>
                 </div>
               </div>
 
@@ -161,7 +162,7 @@ export default function App() {
                 <div className="node-icon" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].icon}</div>
                 <div className="node-info">
                   <span className="node-label">{t.sell}</span>
-                  <span className="node-name" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</span>
+                  <span className="node-name" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name.split(' ')[0]}</span>
                 </div>
               </div>
             </div>
@@ -176,7 +177,7 @@ export default function App() {
         <div className="dex-grid">
           {Object.keys(DEX_THEMES).map(k => (
             <button key={k} onClick={() => setActiveDex(k)} className="dex-card">
-              <div className="dex-card-inner" style={{borderTop: `2px solid ${DEX_THEMES[k].color}`}}>
+              <div className="dex-card-inner" style={{borderLeft: `3px solid ${DEX_THEMES[k].color}`}}>
                 <span className="dex-icon-main">{DEX_THEMES[k].icon}</span>
                 <span className="dex-name-main">{DEX_THEMES[k].name}</span>
               </div>
@@ -185,7 +186,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* ЭКРАН БИРЖИ С ПОЛНОЙ ДЕТАЛИЗАЦИЕЙ */}
       {activeDex && (
         <div className="dex-overlay" style={{ background: DEX_THEMES[activeDex].bg }}>
           <header className="dex-header">
@@ -222,11 +222,6 @@ export default function App() {
               </div>
             </div>
 
-            <div className="gas-info">
-               <span>NETWORK FEE: <b>$0.08</b></span>
-               <span>SLIPPAGE: <b>0.1%</b></span>
-            </div>
-
             <button onClick={handleSwap} disabled={isPending} className="swap-btn-final" style={{ background: DEX_THEMES[activeDex].color }}>
               {isPending ? <div className="loader"></div> : t.swap}
             </button>
@@ -234,18 +229,15 @@ export default function App() {
         </div>
       )}
 
-      {/* КВИТАНЦИЯ (CHECK) */}
       {receipt && (
         <div className="receipt-overlay">
           <div className="receipt-check">
-            <div className="check-header">TRANSACTION RECEIPT</div>
             <div className="check-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
             </div>
             <div className="check-body">
                <div className="check-row"><span>Exchange</span> <span>{receipt.dex}</span></div>
-               <div className="check-row"><span>From</span> <span>{receipt.amount} {receipt.from}</span></div>
-               <div className="check-row"><span>To</span> <span>{receipt.get.toFixed(4)} {receipt.to}</span></div>
+               <div className="check-row"><span>Received</span> <span>{receipt.get.toFixed(4)} {receipt.to}</span></div>
                <div className="check-divider"></div>
                <div className="check-row"><span>Status</span> <span style={{color: '#0CF2B0'}}>Success</span></div>
             </div>
@@ -254,15 +246,14 @@ export default function App() {
         </div>
       )}
 
-      {/* ВЫБОР ТОКЕНА */}
       {showTokenList && (
         <div className="token-list-modal">
-          <header className="modal-head"><span>Select Asset</span><button onClick={() => setShowTokenList(null)}>✕</button></header>
+          <header className="modal-head"><span>Assets</span><button onClick={() => setShowTokenList(null)}>✕</button></header>
           <div className="token-scroll">
             {Object.values(ASSETS).map(a => (
               <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="token-row">
                 <img src={a.icon} />
-                <div className="t-info"><b>{a.symbol}</b><span>{a.symbol === 'USDC' ? 'Stablecoin' : 'Crypto Asset'}</span></div>
+                <div className="t-info"><b>{a.symbol}</b></div>
                 <div className="t-price">${a.price}</div>
               </div>
             ))}
@@ -272,79 +263,70 @@ export default function App() {
 
       <style>{`
         .app-container { background: #000; height: 100vh; color: #fff; overflow: hidden; position: relative; font-family: 'Inter', sans-serif; }
-        .bg-blur-1 { position: absolute; top: -10%; left: -10%; width: 50%; height: 50%; background: #0CF2B011; filter: blur(100px); border-radius: 50%; }
-        .bg-blur-2 { position: absolute; bottom: -10%; right: -10%; width: 50%; height: 50%; background: #FF007A08; filter: blur(100px); border-radius: 50%; }
-        .content { position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; padding: 0 20px; }
+        .bg-blur-1 { position: absolute; top: -10%; left: -10%; width: 60%; height: 60%; background: #0CF2B008; filter: blur(100px); border-radius: 50%; }
+        .bg-blur-2 { position: absolute; bottom: -10%; right: -10%; width: 60%; height: 60%; background: #FF007A05; filter: blur(100px); border-radius: 50%; }
+        .content { position: relative; z-index: 10; display: flex; flex-direction: column; height: 100%; padding: 0 20px; overflow-y: auto; }
         
         .main-header { padding: 20px 0; display: flex; justify-content: space-between; align-items: center; }
         .bal-label { font-size: 10px; font-weight: 900; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px; color: #0CF2B0; }
         .dot { width: 6px; height: 6px; background: #0CF2B0; border-radius: 50%; box-shadow: 0 0 10px #0CF2B0; }
-        .glass-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 16px; border-radius: 14px; font-size: 12px; font-weight: 600; backdrop-filter: blur(10px); }
+        .glass-btn { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: #fff; padding: 10px 14px; border-radius: 12px; font-size: 11px; font-weight: 600; backdrop-filter: blur(10px); }
         
-        .balance-section { text-align: center; margin: 20px 0 30px; }
-        .balance-text { font-size: 54px; font-weight: 900; margin: 0; letter-spacing: -1px; }
-        .balance-sub { font-size: 10px; opacity: 0.3; letter-spacing: 4px; margin-top: 5px; }
+        .balance-section { text-align: center; margin: 15px 0 25px; }
+        .balance-text { font-size: 50px; font-weight: 900; margin: 0; }
+        .balance-sub { font-size: 9px; opacity: 0.2; letter-spacing: 3px; margin-top: 5px; }
 
-        /* DEAL CARD ULTRA */
-        .deal-card-ultra { background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        .deal-top { display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .deal-title { font-size: 10px; font-weight: 900; color: #0CF2B0; }
-        .deal-timer { font-size: 10px; opacity: 0.4; font-family: monospace; }
-        .deal-route { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-        .route-node { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .node-icon { font-size: 24px; background: rgba(255,255,255,0.05); width: 45px; height: 45px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
-        .node-info { text-align: center; }
-        .node-label { font-size: 8px; opacity: 0.5; display: block; }
-        .node-name { font-size: 12px; font-weight: 800; }
-        .route-path { flex: 1; display: flex; align-items: center; gap: 5px; padding: 0 10px; }
-        .path-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); }
-        .path-coin { width: 24px; height: 24px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
-        .deal-footer { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); pt: 15px; margin-top: 15px; padding-top: 15px; }
-        .profit-tag { color: #0CF2B0; font-weight: 900; font-size: 14px; }
-        .asset-tag { background: #fff; color: #000; padding: 2px 10px; border-radius: 8px; font-size: 10px; font-weight: 900; }
+        .deal-card-ultra { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 18px; border-radius: 28px; }
+        .deal-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .deal-title { font-size: 9px; font-weight: 900; color: #0CF2B0; }
+        .deal-timer { font-size: 9px; opacity: 0.3; }
+        .deal-route { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+        .route-node { display: flex; flex-direction: column; align-items: center; gap: 5px; }
+        .node-icon { font-size: 20px; background: rgba(255,255,255,0.03); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .node-label { font-size: 7px; opacity: 0.5; }
+        .node-name { font-size: 11px; font-weight: 800; }
+        .route-path { flex: 1; display: flex; align-items: center; gap: 5px; padding: 0 10px; opacity: 0.3; }
+        .path-line { flex: 1; height: 1px; background: #fff; }
+        .path-coin { width: 18px; height: 18px; }
+        .deal-footer { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 12px; }
+        .profit-tag { color: #0CF2B0; font-weight: 900; font-size: 13px; }
+        .asset-tag { background: #fff; color: #000; padding: 2px 8px; border-radius: 6px; font-size: 9px; font-weight: 900; }
 
-        .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 25px; }
-        .dex-card { background: rgba(255,255,255,0.03); border: none; padding: 0; border-radius: 24px; cursor: pointer; }
-        .dex-card-inner { padding: 25px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-        .dex-icon-main { font-size: 24px; }
-        .dex-name-main { font-size: 13px; font-weight: 700; }
+        .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }
+        .dex-card { background: rgba(255,255,255,0.03); border: none; padding: 0; border-radius: 20px; text-align: left; }
+        .dex-card-inner { padding: 15px; display: flex; flex-direction: column; gap: 5px; }
+        .dex-icon-main { font-size: 18px; }
+        .dex-name-main { font-size: 12px; font-weight: 700; opacity: 0.9; }
 
-        /* DEX OVERLAY */
-        .dex-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .dex-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; animation: slideUp 0.3s ease; }
         .dex-header { padding: 20px; display: flex; align-items: center; justify-content: space-between; }
-        .close-btn { background: rgba(255,255,255,0.1); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; }
-        .dex-title-box { display: flex; align-items: center; gap: 10px; font-size: 16px; }
-        .swap-container { padding: 20px; flex: 1; overflow-y: auto; }
-        .glass-panel { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); padding: 20px; border-radius: 28px; }
-        .panel-top { display: flex; justify-content: space-between; font-size: 11px; font-weight: 800; opacity: 0.5; margin-bottom: 15px; }
-        .max-chip { color: #fff; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 6px; cursor: pointer; }
+        .close-btn { background: rgba(255,255,255,0.05); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; }
+        .dex-title-box { display: flex; align-items: center; gap: 10px; }
+        .swap-container { padding: 20px; }
+        .glass-panel { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 24px; }
+        .panel-top { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.5; margin-bottom: 10px; }
         .panel-main { display: flex; justify-content: space-between; align-items: center; }
-        .panel-main input { background: none; border: none; color: #fff; font-size: 32px; font-weight: 700; width: 50%; outline: none; }
-        .token-picker { background: #111; border: 1px solid #333; color: #fff; padding: 10px 14px; border-radius: 16px; display: flex; align-items: center; gap: 10px; font-weight: 700; }
-        .token-picker img { width: 22px; height: 22px; }
-        .swap-arrow-container { display: flex; justify-content: center; margin: -15px 0; position: relative; z-index: 5; }
-        .swap-arrow-circle { background: #000; width: 42px; height: 42px; border-radius: 50%; border: 2px solid; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .gas-info { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.4; padding: 15px 10px; }
-        .swap-btn-final { width: 100%; padding: 22px; border-radius: 24px; border: none; color: #fff; font-weight: 900; font-size: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .panel-main input { background: none; border: none; color: #fff; font-size: 28px; width: 50%; outline: none; }
+        .token-picker { background: #000; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; }
+        .token-picker img { width: 18px; height: 18px; }
+        .swap-arrow-container { display: flex; justify-content: center; margin: -10px 0; position: relative; z-index: 5; }
+        .swap-arrow-circle { background: #000; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid; display: flex; align-items: center; justify-content: center; }
+        .swap-btn-final { width: 100%; padding: 20px; border-radius: 20px; border: none; color: #fff; font-weight: 900; font-size: 16px; margin-top: 20px; }
 
-        /* RECEIPT */
         .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 30px; }
-        .receipt-check { background: #111; border: 1px solid #222; width: 100%; border-radius: 35px; padding: 30px; position: relative; }
-        .check-header { font-size: 11px; font-weight: 900; opacity: 0.3; letter-spacing: 2px; margin-bottom: 20px; }
-        .check-pnl { font-size: 42px; font-weight: 900; margin-bottom: 30px; }
-        .check-body { background: #000; padding: 20px; border-radius: 20px; text-align: left; }
-        .check-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 12px; opacity: 0.7; }
-        .check-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 15px 0; }
-        .check-btn { background: #fff; color: #000; border: none; width: 100%; padding: 18px; border-radius: 20px; font-weight: 900; margin-top: 30px; }
+        .receipt-check { background: #111; border: 1px solid #222; width: 100%; border-radius: 30px; padding: 25px; text-align: center; }
+        .check-pnl { font-size: 36px; font-weight: 900; margin-bottom: 20px; }
+        .check-body { background: #000; padding: 15px; border-radius: 15px; text-align: left; font-size: 12px; }
+        .check-row { display: flex; justify-content: space-between; margin-bottom: 10px; opacity: 0.6; }
+        .check-divider { height: 1px; background: #111; margin: 10px 0; }
+        .check-btn { background: #fff; color: #000; border: none; width: 100%; padding: 15px; border-radius: 15px; font-weight: 900; margin-top: 20px; }
 
-        /* TOKEN MODAL */
-        .token-list-modal { position: fixed; inset: 0; background: #000; z-index: 3000; display: flex; flex-direction: column; padding: 20px; }
-        .modal-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid #111; }
-        .token-row { display: flex; align-items: center; gap: 15px; padding: 20px; border-bottom: 1px solid #111; }
-        .token-row img { width: 32px; height: 32px; }
-        .t-info { flex: 1; display: flex; flex-direction: column; }
-        .t-info span { font-size: 10px; opacity: 0.4; }
-        .loader { width: 24px; height: 24px; border: 3px solid #fff; border-bottom-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin: auto; }
+        .token-list-modal { position: fixed; inset: 0; background: #000; z-index: 3000; padding: 20px; }
+        .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .token-row { display: flex; align-items: center; gap: 12px; padding: 15px; border-bottom: 1px solid #111; }
+        .token-row img { width: 28px; height: 28px; }
+        .t-info { flex: 1; }
+        .loader { width: 20px; height: 20px; border: 3px solid #fff; border-bottom-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; margin: auto; }
         
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
