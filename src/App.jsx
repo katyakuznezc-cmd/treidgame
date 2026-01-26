@@ -22,10 +22,10 @@ const ASSETS = {
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'UNISWAP V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 10%, #2a0014 0%, #000 80%)' },
-  ODOS: { name: 'ODOS ROUTER', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 10%, #002a1e 0%, #000 80%)' },
-  SUSHI: { name: 'SUSHISWAP', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 10%, #2a001a 0%, #000 80%)' },
-  '1INCH': { name: '1INCH NETWORK', color: '#31569c', bg: 'radial-gradient(circle at 50% 10%, #00082a 0%, #000 80%)' }
+  UNISWAP: { name: 'UNISWAP V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 10%, #2a0014 0%, #000 85%)' },
+  ODOS: { name: 'ODOS ROUTER', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 10%, #002a1e 0%, #000 85%)' },
+  SUSHI: { name: 'SUSHISWAP', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 10%, #2a001a 0%, #000 85%)' },
+  '1INCH': { name: '1INCH NETWORK', color: '#31569c', bg: 'radial-gradient(circle at 50% 10%, #00082a 0%, #000 85%)' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -97,7 +97,6 @@ export default function App() {
       let receiveAmt = (amt * payToken.price) / getToken.price;
       let pnl = null;
       
-      // Если продаем актив в USDC
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
         const isOk = activeDex === deal.sellAt && payToken.symbol === deal.coin.symbol;
         receiveAmt *= isOk ? (1 + Number(deal.profit)/100) : (1 - 0.015);
@@ -116,13 +115,12 @@ export default function App() {
         pnl, 
         get: receiveAmt, 
         to: getToken.symbol, 
-        from: payToken.symbol,
         isPurchase: payToken.symbol === 'USDC' 
       });
       
       setIsPending(false); 
       setPayAmount('');
-    }, 3000); 
+    }, 2800); 
   };
 
   return (
@@ -143,9 +141,10 @@ export default function App() {
           <div className="signal-box">
             <div className="sb-top"><span className="sb-live">ARBITRAGE</span><span className="sb-pct">+{deal.profit}%</span></div>
             <div className="sb-main">
-              <div className="sb-node"><small>BUY</small><b>{DEX_THEMES[deal.buyAt].name}</b></div>
-              <div className="sb-icon-mid"><img src={deal.coin.icon} /><span>{deal.coin.symbol}</span></div>
-              <div className="sb-node text-right"><small>SELL</small><b style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</b></div>
+              <div className="sb-node"><small>BUY AT</small><b>{DEX_THEMES[deal.buyAt].name}</b></div>
+              {/* ТЕПЕРЬ ТУТ ПРОСТО ТЕКСТ БЕЗ ИКОНКИ */}
+              <div className="sb-coin-tag">{deal.coin.symbol}</div>
+              <div className="sb-node text-right"><small>SELL AT</small><b style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</b></div>
             </div>
             <div className="sb-progress"><div className="sb-fill" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
           </div>
@@ -156,7 +155,7 @@ export default function App() {
             <button key={k} onClick={() => { playClick(); setActiveDex(k); }} className="card-dex">
               <div className="card-line" style={{background: DEX_THEMES[k].color}}></div>
               <div className="card-name">{DEX_THEMES[k].name}</div>
-              <div className="card-info">V3 ROUTER</div>
+              <div className="card-info">V3 PROTOCOL</div>
             </button>
           ))}
         </div>
@@ -176,6 +175,7 @@ export default function App() {
               <div className="ti-head"><span>SEND</span> <span onClick={() => { playClick(); setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0)); }} className="max-tag">MAX</span></div>
               <div className="ti-row">
                 <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
+                {/* ИКОНКИ ТУТ ОСТАЛИСЬ */}
                 <button onClick={() => setShowTokenList('pay')} className="asset-btn"><img src={payToken.icon} /> {payToken.symbol}</button>
               </div>
             </div>
@@ -188,7 +188,7 @@ export default function App() {
               </div>
             </div>
             <button onClick={handleSwap} disabled={isPending} className="confirm-btn" style={{ background: DEX_THEMES[activeDex].color }}>
-              {isPending ? <div className="loader-dots"><span>.</span><span>.</span><span>.</span></div> : "EXECUTE SWAP"}
+              {isPending ? <div className="loader-dots"><span>.</span><span>.</span><span>.</span></div> : "CONFIRM TRANSACTION"}
             </button>
           </div>
         </div>
@@ -200,24 +200,22 @@ export default function App() {
           <div className="receipt-content">
             <div className="check-mark">✓</div>
             <h2>{receipt.isPurchase ? 'ASSETS PURCHASED' : 'SWAP COMPLETED'}</h2>
-            
             <div className="receipt-data">
               {receipt.isPurchase ? (
                  <div className="purchase-info">
-                   <span>Received</span>
+                   <span>Amount Received</span>
                    <div className="amt-big">{receipt.get.toFixed(5)} {receipt.to}</div>
                  </div>
               ) : (
                 <div className="pnl-info">
-                  <span>Net Profit/Loss</span>
+                  <span>Net PnL</span>
                   <div className="amt-big" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
                     {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
                   </div>
                 </div>
               )}
             </div>
-
-            <button onClick={() => { playClick(); setReceipt(null); setActiveDex(null); }} className="done-btn">RETURN TO TERMINAL</button>
+            <button onClick={() => { playClick(); setReceipt(null); setActiveDex(null); }} className="done-btn">CONTINUE</button>
           </div>
         </div>
       )}
@@ -244,8 +242,7 @@ export default function App() {
 
       <style>{`
         .app-container { background: #000; height: 100vh; color: #fff; font-family: -apple-system, sans-serif; overflow: hidden; position: relative; }
-        
-        .main-ui { padding: 20px; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); height: 100%; overflow-y: auto; }
+        .main-ui { padding: 20px; transition: all 0.4s ease; height: 100%; overflow-y: auto; }
         .main-ui.scale-down { transform: scale(0.9); opacity: 0; pointer-events: none; }
 
         .header-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
@@ -257,31 +254,30 @@ export default function App() {
         .bal-value { font-size: 42px; font-weight: 800; }
         .bal-sub { font-size: 9px; opacity: 0.3; letter-spacing: 2px; }
 
-        .signal-box { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; }
+        .signal-box { background: #0d0d0d; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; }
         .sb-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
         .sb-live { font-size: 9px; color: #0CF2B0; font-weight: 900; }
         .sb-pct { font-size: 16px; color: #0CF2B0; font-weight: 900; }
         .sb-main { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .sb-node small { font-size: 8px; opacity: 0.4; display: block; margin-bottom: 2px; }
         .sb-node b { font-size: 12px; }
-        .sb-icon-mid { background: #fff; color: #000; padding: 6px 10px; border-radius: 10px; text-align: center; }
-        .sb-icon-mid img { width: 12px; display: block; margin: 0 auto; }
-        .sb-icon-mid span { font-size: 9px; font-weight: 900; }
+        /* СТИЛЬ ТЕКСТОВОГО ТЕГА МОНЕТЫ */
+        .sb-coin-tag { background: rgba(255,255,255,0.05); color: #fff; padding: 6px 14px; border-radius: 10px; font-size: 11px; font-weight: 900; border: 1px solid rgba(255,255,255,0.1); }
         .sb-progress { height: 2px; background: #1a1a1a; }
         .sb-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
 
         .grid-dex { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .card-dex { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px 15px; border-radius: 20px; text-align: left; color: #fff; position: relative; overflow: hidden; }
+        .card-dex { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px 15px; border-radius: 20px; text-align: left; color: #fff; position: relative; }
         .card-line { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
-        .card-name { font-size: 11px; font-weight: 900; margin-bottom: 4px; }
-        .card-info { font-size: 8px; opacity: 0.2; }
+        .card-name { font-size: 11px; font-weight: 900; }
+        .card-info { font-size: 8px; opacity: 0.2; margin-top: 4px; }
 
-        .trade-screen { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; animation: flyIn 0.4s ease-out; }
-        @keyframes flyIn { from { transform: scale(1.1); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .trade-screen { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; animation: tradeIn 0.4s ease; }
+        @keyframes tradeIn { from { transform: scale(1.05); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .trade-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .trade-nav button { background: rgba(255,255,255,0.1); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-weight: bold; }
-        .trade-title { font-weight: 900; font-size: 14px; letter-spacing: 1px; }
+        .trade-title { font-weight: 900; font-size: 14px; }
 
         .trade-card { background: rgba(0,0,0,0.5); padding: 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(20px); margin: auto 0; }
         .trade-input { background: #000; padding: 18px; border-radius: 22px; border: 1px solid #1a1a1a; }
@@ -296,8 +292,8 @@ export default function App() {
         .confirm-btn { width: 100%; padding: 20px; border: none; border-radius: 20px; color: #fff; font-weight: 900; margin-top: 20px; }
 
         .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.96); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 30px; }
-        .receipt-content { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 40px 25px; border-radius: 35px; width: 100%; text-align: center; animation: popUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .receipt-content { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 40px 25px; border-radius: 35px; width: 100%; text-align: center; animation: checkIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes checkIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         
         .check-mark { width: 60px; height: 60px; background: rgba(12,242,176,0.1); color: #0CF2B0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 24px; }
         .receipt-data { margin: 25px 0 35px; }
@@ -313,7 +309,6 @@ export default function App() {
         .ts-item img { width: 30px; }
         .ts-meta { flex: 1; }
         .ts-meta b { display: block; font-size: 14px; }
-        .ts-meta small { font-size: 9px; opacity: 0.3; }
         .ts-price { font-weight: 700; }
 
         .click-fx { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 28px; pointer-events: none; animation: floatUp 1s ease-out forwards; z-index: 1000; }
