@@ -20,10 +20,10 @@ const ASSETS = {
 };
 
 const DEX_THEMES = {
-  UNISWAP: { name: 'UNISWAP V3', color: '#FF007A', bg: 'linear-gradient(180deg, #1a000d 0%, #000 100%)' },
-  ODOS: { name: 'ODOS ROUTER', color: '#0CF2B0', bg: 'linear-gradient(180deg, #001a14 0%, #000 100%)' },
-  SUSHI: { name: 'SUSHISWAP', color: '#FA52A0', bg: 'linear-gradient(180deg, #1a0010 0%, #000 100%)' },
-  '1INCH': { name: '1INCH NETWORK', color: '#31569c', bg: 'linear-gradient(180deg, #00081a 0%, #000 100%)' }
+  UNISWAP: { name: 'UNISWAP V3', color: '#FF007A', bg: 'radial-gradient(circle at 50% 0%, #2a0014 0%, #000 100%)' },
+  ODOS: { name: 'ODOS ROUTER', color: '#0CF2B0', bg: 'radial-gradient(circle at 50% 0%, #002a1e 0%, #000 100%)' },
+  SUSHI: { name: 'SUSHISWAP', color: '#FA52A0', bg: 'radial-gradient(circle at 50% 0%, #2a001a 0%, #000 100%)' },
+  '1INCH': { name: '1INCH NETWORK', color: '#31569c', bg: 'radial-gradient(circle at 50% 0%, #00082a 0%, #000 100%)' }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -70,85 +70,84 @@ export default function App() {
     const buyAt = dexKeys[Math.floor(Math.random() * dexKeys.length)];
     let sellAt = dexKeys[Math.floor(Math.random() * dexKeys.length)];
     while (sellAt === buyAt) sellAt = dexKeys[Math.floor(Math.random() * dexKeys.length)];
-    setDeal({ coin: ASSETS[assets[Math.floor(Math.random() * assets.length)]], buyAt, sellAt, profit: (Math.random() * 0.4 + 2.6).toFixed(2) });
+    setDeal({ coin: ASSETS[assets[Math.floor(Math.random() * assets.length)]], buyAt, sellAt, profit: (Math.random() * 0.5 + 2.5).toFixed(2) });
   };
 
   const handleSwap = () => {
     const amt = Number(payAmount);
     const maxVal = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
     if (!amt || amt > maxVal) return;
-    setIsPending(true);
+
+    setIsPending(true); // ЗАПУСК ЗАГРУЗКИ
+
     setTimeout(() => {
       let receiveAmt = (amt * payToken.price) / getToken.price;
       let pnl = 0;
+      
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
         const isOk = activeDex === deal.sellAt && payToken.symbol === deal.coin.symbol;
         receiveAmt *= isOk ? (1 + Number(deal.profit)/100) : (1 - 0.015);
         pnl = receiveAmt - (amt * payToken.price);
         if (isOk) generateDeal();
       }
+
       const newB = payToken.symbol === 'USDC' ? balance - amt : (getToken.symbol === 'USDC' ? balance + receiveAmt : balance);
       const newW = { ...wallet };
       if (payToken.symbol !== 'USDC') newW[payToken.symbol] = (newW[payToken.symbol] || 0) - amt;
       if (getToken.symbol !== 'USDC') newW[getToken.symbol] = (newW[getToken.symbol] || 0) + receiveAmt;
+
       update(ref(db, `players/${userId}`), { balanceUSDC: newB, wallet: newW });
       setReceipt({ pnl, get: receiveAmt, to: getToken.symbol, dex: activeDex });
-      setIsPending(false); setPayAmount('');
-    }, 1200);
+      setIsPending(false); 
+      setPayAmount('');
+    }, 3000); // 3 СЕКУНДЫ ОЖИДАНИЯ
   };
 
   return (
     <div className="app">
-      <div className="main-scrollable">
+      <div className="main-scroll">
         <header className="header">
-          <div className="liq-info">LIQUIDITY: <span>${balance.toFixed(2)}</span></div>
+          <div className="liq-badge">NET LIQUIDITY: ${balance.toFixed(2)}</div>
           <button onClick={() => window.open('https://t.me/vladstelin78')} className="mgr-btn">MANAGER</button>
         </header>
 
-        <div className="hero">
-          <div className="hero-label">NET WORTH</div>
+        <div className="hero-section">
           <div className="hero-val">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+          <div className="hero-tag">STABLE ASSETS</div>
         </div>
 
-        {/* СДЕЛКА С ПОЛНЫМИ НАЗВАНИЯМИ */}
+        {/* СДЕЛКА */}
         {deal && (
-          <div className="deal-box">
-            <div className="deal-header">
-              <span className="signal-tag">SIGNAL</span>
-              <span className="profit-tag">+{deal.profit}%</span>
+          <div className="deal-card">
+            <div className="deal-row-top">
+              <span className="signal-label">ARBITRAGE SIGNAL</span>
+              <span className="profit-label">+{deal.profit}%</span>
             </div>
-            
-            <div className="deal-grid">
-              <div className="grid-item">
-                <small>КУПИТЬ НА</small>
-                <div className="dex-name">{DEX_THEMES[deal.buyAt].name}</div>
+            <div className="deal-path">
+              <div className="path-node">
+                <small>BUY ON</small>
+                <div className="dex-name-big">{DEX_THEMES[deal.buyAt].name}</div>
               </div>
-              
-              <div className="grid-asset">
+              <div className="path-asset">
                 <img src={deal.coin.icon} />
                 <b>{deal.coin.symbol}</b>
               </div>
-
-              <div className="grid-item text-right">
-                <small>ПРОДАТЬ НА</small>
-                <div className="dex-name" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</div>
+              <div className="path-node text-right">
+                <small>SELL ON</small>
+                <div className="dex-name-big" style={{color: '#0CF2B0'}}>{DEX_THEMES[deal.sellAt].name}</div>
               </div>
             </div>
-
-            <div className="progress-container">
-              <div className="progress-fill" style={{width: `${(timeLeft/120)*100}%`}}></div>
-            </div>
+            <div className="deal-timer-bar"><div className="fill" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
           </div>
         )}
 
+        {/* СЕТКА БИРЖ (GRID) */}
         <div className="dex-grid">
           {Object.keys(DEX_THEMES).map(k => (
-            <button key={k} onClick={() => setActiveDex(k)} className="dex-btn">
-              <div className="dex-accent" style={{background: DEX_THEMES[k].color}}></div>
-              <div className="dex-info">
-                <div className="dn">{DEX_THEMES[k].name}</div>
-                <div className="ds">CONNECTED</div>
-              </div>
+            <button key={k} onClick={() => setActiveDex(k)} className="dex-tile">
+              <div className="tile-accent" style={{background: DEX_THEMES[k].color}}></div>
+              <div className="tile-name">{DEX_THEMES[k].name}</div>
+              <div className="tile-status">ACTIVE API</div>
             </button>
           ))}
         </div>
@@ -156,50 +155,50 @@ export default function App() {
 
       {/* ЭКРАН ОБМЕНА */}
       {activeDex && (
-        <div className="dex-overlay" style={{ background: DEX_THEMES[activeDex].bg }}>
-          <div className="dex-nav">
-            <button onClick={() => setActiveDex(null)}>← BACK</button>
-            <div className="dex-title">{DEX_THEMES[activeDex].name}</div>
+        <div className="dex-page" style={{ background: DEX_THEMES[activeDex].bg }}>
+          <header className="dex-header">
+            <button onClick={() => setActiveDex(null)}>✕ CLOSE</button>
+            <div className="dex-title-header">{DEX_THEMES[activeDex].name}</div>
             <div style={{width: 50}}></div>
-          </div>
+          </header>
 
-          <div className="swap-card">
-            <div className="swap-field">
-              <div className="field-label"><span>PAY</span> <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))} className="max-btn">MAX</span></div>
-              <div className="field-row">
+          <div className="swap-container">
+            <div className="swap-box">
+              <div className="sb-label"><span>SEND</span> <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))} className="max-trigger">MAX</span></div>
+              <div className="sb-row">
                 <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                <button onClick={() => setShowTokenList('pay')} className="token-select"><img src={payToken.icon} /> {payToken.symbol}</button>
+                <button onClick={() => setShowTokenList('pay')} className="token-btn"><img src={payToken.icon} /> {payToken.symbol}</button>
               </div>
             </div>
 
-            <div className="divider">↓</div>
+            <div className="swap-divider">↓</div>
 
-            <div className="swap-field">
-              <div className="field-label">RECEIVE</div>
-              <div className="field-row">
-                <div className="field-out">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(5) : '0.00'}</div>
-                <button onClick={() => setShowTokenList('get')} className="token-select active"><img src={getToken.icon} /> {getToken.symbol}</button>
+            <div className="swap-box">
+              <div className="sb-label">RECEIVE</div>
+              <div className="sb-row">
+                <div className="sb-out">{payAmount ? ((payAmount * payToken.price)/getToken.price).toFixed(5) : '0.00'}</div>
+                <button onClick={() => setShowTokenList('get')} className="token-btn active"><img src={getToken.icon} /> {getToken.symbol}</button>
               </div>
             </div>
 
-            <button onClick={handleSwap} disabled={isPending} className="swap-execute" style={{ background: DEX_THEMES[activeDex].color }}>
-              {isPending ? "ROUTING..." : "CONFIRM SWAP"}
+            <button onClick={handleSwap} disabled={isPending} className="swap-btn" style={{ background: DEX_THEMES[activeDex].color }}>
+              {isPending ? <div className="spinner"></div> : "EXECUTE SWAP"}
             </button>
           </div>
         </div>
       )}
 
-      {/* ПОЛНЫЙ СПИСОК ТОКЕНОВ */}
+      {/* СПИСОК ТОКЕНОВ */}
       {showTokenList && (
-        <div className="modal">
-          <div className="modal-content">
-            <div className="modal-header">Select Token <button onClick={() => setShowTokenList(null)}>✕</button></div>
+        <div className="token-modal">
+          <div className="token-content">
+            <div className="token-header">Select Asset <button onClick={() => setShowTokenList(null)}>✕</button></div>
             <div className="token-list">
               {Object.values(ASSETS).map(a => (
-                <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="token-row">
+                <div key={a.symbol} onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }} className="token-item">
                   <img src={a.icon} />
-                  <div className="tr-info"><b>{a.symbol}</b><small>Asset</small></div>
-                  <div className="tr-price">${a.price}</div>
+                  <div className="ti-main"><b>{a.symbol}</b><small>Blockchain Asset</small></div>
+                  <div className="ti-price">${a.price}</div>
                 </div>
               ))}
             </div>
@@ -207,87 +206,93 @@ export default function App() {
         </div>
       )}
 
-      {/* КВИТАНЦИЯ */}
+      {/* ЧЕК */}
       {receipt && (
-        <div className="modal">
-          <div className="receipt">
-            <div className="r-icon">✓</div>
+        <div className="receipt-overlay">
+          <div className="receipt-card">
+            <div className="r-check">✓</div>
             <h3>TRANSACTION SUCCESS</h3>
             <div className="r-pnl" style={{color: receipt.pnl >= 0 ? '#0CF2B0' : '#ff4b4b'}}>
               {receipt.pnl >= 0 ? '+' : ''}{receipt.pnl.toFixed(2)} USDC
             </div>
-            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="r-btn">DONE</button>
+            <div className="r-details">
+              <div className="rd-row"><span>Exchange</span> <span>{DEX_THEMES[receipt.dex].name}</span></div>
+              <div className="rd-row"><span>Asset</span> <span>{receipt.to}</span></div>
+            </div>
+            <button onClick={() => {setReceipt(null); setActiveDex(null);}} className="r-done">DONE</button>
           </div>
         </div>
       )}
 
       <style>{`
-        .app { background: #000; height: 100vh; color: #fff; font-family: sans-serif; overflow: hidden; }
-        .main-scrollable { padding: 20px; height: 100%; overflow-y: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .liq-info { font-size: 10px; font-weight: 800; }
-        .liq-info span { color: #0CF2B0; }
-        .mgr-btn { background: #111; border: 1px solid #222; color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 10px; }
+        .app { background: #000; height: 100vh; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .main-scroll { padding: 20px; height: 100%; overflow-y: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .liq-badge { font-size: 10px; font-weight: 900; color: #0CF2B0; background: rgba(12,242,176,0.1); padding: 6px 14px; border-radius: 20px; }
+        .mgr-btn { background: #111; border: 1px solid #222; color: #fff; padding: 6px 12px; border-radius: 10px; font-size: 10px; font-weight: 900; }
 
-        .hero { text-align: center; margin-bottom: 35px; }
-        .hero-label { font-size: 9px; opacity: 0.3; letter-spacing: 2px; margin-bottom: 5px; }
-        .hero-val { font-size: 48px; font-weight: 900; }
+        .hero-section { text-align: center; margin-bottom: 30px; }
+        .hero-val { font-size: 52px; font-weight: 900; letter-spacing: -2px; }
+        .hero-tag { font-size: 9px; opacity: 0.3; letter-spacing: 2px; }
 
-        /* DEAL BOX */
-        .deal-box { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 30px; }
-        .deal-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
-        .signal-tag { font-size: 10px; font-weight: 900; color: #0CF2B0; background: rgba(12,242,176,0.1); padding: 4px 8px; border-radius: 6px; }
-        .profit-tag { font-size: 18px; font-weight: 900; color: #0CF2B0; }
-        .deal-grid { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .grid-item small { font-size: 8px; opacity: 0.4; display: block; margin-bottom: 4px; }
-        .dex-name { font-size: 14px; font-weight: 900; }
-        .grid-asset { background: #fff; color: #000; padding: 6px 12px; border-radius: 12px; text-align: center; }
-        .grid-asset img { width: 16px; display: block; margin: 0 auto 2px; }
-        .grid-asset b { font-size: 10px; }
-        .text-right { text-align: right; }
-        .progress-container { height: 2px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
+        .deal-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; }
+        .deal-row-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .signal-label { font-size: 10px; font-weight: 900; color: #0CF2B0; }
+        .profit-label { font-size: 18px; font-weight: 900; color: #0CF2B0; }
+        .deal-path { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .path-node small { font-size: 8px; opacity: 0.4; display: block; margin-bottom: 4px; }
+        .dex-name-big { font-size: 13px; font-weight: 900; }
+        .path-asset { background: #fff; color: #000; padding: 8px 12px; border-radius: 12px; text-align: center; }
+        .path-asset img { width: 16px; margin-bottom: 2px; }
+        .path-asset b { display: block; font-size: 10px; }
+        .deal-timer-bar { height: 2px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
+        .fill { height: 100%; background: #0CF2B0; transition: width 1s linear; }
 
-        /* DEX GRID */
-        .dex-grid { display: flex; flex-direction: column; gap: 10px; }
-        .dex-btn { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 20px; border-radius: 18px; display: flex; align-items: center; gap: 15px; color: #fff; text-align: left; }
-        .dex-accent { width: 3px; height: 25px; border-radius: 10px; }
-        .dn { font-size: 14px; font-weight: 900; }
-        .ds { font-size: 8px; opacity: 0.3; }
+        /* СЕТКА (GRID) */
+        .dex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .dex-tile { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 25px 15px; border-radius: 20px; text-align: left; color: #fff; position: relative; overflow: hidden; }
+        .tile-accent { position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
+        .tile-name { font-size: 12px; font-weight: 900; margin-bottom: 5px; }
+        .tile-status { font-size: 8px; opacity: 0.3; }
 
-        /* OVERLAY */
-        .dex-overlay { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; }
-        .dex-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .dex-nav button { background: none; border: none; color: #fff; font-weight: bold; }
-        .dex-title { font-weight: 900; font-size: 15px; }
-        .swap-card { background: rgba(0,0,0,0.6); padding: 20px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.05); }
-        .swap-field { background: #000; padding: 15px; border-radius: 20px; border: 1px solid #1a1a1a; }
-        .field-label { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.4; margin-bottom: 10px; }
-        .max-btn { color: #0CF2B0; font-weight: 900; }
-        .field-row { display: flex; justify-content: space-between; align-items: center; }
-        .field-row input { background: none; border: none; color: #fff; font-size: 26px; font-weight: 700; width: 50%; outline: none; }
-        .field-out { font-size: 26px; font-weight: 700; }
-        .token-select { background: #111; border: 1px solid #222; color: #fff; padding: 6px 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
-        .token-select img { width: 18px; }
-        .token-select.active { border-color: #0CF2B0; }
-        .divider { text-align: center; margin: 10px 0; opacity: 0.2; }
-        .swap-execute { width: 100%; padding: 20px; border: none; border-radius: 20px; color: #fff; font-weight: 900; margin-top: 20px; }
+        .dex-page { position: fixed; inset: 0; z-index: 100; padding: 20px; display: flex; flex-direction: column; }
+        .dex-header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .dex-header button { background: none; border: none; color: #fff; font-size: 12px; font-weight: 900; }
+        .dex-title-header { font-weight: 900; font-size: 14px; letter-spacing: 1px; }
 
-        /* MODAL */
-        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; align-items: flex-end; }
-        .modal-content { background: #0a0a0a; width: 100%; border-top-left-radius: 30px; border-top-right-radius: 30px; padding: 25px; }
-        .modal-header { display: flex; justify-content: space-between; margin-bottom: 25px; font-weight: 900; }
-        .token-row { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #111; }
-        .token-row img { width: 30px; }
-        .tr-info { flex: 1; }
-        .tr-info b { display: block; font-size: 14px; }
-        .tr-info small { font-size: 9px; opacity: 0.3; }
-        .tr-price { font-weight: 700; }
+        .swap-container { background: rgba(0,0,0,0.6); padding: 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(10px); }
+        .swap-box { background: #000; padding: 18px; border-radius: 22px; border: 1px solid #1a1a1a; }
+        .sb-label { display: flex; justify-content: space-between; font-size: 10px; opacity: 0.4; margin-bottom: 12px; }
+        .max-trigger { color: #0CF2B0; font-weight: 900; }
+        .sb-row { display: flex; justify-content: space-between; align-items: center; }
+        .sb-row input { background: none; border: none; color: #fff; font-size: 28px; font-weight: 700; width: 50%; outline: none; }
+        .sb-out { font-size: 28px; font-weight: 700; }
+        .token-btn { background: #111; border: 1px solid #222; color: #fff; padding: 8px 12px; border-radius: 12px; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
+        .token-btn.active { border-color: #0CF2B0; }
+        .token-btn img { width: 18px; }
+        .swap-divider { text-align: center; margin: 12px 0; opacity: 0.2; }
+        .swap-btn { width: 100%; padding: 20px; border: none; border-radius: 20px; color: #fff; font-weight: 900; margin-top: 20px; display: flex; justify-content: center; }
 
-        .receipt { background: #0a0a0a; padding: 30px; border-radius: 30px; text-align: center; width: 100%; margin: 20px; border: 1px solid #1a1a1a; }
-        .r-icon { width: 50px; height: 50px; background: #0CF2B015; color: #0CF2B0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-        .r-pnl { font-size: 32px; font-weight: 900; margin: 20px 0; }
-        .r-btn { background: #fff; color: #000; border: none; width: 100%; padding: 15px; border-radius: 12px; font-weight: 900; }
+        .token-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 200; display: flex; align-items: flex-end; }
+        .token-content { background: #0a0a0a; width: 100%; border-top-left-radius: 30px; border-top-right-radius: 30px; padding: 25px; }
+        .token-header { display: flex; justify-content: space-between; margin-bottom: 25px; font-weight: 900; }
+        .token-item { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #151515; }
+        .token-item img { width: 30px; }
+        .ti-main { flex: 1; }
+        .ti-main b { display: block; font-size: 14px; }
+        .ti-main small { font-size: 9px; opacity: 0.3; }
+        .ti-price { font-weight: 700; }
+
+        .receipt-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 30px; }
+        .receipt-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 30px; border-radius: 35px; width: 100%; text-align: center; }
+        .r-check { width: 60px; height: 60px; background: #0CF2B015; color: #0CF2B0; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 24px; }
+        .r-pnl { font-size: 42px; font-weight: 900; margin: 20px 0; }
+        .r-details { background: #000; padding: 15px; border-radius: 15px; margin-bottom: 25px; }
+        .rd-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; opacity: 0.5; }
+        .r-done { background: #fff; color: #000; border: none; width: 100%; padding: 18px; border-radius: 18px; font-weight: 900; }
+
+        .spinner { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   );
