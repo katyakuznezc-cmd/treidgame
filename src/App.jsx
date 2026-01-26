@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-// --- Константы сетей ---
-const NETWORKS = {
-  ETH: { name: 'Ethereum', icon: 'https://cryptologos.cc/logos/ethereum-eth-logo.png', color: '#627EEA' },
-  BSC: { name: 'BNB Chain', icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png', color: '#F3BA2F' },
-  SOL: { name: 'Solana', icon: 'https://cryptologos.cc/logos/solana-sol-logo.png', color: '#14F195' },
-  POLY: { name: 'Polygon', icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png', color: '#8247E5' },
-  ARB: { name: 'Arbitrum', icon: 'https://cryptologos.cc/logos/arbitrum-arb-logo.png', color: '#28A0F0' }
-};
-
+// --- Данные активов и бирж ---
 const ASSETS = {
   USDT: { symbol: 'USDT', name: 'Tether', price: 1, icon: 'https://cryptologos.cc/logos/tether-usdt-logo.png' },
   SOL: { symbol: 'SOL', name: 'Solana', price: 145.50, icon: 'https://cryptologos.cc/logos/solana-sol-logo.png' },
@@ -16,28 +8,59 @@ const ASSETS = {
   BNB: { symbol: 'BNB', name: 'BNB', price: 605.20, icon: 'https://cryptologos.cc/logos/bnb-bnb-logo.png' },
   DOGE: { symbol: 'DOGE', name: 'Dogecoin', price: 0.16, icon: 'https://cryptologos.cc/logos/dogecoin-doge-logo.png' },
   XRP: { symbol: 'XRP', name: 'XRP', price: 0.62, icon: 'https://cryptologos.cc/logos/xrp-xrp-logo.png' },
+  ADA: { symbol: 'ADA', name: 'Cardano', price: 0.45, icon: 'https://cryptologos.cc/logos/cardano-ada-logo.png' },
+  AVAX: { symbol: 'AVAX', name: 'Avalanche', price: 35.80, icon: 'https://cryptologos.cc/logos/avalanche-avax-logo.png' },
+  MATIC: { symbol: 'MATIC', name: 'Polygon', price: 0.72, icon: 'https://cryptologos.cc/logos/polygon-matic-logo.png' },
+  DOT: { symbol: 'DOT', name: 'Polkadot', price: 7.10, icon: 'https://cryptologos.cc/logos/polkadot-new-dot-logo.png' },
   TRX: { symbol: 'TRX', name: 'TRON', price: 0.12, icon: 'https://cryptologos.cc/logos/tron-trx-logo.png' }
 };
-
 const DEXES = ['UNISWAP', 'RAYDIUM', 'PANCAKE', '1INCH'];
 
-export default function AppWithNetworks() {
+export default function FullAppWithTutorial() {
   const [balanceUSDT, setBalanceUSDT] = useState(() => Number(localStorage.getItem('arb_balance')) || 1000.00);
   const [wallet, setWallet] = useState(() => JSON.parse(localStorage.getItem('arb_wallet')) || {});
+  const [history, setHistory] = useState(() => JSON.parse(localStorage.getItem('arb_history')) || []);
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('arb_tut_done'));
+  const [tutStep, setTutStep] = useState(0);
+
   const [activeDex, setActiveDex] = useState(null);
-  const [currentNet, setCurrentNet] = useState(NETWORKS.ETH);
-  const [showNetList, setShowNetList] = useState(false);
+  const [view, setView] = useState('main');
+  const [signal, setSignal] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [notification, setNotification] = useState(null);
+  const [showTokenList, setShowTokenList] = useState(false);
+  const [selectingFor, setSelectingFor] = useState('pay');
   const [payToken, setPayToken] = useState(ASSETS.USDT);
   const [receiveToken, setReceiveToken] = useState(ASSETS.SOL);
   const [amount, setAmount] = useState('');
 
-  // При смене биржи ставим дефолтную сеть
   useEffect(() => {
-    if (activeDex === 'PANCAKE') setCurrentNet(NETWORKS.BSC);
-    else if (activeDex === 'RAYDIUM') setCurrentNet(NETWORKS.SOL);
-    else if (activeDex === 'UNISWAP') setCurrentNet(NETWORKS.ETH);
-  }, [activeDex]);
+    localStorage.setItem('arb_balance', balanceUSDT);
+    localStorage.setItem('arb_wallet', JSON.stringify(wallet));
+    localStorage.setItem('arb_history', JSON.stringify(history));
+  }, [balanceUSDT, wallet, history]);
+
+  useEffect(() => {
+    if (!signal) {
+      const available = Object.values(ASSETS).filter(t => t.symbol !== 'USDT');
+      const coin = available[Math.floor(Math.random() * available.length)];
+      const shuffled = [...DEXES].sort(() => 0.5 - Math.random());
+      const profit = (Math.random() * 1.6 + 1.4).toFixed(2);
+      setSignal({ coin, buyAt: shuffled[0], sellAt: shuffled[1], profit: parseFloat(profit) });
+    }
+  }, [signal]);
+
+  const closeTutorial = () => {
+    setShowTutorial(false);
+    localStorage.setItem('arb_tut_done', 'true');
+  };
+
+  const tutorialSteps = [
+    { t: "Добро пожаловать!", d: "Это симулятор межбиржевого арбитража. Мы научим тебя зарабатывать на разнице курсов." },
+    { t: "Твой баланс", d: "Мы начислили тебе $1000 демо-средств. Используй их для первой сделки." },
+    { t: "Следи за сигналами", d: "В центре экрана появляются 'связки'. Купи монету на одной бирже и продай на другой, чтобы получить профит." },
+    { t: "Реальный счет", d: "Когда наберешься опыта — жми на кнопку связи с менеджером для торговли реальными активами!" }
+  ];
 
   const handleSwap = () => {
     if (!amount || amount <= 0) return;
@@ -48,107 +71,162 @@ export default function AppWithNetworks() {
         if (balanceUSDT >= num) {
           setBalanceUSDT(b => b - num);
           setWallet(w => ({ ...w, [receiveToken.symbol]: (w[receiveToken.symbol] || 0) + (num / receiveToken.price) }));
+          setHistory(h => [{ id: Date.now(), details: `Куплено ${receiveToken.symbol}`, valStr: `-$${num.toFixed(2)}`, isPlus: false, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }, ...h].slice(0, 30));
+          setNotification("Успешно куплено");
         }
       } else {
         const has = wallet[payToken.symbol] || 0;
         if (has >= num) {
-          setBalanceUSDT(b => b + (num * payToken.price));
+          const isCorrect = activeDex === signal?.sellAt && payToken.symbol === signal?.coin.symbol;
+          const prof = isCorrect ? signal.profit : 0;
+          const finalVal = (num * payToken.price) * (1 + prof/100);
+          setBalanceUSDT(b => b + finalVal);
           setWallet(w => ({ ...w, [payToken.symbol]: has - num }));
+          setHistory(h => [{ id: Date.now(), details: `Продажа ${payToken.symbol}`, valStr: `+$${finalVal.toFixed(2)}`, isPlus: true, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }, ...h].slice(0, 30));
+          setNotification(prof > 0 ? `Профит: +$${(finalVal - (num * payToken.price)).toFixed(2)}` : "Сделка завершена");
+          setSignal(null);
         }
       }
       setIsProcessing(false);
       setAmount('');
-    }, 5000);
+      setTimeout(() => setNotification(null), 3000);
+    }, 6000);
   };
 
-  const theme = activeDex === 'PANCAKE' ? { bg: '#f6f6f9', text: '#280d5f', card: '#fff' } :
-                activeDex === 'UNISWAP' ? { bg: '#fff', text: '#000', card: '#f7f8fa' } :
-                { bg: '#0c0d21', text: '#fff', card: '#14162e' };
+  const theme = activeDex === 'PANCAKE' ? { bg: '#f6f6f9', text: '#280d5f', card: '#fff', input: '#eeeaf4' } :
+                activeDex === 'UNISWAP' ? { bg: '#fff', text: '#000', card: '#f7f8fa', input: '#fff' } :
+                { bg: '#0c0d21', text: '#fff', card: '#14162e', input: 'rgba(0,0,0,0.3)' };
 
   return (
     <div style={{ width: '100vw', height: '100dvh', background: '#000', color: '#fff', fontFamily: 'sans-serif', overflow: 'hidden' }}>
       
-      {/* Главный экран выбора DEX */}
-      {!activeDex && (
-        <div style={{ padding: 20, textAlign: 'center' }}>
-          <h1 style={{ fontSize: 42, margin: '40px 0 10px' }}>${balanceUSDT.toFixed(2)}</h1>
-          <p style={{ opacity: 0.5, marginBottom: 40 }}>БАЛАНС КОШЕЛЬКА</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
-            {DEXES.map(d => (
-              <button key={d} onClick={() => setActiveDex(d)} style={{ background: '#111', border: '1px solid #222', color: '#fff', padding: 25, borderRadius: 20, fontWeight: 'bold' }}>{d}</button>
+      {/* ТУТОРИАЛ */}
+      {showTutorial && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 30 }}>
+          <div style={{ background: '#111', padding: 25, borderRadius: 30, border: '1px solid #222', textAlign: 'center', width: '100%' }}>
+            <div style={{ fontSize: 40, marginBottom: 15 }}>{['👋', '💰', '📉', '🚀'][tutStep]}</div>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: 20 }}>{tutorialSteps[tutStep].t}</h3>
+            <p style={{ opacity: 0.6, fontSize: 14, lineHeight: '1.5', marginBottom: 25 }}>{tutorialSteps[tutStep].d}</p>
+            <button onClick={() => tutStep < 3 ? setTutStep(tutStep + 1) : closeTutorial()} 
+                    style={{ width: '100%', background: '#39f2af', color: '#000', border: 'none', padding: 15, borderRadius: 15, fontWeight: 'bold' }}>
+              {tutStep < 3 ? "Далее" : "Понятно!"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Лист токенов (как в прошлом коде) */}
+      {showTokenList && (
+        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 2000, padding: 20, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}><h3>Токены</h3><button onClick={() => setShowTokenList(false)} style={{ color: '#fff', background: 'none', border: 'none', fontSize: 30 }}>&times;</button></div>
+          <div style={{ overflowY: 'auto' }}>
+            {Object.values(ASSETS).map(t => (
+              <div key={t.symbol} onClick={() => { if (selectingFor === 'pay') setPayToken(t); else setReceiveToken(t); setShowTokenList(false); }} 
+                   style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '15px 0', borderBottom: '1px solid #111' }}>
+                <img src={t.icon} width="30" height="30" />
+                <div style={{ flex: 1 }}><b>{t.symbol}</b></div>
+                <div style={{ color: '#39f2af' }}>{t.symbol === 'USDT' ? balanceUSDT.toFixed(2) : (wallet[t.symbol] || 0).toFixed(4)}</div>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Окно биржи */}
-      {activeDex && (
-        <div style={{ height: '100%', background: theme.bg, color: theme.text, display: 'flex', flexDirection: 'column' }}>
-          
-          {/* HEADER БИРЖИ С ВЫБОРОМ СЕТИ */}
-          <div style={{ padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <b style={{ fontSize: 18 }}>{activeDex}</b>
-              {/* КНОПКА СЕТИ */}
-              <div onClick={() => setShowNetList(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(128,128,128,0.1)', padding: '5px 10px', borderRadius: 12, cursor: 'pointer' }}>
-                <img src={currentNet.icon} width="14" height="14" />
-                <span style={{ fontSize: 11, fontWeight: 'bold' }}>{currentNet.name} ▾</span>
-              </div>
-            </div>
-            <button onClick={() => setActiveDex(null)} style={{ background: 'none', border: 'none', color: 'inherit', fontSize: 14 }}>Выход</button>
+      {notification && (
+        <div style={{ position: 'fixed', top: 20, left: '5%', width: '90%', background: '#39f2af', color: '#000', padding: 15, borderRadius: 15, zIndex: 3000, textAlign: 'center', fontWeight: 'bold' }}>{notification}</div>
+      )}
+
+      {/* Экран Истории */}
+      {view === 'history' && (
+        <div style={{ height: '100%', padding: 20, display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <h2 style={{ margin: 0 }}>История</h2>
+            <button onClick={() => setView('main')} style={{ color: '#fff', background: '#222', border: 'none', padding: '8px 15px', borderRadius: 10 }}>Назад</button>
           </div>
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {history.map(h => (
+              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #111' }}>
+                <div><div>{h.details}</div><div style={{ fontSize: 10, opacity: 0.5 }}>{h.time}</div></div>
+                <div style={{ color: h.isPlus ? '#39f2af' : '#ff4d4d', fontWeight: 'bold' }}>{h.valStr}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
+      {/* Главный экран */}
+      {view === 'main' && !activeDex && (
+        <div style={{ padding: 20, height: '100%', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 15 }}>
+            <button onClick={() => setView('history')} style={{ background: '#111', color: '#fff', border: '1px solid #222', padding: '8px 12px', borderRadius: 10, fontSize: 12 }}>📜 История</button>
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: 25 }}>
+            <h1 style={{ fontSize: 40, margin: 0 }}>${balanceUSDT.toLocaleString(undefined, {maximumFractionDigits: 2})}</h1>
+            <div style={{ opacity: 0.4, fontSize: 10 }}>ДЕМО СЧЕТ</div>
+          </div>
+          {signal && (
+            <div style={{ background: '#111', padding: 15, borderRadius: 20, border: '1px solid #222', marginBottom: 20 }}>
+              <div style={{ color: '#39f2af', fontSize: 10, fontWeight: 'bold', marginBottom: 5 }}>СИГНАЛ ОБНАРУЖЕН</div>
+              <div style={{ fontSize: 15 }}>Купи {signal.coin.symbol} на {signal.buyAt}</div>
+              <div style={{ fontSize: 15 }}>Продай на {signal.sellAt} <span style={{ color: '#39f2af' }}>+{signal.profit}%</span></div>
+            </div>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 'auto' }}>
+            {DEXES.map(d => <button key={d} onClick={() => setActiveDex(d)} style={{ background: '#111', border: '1px solid #222', color: '#fff', padding: '18px 0', borderRadius: 15, fontWeight: 'bold' }}>{d}</button>)}
+          </div>
+          {/* Баннер */}
+          <div style={{ background: 'linear-gradient(90deg, #111, #1a1a1a)', padding: '15px 20px', borderRadius: 20, border: '1px solid #222', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 'bold' }}>Готов к реальным сделкам?</div><div style={{ fontSize: 10, opacity: 0.5 }}>Свяжись с @vladstelin78</div></div>
+            <a href="https://t.me/vladstelin78" style={{ background: '#39f2af', color: '#000', textDecoration: 'none', padding: '10px 15px', borderRadius: 10, fontSize: 11, fontWeight: 'bold' }}>НАЧАТЬ</a>
+          </div>
+        </div>
+      )}
+
+      {/* Биржа */}
+      {activeDex && view === 'main' && (
+        <div style={{ height: '100%', background: theme.bg, color: theme.text, animation: 'slideIn 0.3s', boxSizing: 'border-box' }}>
+          <div style={{ padding: 15, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <b style={{ fontSize: 18 }}>{activeDex}</b>
+            <button onClick={() => setActiveDex(null)} style={{ background: 'rgba(0,0,0,0.1)', border: 'none', color: 'inherit', padding: '6px 12px', borderRadius: 10 }}>Назад</button>
+          </div>
           <div style={{ padding: 15 }}>
-            <div style={{ background: theme.card, padding: 20, borderRadius: 30, boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
-              
-              {/* Поля обмена (упрощенно для примера) */}
-              <div style={{ background: 'rgba(128,128,128,0.05)', padding: 15, borderRadius: 20 }}>
-                <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 10 }}>ВЫ ОТДАЕТЕ</div>
-                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 28, color: 'inherit', outline: 'none', width: '100%' }} />
+            <div style={{ background: theme.card, padding: 20, borderRadius: 28 }}>
+              <div style={{ background: theme.input, padding: 15, borderRadius: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, opacity: 0.7 }}><span>ОТДАЕТЕ</span><span onClick={() => setAmount(payToken.symbol === 'USDT' ? balanceUSDT : (wallet[payToken.symbol] || 0))} style={{ color: '#39f2af', fontWeight: 'bold' }}>МАКС</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.0" style={{ background: 'none', border: 'none', fontSize: 24, color: 'inherit', outline: 'none', width: '60%' }} />
+                  <button onClick={() => {setShowTokenList(true); setSelectingFor('pay')}} style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: 'bold' }}>{payToken.symbol} ▾</button>
+                </div>
               </div>
-
               <div style={{ textAlign: 'center', margin: '10px 0' }}>↓</div>
-
-              <div style={{ background: 'rgba(128,128,128,0.05)', padding: 15, borderRadius: 20, marginBottom: 20 }}>
-                <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 10 }}>ВЫ ПОЛУЧАЕТЕ</div>
-                <div style={{ fontSize: 28 }}>{amount ? (amount * 1.02).toFixed(2) : '0.0'}</div>
+              <div style={{ background: theme.input, padding: 15, borderRadius: 20, marginBottom: 20 }}>
+                <div style={{ fontSize: 10, opacity: 0.7 }}>ПОЛУЧАЕТЕ</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+                  <div style={{ fontSize: 24 }}>{amount ? (payToken.symbol === 'USDT' ? (amount/receiveToken.price).toFixed(4) : (amount*payToken.price).toFixed(2)) : '0.0'}</div>
+                  <button onClick={() => {setShowTokenList(true); setSelectingFor('receive')}} style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: 'bold' }}>{receiveToken.symbol} ▾</button>
+                </div>
               </div>
-
-              <button onClick={handleSwap} style={{ width: '100%', padding: 20, borderRadius: 20, border: 'none', background: '#39f2af', color: '#000', fontWeight: 'bold', fontSize: 16 }}>
-                ПОДТВЕРДИТЬ
+              <button onClick={handleSwap} style={{ width: '100%', padding: 20, borderRadius: 20, border: 'none', fontSize: 16, fontWeight: 'bold', background: activeDex === 'UNISWAP' ? '#ff007a' : '#39f2af', color: activeDex === 'UNISWAP' ? '#fff' : '#000' }}>
+                {isProcessing ? 'ОБРАБОТКА...' : 'ПОДТВЕРДИТЬ'}
               </button>
             </div>
           </div>
-
-          {/* Всплывающий список сетей */}
-          {showNetList && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 5000, display: 'flex', alignItems: 'flex-end' }}>
-              <div style={{ background: '#111', width: '100%', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, color: '#fff' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <b>Выберите сеть</b>
-                  <button onClick={() => setShowNetList(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 20 }}>&times;</button>
-                </div>
-                {Object.values(NETWORKS).map(net => (
-                  <div key={net.name} onClick={() => { setCurrentNet(net); setShowNetList(false); }} style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '15px 0', borderBottom: '1px solid #222' }}>
-                    <img src={net.icon} width="24" height="24" />
-                    <span style={{ fontWeight: currentNet.name === net.name ? 'bold' : 'normal' }}>{net.name}</span>
-                    {currentNet.name === net.name && <span style={{ marginLeft: 'auto', color: '#39f2af' }}>●</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
       {isProcessing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 6000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ width: 40, height: 40, border: '3px solid #111', borderTopColor: '#39f2af', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <p style={{ marginTop: 20 }}>Синхронизация с {currentNet.name}...</p>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.96)', zIndex: 5000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="loader"></div>
+          <div style={{ marginTop: 20 }}>ПРОВЕРКА В СЕТИ...</div>
         </div>
       )}
 
-      <style>{` @keyframes spin { to { transform: rotate(360deg); } } `}</style>
+      <style>{`
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .loader { width: 40px; height: 40px; border: 3px solid #111; border-top-color: #39f2af; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        * { box-sizing: border-box; }
+      `}</style>
     </div>
   );
 }
