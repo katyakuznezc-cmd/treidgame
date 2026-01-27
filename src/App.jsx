@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, update } from "firebase/database";
+import { getDatabase, ref, onValue, update, set } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
@@ -42,6 +42,7 @@ export default function App() {
   const [payAmount, setPayAmount] = useState('');
   const [showTokenList, setShowTokenList] = useState(null);
   const [showRefs, setShowRefs] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [receipt, setReceipt] = useState(null);
   const [clicks, setClicks] = useState([]);
@@ -49,6 +50,7 @@ export default function App() {
   const webApp = window.Telegram?.WebApp;
   const user = webApp?.initDataUnsafe?.user;
   const userId = user?.id?.toString() || 'Guest';
+  const isAdmin = user?.username === 'vladstelin78';
 
   useEffect(() => {
     setPayToken(assets.USDC);
@@ -123,14 +125,17 @@ export default function App() {
     }, 2000);
   };
 
-  if (!payToken || !getToken) return null;
+  // Админ-функции
+  const setAdminBalance = (val) => update(ref(db, `players/${userId}`), { balanceUSDC: Number(val) });
+  const resetRefs = () => set(ref(db, `referrals/${userId}`), null);
 
   return (
     <div className="app-container">
-      <div className={`viewport ${activeDex || showRefs || receipt || showTokenList ? 'is-modal-open' : ''}`}>
+      <div className={`viewport ${activeDex || showRefs || showAdmin || receipt || showTokenList ? 'is-modal-open' : ''}`}>
         <header className="main-nav">
           <div className="wallet-pill"><span>${balance.toFixed(2)}</span></div>
           <div className="nav-btns">
+            {isAdmin && <button onClick={() => setShowAdmin(true)} className="admin-btn">⚡ ADMIN</button>}
             <button onClick={() => setShowRefs(true)} className="ref-btn">👥 FRIENDS</button>
             <button onClick={() => window.open('https://t.me/vladstelin78')} className="mgr-btn">MANAGER</button>
           </div>
@@ -172,17 +177,13 @@ export default function App() {
 
       {activeDex && (
         <div className="full-modal">
-          <div className="modal-top">
-            <button onClick={() => setActiveDex(null)}>✕</button>
-            <span>{activeDex.name} Terminal</span>
-            <div style={{width:30}}></div>
-          </div>
+          <div className="modal-top"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name}</span><div style={{width:30}}></div></div>
           <div className="swap-box">
              <div className="input-group">
                 <label>PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></label>
                 <div className="row">
                   <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                  <div className="token" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt="" /> {payToken.symbol}</div>
+                  <div className="token" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} /> {payToken.symbol}</div>
                 </div>
              </div>
              <div className="divider">↓</div>
@@ -190,7 +191,7 @@ export default function App() {
                 <label>RECEIVE</label>
                 <div className="row">
                   <div className="val">{(payAmount * payToken.price / getToken.price).toFixed(6)}</div>
-                  <div className="token" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt="" /> {getToken.symbol}</div>
+                  <div className="token" onClick={() => setShowTokenList('get')}><img src={getToken.icon} /> {getToken.symbol}</div>
                 </div>
              </div>
              <button className="swap-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>
@@ -226,13 +227,27 @@ export default function App() {
         </div>
       )}
 
+      {showAdmin && (
+        <div className="full-modal" style={{background: '#050505'}}>
+          <div className="modal-top"><button onClick={() => setShowAdmin(false)}>✕</button><span>Super Admin</span><div style={{width:30}}></div></div>
+          <div className="ref-body">
+             <div className="input-group" style={{marginBottom: 20}}>
+               <label>УСТАНОВИТЬ БАЛАНС (USDC)</label>
+               <input type="number" onBlur={(e) => setAdminBalance(e.target.value)} placeholder="1000000" className="val" style={{width:'100%', borderBottom:'1px solid #0CF2B0'}} />
+             </div>
+             <button onClick={resetRefs} className="swap-btn" style={{background: '#ff4b4b'}}>ОБНУЛИТЬ РЕФЕРАЛОВ</button>
+             <p style={{fontSize: 10, opacity: 0.5, marginTop: 20}}>Панель доступна только для @vladstelin78</p>
+          </div>
+        </div>
+      )}
+
       {showTokenList && (
         <div className="sheet-box">
            <div className="sheet-content">
              <div className="sheet-h">Выберите токен <button onClick={() => setShowTokenList(null)}>✕</button></div>
              {Object.values(assets).map(a => (
                <div key={a.symbol} className="t-item" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                 <img src={a.icon} alt="" /> <span>{a.symbol}</span>
+                 <img src={a.icon} /> <span>{a.symbol}</span>
                  <div className="t-bal">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
                </div>
              ))}
@@ -264,6 +279,7 @@ export default function App() {
         .main-nav { display: flex; justify-content: space-between; align-items: center; }
         .wallet-pill { background: #111; padding: 10px 20px; border-radius: 20px; font-weight: 900; color: #0CF2B0; border: 1px solid #222; }
         .nav-btns { display: flex; gap: 8px; }
+        .admin-btn { background: #0CF2B0; color: #000; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 10px; box-shadow: 0 0 15px #0CF2B066; }
         .ref-btn, .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 10px; }
         .hero-block { text-align: center; padding: 40px 0; }
         .hero-sub { opacity: 0.4; font-size: 11px; font-weight: 800; text-transform: uppercase; }
