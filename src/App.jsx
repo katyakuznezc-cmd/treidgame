@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, update, get } from "firebase/database";
+import { getDatabase, ref, onValue, update } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
@@ -56,7 +56,6 @@ export default function App() {
     webApp?.expand();
   }, []);
 
-  // Синхронизация данных с Firebase
   useEffect(() => {
     if (userId === 'Guest') return;
     onValue(ref(db, `players/${userId}`), (s) => {
@@ -67,7 +66,6 @@ export default function App() {
         update(ref(db, `players/${userId}`), { balanceUSDC: 1000, wallet: {}, username: user?.username || 'Guest' });
       }
     });
-    // Загрузка рефералов
     onValue(ref(db, `referrals/${userId}`), (s) => {
       if (s.exists()) setReferrals(Object.values(s.val()));
     });
@@ -97,7 +95,6 @@ export default function App() {
     const max = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
     if (!amt || amt <= 0 || amt > max) return;
 
-    // Звук и клик
     new Audio('https://www.soundjay.com/buttons/button-16.mp3').play().catch(()=>{});
     const touch = e.touches ? e.touches[0] : e;
     const id = Date.now();
@@ -125,6 +122,8 @@ export default function App() {
       setIsPending(false); setPayAmount('');
     }, 2000);
   };
+
+  if (!payToken || !getToken) return null;
 
   return (
     <div className="app-container">
@@ -175,7 +174,7 @@ export default function App() {
         <div className="full-modal">
           <div className="modal-top">
             <button onClick={() => setActiveDex(null)}>✕</button>
-            <span>{activeDex.name}</span>
+            <span>{activeDex.name} Terminal</span>
             <div style={{width:30}}></div>
           </div>
           <div className="swap-box">
@@ -183,7 +182,7 @@ export default function App() {
                 <label>PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></label>
                 <div className="row">
                   <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                  <div className="token" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} /> {payToken.symbol}</div>
+                  <div className="token" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt="" /> {payToken.symbol}</div>
                 </div>
              </div>
              <div className="divider">↓</div>
@@ -191,7 +190,7 @@ export default function App() {
                 <label>RECEIVE</label>
                 <div className="row">
                   <div className="val">{(payAmount * payToken.price / getToken.price).toFixed(6)}</div>
-                  <div className="token" onClick={() => setShowTokenList('get')}><img src={getToken.icon} /> {getToken.symbol}</div>
+                  <div className="token" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt="" /> {getToken.symbol}</div>
                 </div>
              </div>
              <button className="swap-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>
@@ -203,25 +202,25 @@ export default function App() {
 
       {showRefs && (
         <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setShowRefs(false)}>✕</button><span>Friends</span><div style={{width:30}}></div></div>
+          <div className="modal-top"><button onClick={() => setShowRefs(false)}>✕</button><span>Friends System</span><div style={{width:30}}></div></div>
           <div className="ref-body">
             <div className="ref-promo">
-              <h3>Invite & Earn</h3>
-              <p>Get $1,000 for every friend!</p>
+              <h3>Приглашай и зарабатывай</h3>
+              <p>Получай +$1,000 за каждого друга!</p>
               <div className="ref-link">
-                <code>t.me/ТУТ_ИМЯ_ТВОЕГО_БОТА?start={userId}</code>
+                <code>https://t.me/Kryptoapp_bot?start={userId}</code>
                 <button onClick={() => {
-                  navigator.clipboard.writeText(`https://t.me/ТУТ_ИМЯ_ТВОЕГО_БОТА?start=${userId}`);
-                  alert("Copied!");
+                  navigator.clipboard.writeText(`https://t.me/Kryptoapp_bot?start=${userId}`);
+                  alert("Ссылка скопирована!");
                 }}>COPY</button>
               </div>
             </div>
             <div className="ref-list">
-               <label>YOUR FRIENDS ({referrals.length})</label>
+               <label>ТВОИ ДРУЗЬЯ ({referrals.length})</label>
                {referrals.map((r, i) => (
                  <div key={i} className="ref-row"><span>@{r.username}</span><b style={{color: '#0CF2B0'}}>+$1,000</b></div>
                ))}
-               {referrals.length === 0 && <div className="empty">No friends yet</div>}
+               {referrals.length === 0 && <div className="empty">Список пуст</div>}
             </div>
           </div>
         </div>
@@ -230,10 +229,10 @@ export default function App() {
       {showTokenList && (
         <div className="sheet-box">
            <div className="sheet-content">
-             <div className="sheet-h">Select Token <button onClick={() => setShowTokenList(null)}>✕</button></div>
+             <div className="sheet-h">Выберите токен <button onClick={() => setShowTokenList(null)}>✕</button></div>
              {Object.values(assets).map(a => (
                <div key={a.symbol} className="t-item" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                 <img src={a.icon} /> <span>{a.symbol}</span>
+                 <img src={a.icon} alt="" /> <span>{a.symbol}</span>
                  <div className="t-bal">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
                </div>
              ))}
@@ -245,11 +244,11 @@ export default function App() {
         <div className="receipt">
           <div className="r-card">
             <div className="r-icon">✓</div>
-            <h2>Transaction Done</h2>
+            <h2>Сделка завершена</h2>
             <div className="r-amt" style={{color: receipt.pnl < 0 ? '#ff4b4b' : '#0CF2B0'}}>
               {receipt.isPurchase ? `+${receipt.get.toFixed(4)} ${receipt.to}` : (receipt.pnl >= 0 ? `+$${receipt.pnl.toFixed(2)}` : `-$${Math.abs(receipt.pnl).toFixed(2)}`)}
             </div>
-            <button onClick={() => {setReceipt(null); setActiveDex(null);}}>BACK TO TERMINAL</button>
+            <button onClick={() => {setReceipt(null); setActiveDex(null);}}>ВЕРНУТЬСЯ</button>
           </div>
         </div>
       )}
@@ -267,7 +266,7 @@ export default function App() {
         .nav-btns { display: flex; gap: 8px; }
         .ref-btn, .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 10px; }
         .hero-block { text-align: center; padding: 40px 0; }
-        .hero-sub { opacity: 0.4; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+        .hero-sub { opacity: 0.4; font-size: 11px; font-weight: 800; text-transform: uppercase; }
         .hero-main { font-size: 45px; font-weight: 900; margin-top: 5px; }
         .arbitrage-card { background: #080808; border: 1px solid #1a1a1a; padding: 20px; border-radius: 24px; margin-bottom: 25px; }
         .arb-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: 900; margin-bottom: 15px; }
@@ -302,7 +301,7 @@ export default function App() {
         .ref-link { background: #000; padding: 10px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 15px; border: 1px dashed #333; }
         .ref-link code { font-size: 9px; opacity: 0.5; overflow: hidden; width: 70%; text-overflow: ellipsis; }
         .ref-link button { background: #0CF2B0; color: #000; border: none; padding: 5px 10px; border-radius: 8px; font-weight: 900; font-size: 10px; }
-        .ref-row { display: flex; justify-content: space-between; background: #080808; padding: 15px; border-radius: 15px; margin-bottom: 8px; }
+        .ref-row { display: flex; justify-content: space-between; background: #080808; padding: 15px; border-radius: 15px; margin-bottom: 8px; border: 1px solid #111; }
         .sheet-box { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: flex; align-items: flex-end; }
         .sheet-content { background: #0a0a0a; width: 100%; border-radius: 25px 25px 0 0; padding: 20px; }
         .sheet-h { display: flex; justify-content: space-between; font-weight: 900; margin-bottom: 20px; }
