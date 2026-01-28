@@ -30,7 +30,7 @@ export default async function handler(req, res) {
             reply_markup: {
               inline_keyboard: [
                 [{ text: "🚀 ОТКРЫТЬ ТЕРМИНАЛ", web_app: { url: appUrl } }],
-                [{ text: "👨‍💻 ТЕХ. ПОДДЕРЖКА", url: "https://t.me/vladstelin78" }]
+                [{ text: "👨‍💻 ТЕХ. ПОДДЕРЖКА", url: "https://t.me/crypto_mngr66" }]
               ]
             }
           })
