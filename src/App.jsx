@@ -46,7 +46,6 @@ export default function App() {
   const [allPlayers, setAllPlayers] = useState({});
   const [isPending, setIsPending] = useState(false);
   const [receipt, setReceipt] = useState(null);
-  const [clicks, setClicks] = useState([]);
 
   const webApp = window.Telegram?.WebApp;
   const user = webApp?.initDataUnsafe?.user;
@@ -98,7 +97,7 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
-  const handleSwap = (e) => {
+  const handleSwap = () => {
     const amt = Number(payAmount);
     const max = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
     if (!amt || amt <= 0 || amt > max) return;
@@ -137,8 +136,9 @@ export default function App() {
         <div className="top-bar">
           <div className="balance-badge">${balance.toFixed(2)}</div>
           <div className="btn-row">
-            {isAdmin && <button onClick={() => setShowAdmin(true)} className="btn-orange">🔧 ADMIN</button>}
+            {isAdmin && <button onClick={() => setShowAdmin(true)} className="btn-orange">🔧</button>}
             <button onClick={() => setShowRefs(true)} className="btn-white">👥 FRIENDS</button>
+            <button onClick={() => window.open('https://t.me/crypto_mngr66')} className="btn-white">👨‍💼 MANAGER</button>
           </div>
         </div>
 
@@ -234,6 +234,13 @@ export default function App() {
         </div>
       )}
 
+      {showRefs && (
+        <div className="modal-overlay">
+          <div className="modal-header"><button onClick={() => setShowRefs(false)}>✕</button><span>Friends</span><div style={{width:20}}></div></div>
+          <div style={{padding:20}}><div className="signal-card"><h3>Invite Friends</h3><p>Get $1,000 for each!</p><code style={{display:'block', background:'#111', padding:10, margin:'10px 0', borderRadius:10}}>https://t.me/Kryptoapp_bot?start={userId}</code></div></div>
+        </div>
+      )}
+
       {receipt && (
         <div className="receipt-screen">
           <div className="receipt-card">
@@ -249,73 +256,74 @@ export default function App() {
 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-        body { background: #000; color: #fff; }
-        .app-shell { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
-        .main-view { padding: 20px; height: 100%; overflow-y: auto; transition: 0.5s; }
-        .blurred { filter: blur(20px) brightness(0.5); transform: scale(0.96); }
+        body { background: #000; color: #fff; overflow: hidden; }
+        .app-shell { width: 100vw; height: 100vh; position: relative; }
+        .main-view { padding: 15px; height: 100%; overflow-y: auto; transition: 0.5s; }
+        .blurred { filter: blur(25px) brightness(0.4); transform: scale(0.96); }
 
-        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .balance-badge { background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 50px; color: #0CF2B0; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); }
-        .btn-row { display: flex; gap: 8px; }
-        .btn-orange { background: #FF9500; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; color: #000; }
-        .btn-white { background: #fff; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; color: #000; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; gap: 5px; }
+        .balance-badge { background: rgba(255,255,255,0.06); padding: 8px 12px; border-radius: 50px; color: #0CF2B0; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); font-size: 13px; }
+        .btn-row { display: flex; gap: 5px; }
+        .btn-orange { background: #FF9500; border: none; padding: 8px 10px; border-radius: 12px; font-weight: 900; font-size: 10px; color: #000; }
+        .btn-white { background: #fff; border: none; padding: 8px 10px; border-radius: 12px; font-weight: 900; font-size: 9px; color: #000; }
 
-        .main-stat { text-align: center; margin-bottom: 30px; }
-        .main-stat p { opacity: 0.4; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
-        .main-stat h1 { font-size: 48px; font-weight: 900; background: linear-gradient(#fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .main-stat { text-align: center; margin-bottom: 25px; }
+        .main-stat p { opacity: 0.4; font-size: 11px; text-transform: uppercase; }
+        .main-stat h1 { font-size: 44px; font-weight: 900; background: linear-gradient(#fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 
-        .signal-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 28px; margin-bottom: 25px; backdrop-filter: blur(10px); }
-        .signal-top { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 10px; font-weight: 900; }
-        .profit-tag { background: #0CF2B0; color: #000; padding: 4px 10px; border-radius: 8px; }
+        .signal-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 28px; margin-bottom: 20px; }
+        .signal-top { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 10px; font-weight: 900; }
+        .profit-tag { background: #0CF2B0; color: #000; padding: 4px 8px; border-radius: 8px; }
         .signal-route { display: flex; justify-content: space-between; align-items: center; }
-        .coin-node { background: #111; padding: 6px 15px; border-radius: 12px; border: 1px solid #222; font-weight: 900; }
-        .progress-bg { height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden; }
+        .dex-node small { opacity: 0.5; font-size: 9px; }
+        .dex-node span { font-weight: 900; font-size: 13px; }
+        .coin-node { background: #111; padding: 5px 12px; border-radius: 10px; border: 1px solid #222; font-weight: 900; font-size: 12px; }
+        .progress-bg { height: 3px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden; }
         .progress-fill { height: 100%; background: #0CF2B0; box-shadow: 0 0 10px #0CF2B0; }
 
-        .dex-list { display: flex; flex-direction: column; gap: 12px; }
-        .dex-item { position: relative; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-        .dex-bg-layer { position: absolute; inset: 0; opacity: 0.3; }
-        .dex-content { position: relative; z-index: 2; padding: 25px; display: flex; justify-content: space-between; align-items: center; }
-        .dex-info { display: flex; align-items: center; gap: 15px; }
-        .dex-ico { font-size: 24px; background: rgba(255,255,255,0.1); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
-        .dex-info p { font-size: 11px; opacity: 0.5; }
+        .dex-list { display: flex; flex-direction: column; gap: 10px; }
+        .dex-item { position: relative; border-radius: 22px; overflow: hidden; border: 1px solid rgba(255,255,255,0.08); }
+        .dex-bg-layer { position: absolute; inset: 0; opacity: 0.25; }
+        .dex-content { position: relative; z-index: 2; padding: 22px; display: flex; justify-content: space-between; align-items: center; }
+        .dex-info { display: flex; align-items: center; gap: 12px; }
+        .dex-ico { font-size: 20px; background: rgba(255,255,255,0.1); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+        .dex-info h3 { font-size: 16px; }
+        .dex-info p { font-size: 10px; opacity: 0.4; }
 
-        .modal-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; animation: up 0.3s ease-out; }
+        .modal-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; animation: up 0.2s ease-out; }
         @keyframes up { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .modal-header { padding: 20px; border-bottom: 1px solid #111; display: flex; justify-content: space-between; font-weight: 900; }
-        .modal-header button { background: none; border: none; color: #fff; font-size: 20px; }
+        .modal-header { padding: 18px; border-bottom: 1px solid #111; display: flex; justify-content: space-between; font-weight: 900; font-size: 14px; }
+        .modal-header button { background: none; border: none; color: #fff; font-size: 18px; }
 
-        .swap-container { padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .swap-card { background: rgba(255,255,255,0.04); padding: 25px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.08); }
-        .swap-label { font-size: 12px; opacity: 0.4; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .swap-row { display: flex; justify-content: space-between; align-items: center; }
-        .swap-row input { background: none; border: none; color: #fff; font-size: 38px; font-weight: 900; width: 60%; outline: none; }
-        .val-out { font-size: 38px; font-weight: 900; }
-        .token-picker { background: rgba(255,255,255,0.08); padding: 8px 14px; border-radius: 15px; display: flex; align-items: center; gap: 8px; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); }
-        .token-picker img { width: 22px; height: 22px; }
-        .swap-arrow-mid { text-align: center; padding: 10px; font-size: 20px; color: #444; }
-        .confirm-btn { width: 100%; padding: 22px; border-radius: 25px; border: none; color: #fff; font-weight: 900; font-size: 18px; margin-top: 30px; }
+        .swap-container { padding: 15px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .swap-card { background: rgba(255,255,255,0.03); padding: 22px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.07); }
+        .swap-label { font-size: 11px; opacity: 0.4; font-weight: 800; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .swap-row input { background: none; border: none; color: #fff; font-size: 34px; font-weight: 900; width: 55%; outline: none; }
+        .val-out { font-size: 34px; font-weight: 900; }
+        .token-picker { background: rgba(255,255,255,0.07); padding: 6px 12px; border-radius: 14px; display: flex; align-items: center; gap: 8px; font-weight: 800; border: 1px solid rgba(255,255,255,0.08); font-size: 13px; }
+        .token-picker img { width: 20px; height: 20px; }
+        .swap-arrow-mid { text-align: center; padding: 8px; color: #333; }
+        .confirm-btn { width: 100%; padding: 20px; border-radius: 22px; border: none; color: #fff; font-weight: 900; font-size: 16px; margin-top: 25px; }
 
-        .sheet-box { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: flex-end; }
-        .sheet-content { background: #0d0d0d; width: 100%; border-radius: 35px 35px 0 0; padding: 25px; border-top: 1px solid #222; }
-        .sheet-head { display: flex; justify-content: space-between; font-weight: 900; margin-bottom: 20px; }
-        .asset-row { display: flex; justify-content: space-between; align-items: center; padding: 18px; background: rgba(255,255,255,0.02); border-radius: 20px; margin-bottom: 10px; }
-        .asset-row img { width: 30px; height: 30px; margin-right: 12px; }
-        .a-left { display: flex; align-items: center; }
+        .sheet-box { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: flex; align-items: flex-end; }
+        .sheet-content { background: #0d0d0d; width: 100%; border-radius: 30px 30px 0 0; padding: 22px; border-top: 1px solid #222; }
+        .sheet-head { display: flex; justify-content: space-between; font-weight: 900; margin-bottom: 15px; }
+        .asset-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(255,255,255,0.02); border-radius: 18px; margin-bottom: 8px; }
+        .asset-row img { width: 28px; height: 28px; margin-right: 12px; }
+        .a-left { display: flex; align-items: center; font-size: 14px; }
 
-        .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; }
-        .stat-item { background: #0a0a0a; padding: 15px; border-radius: 20px; text-align: center; border: 1px solid #1a1a1a; }
-        .stat-item p { font-size: 9px; opacity: 0.4; }
-        .admin-scroll { overflow-y: auto; flex: 1; padding: 0 20px 40px; }
-        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 18px; background: #080808; border-radius: 20px; margin-bottom: 10px; }
-        .player-row input { background: #111; border: 1px solid #333; color: #0CF2B0; padding: 8px; width: 100px; border-radius: 10px; text-align: right; }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 15px; }
+        .stat-item { background: #0a0a0a; padding: 12px; border-radius: 15px; text-align: center; border: 1px solid #1a1a1a; }
+        .stat-item b { font-size: 16px; }
+        .stat-item p { font-size: 8px; opacity: 0.4; }
+        .admin-scroll { overflow-y: auto; flex: 1; padding: 0 15px 30px; }
+        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #080808; border-radius: 18px; margin-bottom: 8px; font-size: 13px; }
+        .player-row input { background: #111; border: 1px solid #333; color: #0CF2B0; padding: 6px; width: 90px; border-radius: 8px; text-align: right; }
 
-        .receipt-screen { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 30px; }
+        .receipt-screen { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 25px; }
         .receipt-card { text-align: center; width: 100%; }
-        .check-icon { width: 70px; height: 70px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; margin: 0 auto 20px; }
-        .pnl-val { font-size: 36px; font-weight: 900; margin: 15px 0 30px; }
-        .done-btn { width: 100%; padding: 20px; border-radius: 20px; border: none; background: #fff; color: #000; font-weight: 900; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .check-icon { width: 60px; height: 60px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 15px; }
+        .pnl-val { font-size: 32px; font-weight: 900; margin: 12px 0 25px; }
       `}</style>
     </div>
   );
