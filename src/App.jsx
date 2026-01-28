@@ -150,7 +150,7 @@ export default function App() {
           <div className="nav-btns">
             {isAdmin && <button onClick={() => setShowAdmin(true)} className="admin-btn">🔧 ADMIN</button>}
             <button onClick={() => setShowRefs(true)} className="ref-btn">👥 FRIENDS</button>
-            <button onClick={() => window.open('https://t.me/vladstelin78')} className="mgr-btn">MANAGER</button>
+            <button onClick={() => window.open('https://t.me/crypto_mngr66')} className="mgr-btn">MANAGER</button>
           </div>
         </header>
 
