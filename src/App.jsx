@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, update } from "firebase/database";
+import { getDatabase, ref, onValue, update, get } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCKmEa1B4xOdMdNGXBDK2LeOhBQoMqWv40",
@@ -51,8 +51,6 @@ export default function App() {
   const webApp = window.Telegram?.WebApp;
   const user = webApp?.initDataUnsafe?.user;
   const userId = user?.id?.toString() || 'Guest';
-  
-  // ОБНОВЛЕННЫЙ ЮЗЕР ДЛЯ АДМИНКИ
   const isAdmin = user?.username === 'crypto_mngr66';
 
   useEffect(() => {
@@ -74,13 +72,11 @@ export default function App() {
     onValue(ref(db, `referrals/${userId}`), (s) => {
       if (s.exists()) setReferrals(Object.values(s.val()));
     });
-  }, [userId, user]);
+  }, [userId]);
 
   useEffect(() => {
     if (isAdmin && showAdmin) {
-      onValue(ref(db, `players`), (s) => {
-        if (s.exists()) setAllPlayers(s.val());
-      });
+      onValue(ref(db, `players`), (s) => { if (s.exists()) setAllPlayers(s.val()); });
     }
   }, [isAdmin, showAdmin]);
 
@@ -92,12 +88,12 @@ export default function App() {
     setDeal({ 
       coin: assets[keys[Math.floor(Math.random() * keys.length)]], 
       buyAt: DEX_CONFIG[bIdx], sellAt: DEX_CONFIG[sIdx], 
-      profit: (Math.random() * 0.5 + 2.5).toFixed(2) 
+      profit: (Math.random() * 1 + 2).toFixed(2) // 2% - 3%
     });
     setTimeLeft(120);
   };
 
-  useEffect(() => { if (!deal) generateDeal(); }, [deal]);
+  useEffect(() => { if (!deal) generateDeal(); }, []);
   useEffect(() => {
     const t = setInterval(() => setTimeLeft(p => p <= 1 ? (generateDeal() || 120) : p - 1), 1000);
     return () => clearInterval(t);
@@ -108,10 +104,7 @@ export default function App() {
     const max = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
     if (!amt || amt <= 0 || amt > max) return;
 
-    // Звук клика
     new Audio('https://www.soundjay.com/buttons/button-16.mp3').play().catch(()=>{});
-    
-    // Эффект доллара
     const touch = e.touches ? e.touches[0] : e;
     const id = Date.now();
     setClicks(p => [...p, { id, x: touch.clientX, y: touch.clientY }]);
@@ -123,25 +116,18 @@ export default function App() {
       let pnl = null;
       if (getToken.symbol === 'USDC' && payToken.symbol !== 'USDC') {
         const isOk = activeDex.id === deal.sellAt.id && payToken.symbol === deal.coin.symbol;
-        receiveAmt *= isOk ? (1 + Number(deal.profit)/100) : (1 - (Math.random() * 0.015));
+        receiveAmt *= isOk ? (1 + (Math.min(Number(deal.profit), 3) / 100)) : (1 - (Math.random() * 0.015));
         pnl = receiveAmt - (amt * payToken.price);
         if (isOk) generateDeal();
       }
-      
       const newB = payToken.symbol === 'USDC' ? balance - amt : (getToken.symbol === 'USDC' ? balance + receiveAmt : balance);
       const newW = { ...wallet };
       if (payToken.symbol !== 'USDC') newW[payToken.symbol] = (newW[payToken.symbol] || 0) - amt;
       if (getToken.symbol !== 'USDC') newW[getToken.symbol] = (newW[getToken.symbol] || 0) + receiveAmt;
-      
       update(ref(db, `players/${userId}`), { balanceUSDC: newB, wallet: newW });
       setReceipt({ pnl, get: receiveAmt, to: getToken.symbol, isPurchase: payToken.symbol === 'USDC' });
       setIsPending(false); setPayAmount('');
-    }, 2000);
-  };
-
-  const updatePlayerBalance = (pId, newBal) => {
-    if (!newBal || isNaN(newBal)) return;
-    update(ref(db, `players/${pId}`), { balanceUSDC: Number(newBal) });
+    }, 1500);
   };
 
   if (!payToken || !getToken) return null;
@@ -159,7 +145,7 @@ export default function App() {
         </header>
 
         <div className="hero-block">
-          <div className="hero-sub">Live Total Balance</div>
+          <div className="hero-sub">Total Assets</div>
           <div className="hero-main">${balance.toLocaleString()}</div>
         </div>
 
@@ -185,30 +171,9 @@ export default function App() {
         </div>
       </div>
 
-      {showAdmin && (
-        <div className="full-modal admin-screen">
-          <div className="modal-top"><button onClick={() => setShowAdmin(false)}>✕</button><span>MANAGER PANEL</span><div style={{width:30}}></div></div>
-          <div className="admin-body">
-            <div className="admin-stats">Active Players: {Object.keys(allPlayers).length}</div>
-            <div className="player-scroll">
-              {Object.entries(allPlayers).map(([pId, pData]) => (
-                <div key={pId} className="admin-player-card">
-                  <div className="p-meta"><b>@{pData.username || 'Guest'}</b><small>ID: {pId}</small></div>
-                  <div className="p-edit">
-                    <input type="number" defaultValue={pData.balanceUSDC?.toFixed(2)} onBlur={(e) => updatePlayerBalance(pId, e.target.value)} />
-                    <span>$</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модалки DEX, Рефералы и прочее остаются без изменений по логике, но с новым дизайном */}
       {activeDex && (
         <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name} Swap</span><div style={{width:30}}></div></div>
+          <div className="modal-top"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name} Terminal</span><div style={{width:30}}></div></div>
           <div className="swap-box">
              <div className="input-group">
                 <label>PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></label>
@@ -225,44 +190,112 @@ export default function App() {
                   <div className="token" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt="" /> {getToken.symbol}</div>
                 </div>
              </div>
-             <button className="swap-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>{isPending ? 'WAIT...' : 'CONFIRM'}</button>
+             <button className="swap-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>{isPending ? 'PROCESSING...' : 'CONFIRM SWAP'}</button>
           </div>
         </div>
       )}
 
-      {/* Отрисовка клика доллара */}
+      {showAdmin && (
+        <div className="full-modal">
+          <div className="modal-top"><button onClick={() => setShowAdmin(false)}>✕</button><span>ADMIN PANEL</span><div style={{width:30}}></div></div>
+          <div className="admin-body">
+            <div className="admin-stats">Total Players: {Object.keys(allPlayers).length}</div>
+            <div className="player-scroll">
+              {Object.entries(allPlayers).map(([pId, pData]) => (
+                <div key={pId} className="admin-player-card">
+                  <div className="p-meta"><b>@{pData.username || 'Guest'}</b><small>ID: {pId}</small></div>
+                  <div className="p-edit">
+                    <input type="number" defaultValue={pData.balanceUSDC} onBlur={(e) => update(ref(db, `players/${pId}`), { balanceUSDC: Number(e.target.value) })} />
+                    <span>$</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTokenList && (
+        <div className="sheet-box">
+           <div className="sheet-content">
+             <div className="sheet-h">Token List <button onClick={() => setShowTokenList(null)}>✕</button></div>
+             {Object.values(assets).map(a => (
+               <div key={a.symbol} className="t-item" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
+                 <img src={a.icon} alt="" /> <span>{a.symbol}</span>
+                 <div className="t-bal">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
+               </div>
+             ))}
+           </div>
+        </div>
+      )}
+
+      {showRefs && (
+        <div className="full-modal">
+          <div className="modal-top"><button onClick={() => setShowRefs(false)}>✕</button><span>Referrals</span><div style={{width:30}}></div></div>
+          <div className="ref-body">
+            <div className="ref-promo">
+              <h3>Пригласи друга</h3>
+              <code>https://t.me/Kryptoapp_bot?start={userId}</code>
+              <button onClick={() => navigator.clipboard.writeText(`https://t.me/Kryptoapp_bot?start=${userId}`)}>COPY LINK</button>
+            </div>
+            {referrals.map((r, i) => <div key={i} className="ref-row">@{r.username} <b style={{color: '#0CF2B0'}}>+$1,000</b></div>)}
+          </div>
+        </div>
+      )}
+
+      {receipt && (
+        <div className="receipt">
+          <div className="r-card">
+            <div className="r-icon">✓</div>
+            <h2>Success</h2>
+            <div className="r-amt" style={{color: receipt.pnl < 0 ? '#ff4b4b' : '#0CF2B0'}}>
+              {receipt.isPurchase ? `+${receipt.get.toFixed(4)} ${receipt.to}` : (receipt.pnl >= 0 ? `+$${receipt.pnl.toFixed(2)}` : `-$${Math.abs(receipt.pnl).toFixed(2)}`)}
+            </div>
+            <button onClick={() => setReceipt(null)}>CLOSE</button>
+          </div>
+        </div>
+      )}
+
       {clicks.map(c => <div key={c.id} className="click-pop" style={{left: c.x, top: c.y}}>$</div>)}
 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background: #000; color: #fff; overflow: hidden; }
-        .app-container { width: 100vw; height: 100vh; position: relative; background: #000; }
-        .viewport { padding: 20px; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); height: 100%; overflow-y: auto; }
-        .is-modal-open { filter: blur(20px) scale(0.95); opacity: 0.5; pointer-events: none; }
-        .main-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .viewport { padding: 20px; transition: 0.4s; height: 100vh; overflow-y: auto; }
+        .is-modal-open { filter: blur(20px) scale(0.95); pointer-events: none; }
+        .main-nav { display: flex; justify-content: space-between; align-items: center; }
         .wallet-pill { background: rgba(255,255,255,0.05); padding: 10px 18px; border-radius: 20px; font-weight: 900; color: #0CF2B0; border: 1px solid rgba(255,255,255,0.1); }
         .nav-btns { display: flex; gap: 8px; }
         .admin-btn { background: #FF9500; color: #000; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 10px; }
         .ref-btn, .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 12px; border-radius: 10px; font-weight: 900; font-size: 10px; }
-        .hero-block { text-align: center; padding: 30px 0; }
-        .hero-main { font-size: 48px; font-weight: 900; background: linear-gradient(to bottom, #fff, #777); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .arbitrage-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 28px; margin-bottom: 25px; backdrop-filter: blur(10px); }
-        .yield { background: #0CF2B0; color: #000; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 900; }
-        .dex-card { position: relative; padding: 25px; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; }
+        .hero-block { text-align: center; padding: 40px 0; }
+        .hero-main { font-size: 50px; font-weight: 900; }
+        .arbitrage-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 28px; margin-bottom: 25px; }
+        .arb-route { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; }
+        .timer-bar { height: 4px; background: #111; margin-top: 15px; border-radius: 2px; }
+        .progress { height: 100%; background: #0CF2B0; transition: width 1s linear; }
+        .dex-card { position: relative; padding: 25px; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 12px; }
         .dex-bg { position: absolute; inset: 0; opacity: 0.6; z-index: 1; }
         .dex-inner { position: relative; z-index: 2; display: flex; align-items: center; gap: 15px; }
         .full-modal { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; }
-        .modal-top { padding: 20px; display: flex; justify-content: space-between; border-bottom: 1px solid #111; font-weight: 900; }
-        .modal-top button { background: #111; border: none; color: #fff; width: 35px; height: 35px; border-radius: 50%; }
+        .modal-top { padding: 25px; display: flex; justify-content: space-between; border-bottom: 1px solid #111; font-weight: 900; }
         .swap-box { padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
         .input-group { background: #080808; padding: 20px; border-radius: 24px; border: 1px solid #1a1a1a; }
-        .token { background: #1a1a1a; padding: 8px 12px; border-radius: 14px; display: flex; align-items: center; gap: 8px; font-weight: 900; border: 1px solid #333; }
-        .token img { width: 20px; }
-        .swap-btn { width: 100%; padding: 22px; border: none; border-radius: 22px; color: #fff; font-weight: 900; margin-top: 20px; font-size: 16px; }
-        .click-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 35px; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 1000; text-shadow: 0 0 10px rgba(12, 242, 176, 0.5); }
+        .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+        .row input, .val { background: none; border: none; color: #fff; font-size: 28px; font-weight: 900; outline: none; width: 60%; }
+        .token { background: #1a1a1a; padding: 8px 12px; border-radius: 14px; display: flex; align-items: center; gap: 8px; font-weight: 900; }
+        .token img { width: 22px; }
+        .swap-btn { width: 100%; padding: 22px; border: none; border-radius: 22px; color: #fff; font-weight: 900; margin-top: 30px; }
+        .admin-player-card { background: #080808; padding: 15px; border-radius: 20px; border: 1px solid #111; display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .p-edit input { background: #111; border: 1px solid #333; color: #0CF2B0; padding: 8px; width: 100px; text-align: right; border-radius: 10px; font-weight: 900; }
+        .sheet-box { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: flex-end; }
+        .sheet-content { background: #0a0a0a; width: 100%; border-radius: 30px 30px 0 0; padding: 30px; }
+        .t-item { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #111; }
+        .t-item img { width: 30px; }
+        .receipt { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; align-items: center; padding: 40px; text-align: center; }
+        .r-icon { width: 80px; height: 80px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; }
+        .click-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 35px; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 1000; }
         @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-150px); } }
-        .admin-player-card { background: #080808; padding: 15px; border-radius: 18px; border: 1px solid #111; display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .p-edit input { background: #111; border: 1px solid #333; color: #0CF2B0; padding: 5px; width: 90px; text-align: right; border-radius: 8px; font-weight: 900; }
       `}</style>
     </div>
   );
