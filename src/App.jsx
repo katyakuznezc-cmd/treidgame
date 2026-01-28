@@ -71,7 +71,6 @@ export default function App() {
         update(userRef, { balanceUSDC: 1000, wallet: {}, username: user?.username || 'Guest', createdAt: Date.now(), lastSeen: Date.now() });
       }
     });
-    onValue(ref(db, `referrals/${userId}`), (s) => { if (s.exists()) setReferrals(Object.values(s.val())); });
   }, [userId]);
 
   useEffect(() => {
@@ -103,13 +102,6 @@ export default function App() {
     const amt = Number(payAmount);
     const max = payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0);
     if (!amt || amt <= 0 || amt > max) return;
-
-    new Audio('https://www.soundjay.com/buttons/button-16.mp3').play().catch(()=>{});
-    const touch = e.touches ? e.touches[0] : e;
-    const clickId = Date.now();
-    setClicks(p => [...p, { id: clickId, x: touch.clientX, y: touch.clientY }]);
-    setTimeout(() => setClicks(p => p.filter(c => c.id !== clickId)), 800);
-
     setIsPending(true);
     setTimeout(() => {
       let receiveAmt = (amt * payToken.price) / getToken.price;
@@ -127,54 +119,56 @@ export default function App() {
       update(ref(db, `players/${userId}`), { balanceUSDC: newB, wallet: newW });
       setReceipt({ pnl, get: receiveAmt, to: getToken.symbol, isPurchase: payToken.symbol === 'USDC' });
       setIsPending(false); setPayAmount('');
-    }, 1500);
+    }, 1200);
   };
 
   const getStats = () => {
     const players = Object.values(allPlayers);
-    const now = Date.now();
-    const online = players.filter(p => now - (p.lastSeen || 0) < 60000).length;
-    const newToday = players.filter(p => now - (p.createdAt || 0) < 86400000).length;
+    const online = players.filter(p => Date.now() - (p.lastSeen || 0) < 60000).length;
+    const newToday = players.filter(p => Date.now() - (p.createdAt || 0) < 86400000).length;
     return { total: players.length, online, newToday };
   };
 
-  return (
-    <div className="app-container">
-      <div className={`viewport ${activeDex || showRefs || showAdmin || receipt || showTokenList ? 'is-modal-open' : ''}`}>
-        <header className="main-nav">
-          <div className="wallet-pill"><span>${balance.toFixed(2)}</span></div>
-          <div className="nav-btns">
-            {isAdmin && <button onClick={() => setShowAdmin(true)} className="admin-btn">🔧 ADMIN</button>}
-            <button onClick={() => setShowRefs(true)} className="ref-btn">👥 FRIENDS</button>
-            <button onClick={() => window.open('https://t.me/crypto_mngr66')} className="mgr-btn">MANAGER</button>
-          </div>
-        </header>
+  if (!payToken || !getToken) return null;
 
-        <div className="hero-block">
-          <div className="hero-sub">Live Account</div>
-          <div className="hero-main">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+  return (
+    <div className="app-shell">
+      <div className={`main-view ${activeDex || showRefs || showAdmin || receipt || showTokenList ? 'blurred' : ''}`}>
+        <div className="top-bar">
+          <div className="balance-badge">${balance.toFixed(2)}</div>
+          <div className="btn-row">
+            {isAdmin && <button onClick={() => setShowAdmin(true)} className="btn-orange">🔧 ADMIN</button>}
+            <button onClick={() => setShowRefs(true)} className="btn-white">👥 FRIENDS</button>
+          </div>
+        </div>
+
+        <div className="main-stat">
+          <p>Portfolio Balance</p>
+          <h1>${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</h1>
         </div>
 
         {deal && (
-          <div className="arbitrage-card">
-            <div className="arb-header"><span className="live-tag">● SIGNAL LIVE</span><span className="yield">+{deal.profit}%</span></div>
-            <div className="arb-route">
-              <div className="node"><small>BUY</small><b style={{color: deal.buyAt.color}}>{deal.buyAt.name}</b></div>
-              <div className="asset-tag">{deal.coin.symbol}</div>
-              <div className="node"><small>SELL</small><b style={{color: deal.sellAt.color}}>{deal.sellAt.name}</b></div>
+          <div className="signal-card">
+            <div className="signal-top"><span>● SIGNAL LIVE</span><span className="profit-tag">+{deal.profit}%</span></div>
+            <div className="signal-route">
+              <div className="dex-node"><small>BUY</small><br/><span style={{color: deal.buyAt.color}}>{deal.buyAt.name}</span></div>
+              <div className="coin-node">{deal.coin.symbol}</div>
+              <div className="dex-node" style={{textAlign:'right'}}><small>SELL</small><br/><span style={{color: deal.sellAt.color}}>{deal.sellAt.name}</span></div>
             </div>
-            <div className="timer-bar"><div className="progress" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
+            <div className="progress-bg"><div className="progress-fill" style={{width:`${(timeLeft/120)*100}%`}}></div></div>
           </div>
         )}
 
-        <div className="dex-grid">
+        <div className="dex-list">
           {DEX_CONFIG.map(dex => (
-            <div key={dex.id} className="dex-card" onClick={() => setActiveDex(dex)}>
-              <div className="dex-bg" style={{background: dex.bg}}></div>
-              <div className="dex-inner">
-                <span className="dex-logo">{dex.logo}</span>
-                <div><h3>{dex.name}</h3><small>{dex.status}</small></div>
-                <span className="dex-arr">→</span>
+            <div key={dex.id} className="dex-item" onClick={() => setActiveDex(dex)}>
+              <div className="dex-bg-layer" style={{background: dex.bg}}></div>
+              <div className="dex-content">
+                <div className="dex-info">
+                  <span className="dex-ico">{dex.logo}</span>
+                  <div><h3>{dex.name}</h3><p>{dex.status}</p></div>
+                </div>
+                <span className="dex-arrow">→</span>
               </div>
             </div>
           ))}
@@ -182,19 +176,57 @@ export default function App() {
       </div>
 
       {showAdmin && (
-        <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setShowAdmin(false)}>✕</button><span>ADMIN DASHBOARD</span><div style={{width:30}}></div></div>
-          <div className="admin-body">
-            <div className="stats-grid">
-              <div className="stat-card"><h3>{getStats().total}</h3><p>TOTAL</p></div>
-              <div className="stat-card"><h3>{getStats().newToday}</h3><p>NEW 24H</p></div>
-              <div className="stat-card" style={{borderColor: '#0CF2B0'}}><h3 style={{color: '#0CF2B0'}}>{getStats().online}</h3><p>ONLINE</p></div>
+        <div className="modal-overlay">
+          <div className="modal-header"><button onClick={() => setShowAdmin(false)}>✕</button><span>ADMIN</span><div style={{width:20}}></div></div>
+          <div className="admin-scroll">
+            <div className="stat-grid">
+              <div className="stat-item"><b>{getStats().total}</b><p>TOTAL</p></div>
+              <div className="stat-item"><b>{getStats().newToday}</b><p>NEW</p></div>
+              <div className="stat-item" style={{color:'#0CF2B0'}}><b>{getStats().online}</b><p>ONLINE</p></div>
             </div>
-            <div className="player-scroll">
-              {Object.entries(allPlayers).map(([pId, pData]) => (
-                <div key={pId} className="admin-player-card">
-                  <div className="p-meta"><b>@{pData.username}</b><br/><small>{Date.now() - (pData.lastSeen || 0) < 60000 ? '🟢 Online' : '⚪ Offline'}</small></div>
-                  <div className="p-edit"><input type="number" defaultValue={pData.balanceUSDC?.toFixed(2)} onBlur={(e) => update(ref(db, `players/${pId}`), { balanceUSDC: Number(e.target.value) })} /></div>
+            {Object.entries(allPlayers).map(([pId, pData]) => (
+              <div key={pId} className="player-row">
+                <div className="p-info"><b>@{pData.username}</b><br/><small>{Date.now() - (pData.lastSeen || 0) < 60000 ? '🟢 Online' : '⚪ Offline'}</small></div>
+                <input type="number" defaultValue={pData.balanceUSDC?.toFixed(2)} onBlur={(e) => update(ref(db, `players/${pId}`), { balanceUSDC: Number(e.target.value) })} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeDex && (
+        <div className="modal-overlay">
+          <div className="modal-header"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name}</span><div style={{width:20}}></div></div>
+          <div className="swap-container">
+            <div className="swap-card">
+              <div className="swap-label">PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
+              <div className="swap-row">
+                <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
+                <div className="token-picker" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt="" /> {payToken.symbol}</div>
+              </div>
+            </div>
+            <div className="swap-arrow-mid">↓</div>
+            <div className="swap-card">
+              <div className="swap-label">RECEIVE</div>
+              <div className="swap-row">
+                <div className="val-out">{(payAmount * payToken.price / getToken.price).toFixed(6)}</div>
+                <div className="token-picker" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt="" /> {getToken.symbol}</div>
+              </div>
+            </div>
+            <button className="confirm-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>{isPending ? 'WAITING...' : 'CONFIRM SWAP'}</button>
+          </div>
+        </div>
+      )}
+
+      {showTokenList && (
+        <div className="sheet-box" onClick={() => setShowTokenList(null)}>
+          <div className="sheet-content" onClick={e => e.stopPropagation()}>
+            <div className="sheet-head">Select Asset <button onClick={() => setShowTokenList(null)}>✕</button></div>
+            <div className="asset-scroll">
+              {Object.values(assets).map(a => (
+                <div key={a.symbol} className="asset-row" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
+                  <div className="a-left"><img src={a.icon} alt="" /><div><b>{a.symbol}</b><br/><small>${a.price}</small></div></div>
+                  <div className="a-right">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
                 </div>
               ))}
             </div>
@@ -202,97 +234,87 @@ export default function App() {
         </div>
       )}
 
-      {activeDex && (
-        <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name}</span><div style={{width:30}}></div></div>
-          <div className="swap-box">
-             <div className="input-group">
-                <div className="group-label">PAY <span className="max-btn" onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></div>
-                <div className="row">
-                  <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                  <div className="token-select" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt="" /> {payToken.symbol}</div>
-                </div>
-             </div>
-             <div className="divider-icon">↓</div>
-             <div className="input-group">
-                <div className="group-label">RECEIVE</div>
-                <div className="row">
-                  <div className="val">{(payAmount * payToken.price / getToken.price).toFixed(6)}</div>
-                  <div className="token-select" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt="" /> {getToken.symbol}</div>
-                </div>
-             </div>
-             <button className="swap-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>{isPending ? 'PROCESSING...' : 'SWAP'}</button>
+      {receipt && (
+        <div className="receipt-screen">
+          <div className="receipt-card">
+            <div className="check-icon">✓</div>
+            <h2>Success</h2>
+            <div className="pnl-val" style={{color: receipt.pnl < 0 ? '#ff4b4b' : '#0CF2B0'}}>
+              {receipt.isPurchase ? `+${receipt.get.toFixed(4)} ${receipt.to}` : (receipt.pnl >= 0 ? `+$${receipt.pnl.toFixed(2)}` : `-$${Math.abs(receipt.pnl).toFixed(2)}`)}
+            </div>
+            <button className="done-btn" onClick={() => setReceipt(null)}>CLOSE</button>
           </div>
         </div>
       )}
 
-      {showTokenList && (
-        <div className="sheet-overlay" onClick={() => setShowTokenList(null)}>
-           <div className="sheet-container">
-             <div className="sheet-header">Select Asset <button onClick={() => setShowTokenList(null)}>✕</button></div>
-             <div className="token-list-scroll">
-               {Object.values(assets).map(a => (
-                 <div key={a.symbol} className="token-option" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                   <div className="t-left"><img src={a.icon} alt="" /><div><b>{a.symbol}</b><br/><small>${a.price}</small></div></div>
-                   <div className="t-right">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
-                 </div>
-               ))}
-             </div>
-           </div>
-        </div>
-      )}
-
-      {showRefs && (
-        <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setShowRefs(false)}>✕</button><span>Referral Hub</span><div style={{width:30}}></div></div>
-          <div className="ref-content"><div className="ref-card"><h3>Пригласи друга</h3><p>Бонус $1,000 за каждого!</p><code className="ref-link">https://t.me/Kryptoapp_bot?start={userId}</code><button className="copy-btn" onClick={() => { navigator.clipboard.writeText(`https://t.me/Kryptoapp_bot?start=${userId}`); alert("Скопировано!"); }}>COPY LINK</button></div></div>
-        </div>
-      )}
-
-      {receipt && (
-        <div className="receipt-overlay">
-          <div className="receipt-card"><div className="r-check">✓</div><h2>Success</h2><div className="r-value" style={{color: receipt.pnl < 0 ? '#ff4b4b' : '#0CF2B0'}}>{receipt.isPurchase ? `+${receipt.get.toFixed(4)} ${receipt.to}` : (receipt.pnl >= 0 ? `+$${receipt.pnl.toFixed(2)}` : `-$${Math.abs(receipt.pnl).toFixed(2)}`)}</div><button onClick={() => setReceipt(null)}>DONE</button></div>
-        </div>
-      )}
-
-      {clicks.map(c => <div key={c.id} className="click-pop" style={{left: c.x, top: c.y}}>$</div>)}
-
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: #000; color: #fff; overflow: hidden; }
-        .viewport { padding: 20px; transition: 0.6s cubic-bezier(0.1, 0.9, 0.2, 1); height: 100vh; overflow-y: auto; }
-        .is-modal-open { filter: blur(25px) brightness(0.4); }
-        .wallet-pill { background: rgba(255,255,255,0.05); padding: 10px 20px; border-radius: 100px; color: #0CF2B0; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); }
-        .nav-btns { display: flex; gap: 8px; }
-        .admin-btn { background: #FF9500; color: #000; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; }
-        .ref-btn, .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; }
-        .hero-block { text-align: center; padding: 40px 0; }
-        .hero-main { font-size: 52px; font-weight: 900; background: linear-gradient(#fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .arbitrage-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 25px; border-radius: 35px; margin-bottom: 25px; backdrop-filter: blur(10px); }
-        .live-tag { color: #0CF2B0; font-weight: 900; font-size: 10px; animation: blink 1.5s infinite; }
-        .yield { background: #0CF2B0; color: #000; padding: 5px 12px; border-radius: 10px; font-weight: 900; font-size: 12px; }
-        .asset-tag { background: #111; padding: 8px 16px; border-radius: 15px; font-weight: 900; border: 1px solid #222; }
-        .timer-bar { height: 4px; background: rgba(255,255,255,0.05); margin-top: 20px; border-radius: 10px; overflow: hidden; }
-        .progress { height: 100%; background: #0CF2B0; box-shadow: 0 0 10px #0CF2B0; }
-        .dex-card { position: relative; padding: 30px; border-radius: 30px; overflow: hidden; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1); }
-        .dex-bg { position: absolute; inset: 0; opacity: 0.4; z-index: 1; }
-        .dex-inner { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; }
-        .full-modal { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; animation: slide 0.3s ease-out; }
-        .swap-box { padding: 25px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .input-group { background: rgba(255,255,255,0.04); padding: 25px; border-radius: 35px; border: 1px solid rgba(255,255,255,0.07); }
-        .row input { background: none; border: none; color: #fff; font-size: 40px; font-weight: 800; width: 50%; outline: none; }
-        .token-select { background: rgba(255,255,255,0.08); padding: 10px 18px; border-radius: 20px; display: flex; align-items: center; gap: 10px; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); }
-        .token-select img { width: 24px; height: 24px; }
-        .swap-btn { width: 100%; padding: 25px; border: none; border-radius: 30px; color: #fff; font-weight: 900; margin-top: 35px; font-size: 18px; }
-        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: flex-end; }
-        .sheet-container { background: #0d0d0d; width: 100%; border-radius: 40px 40px 0 0; padding: 30px; border-top: 1px solid #222; max-height: 80vh; display: flex; flex-direction: column; }
-        .sheet-header { display: flex; justify-content: space-between; font-weight: 900; margin-bottom: 20px; font-size: 20px; }
-        .token-list-scroll { overflow-y: auto; }
-        .token-option { display: flex; justify-content: space-between; align-items: center; padding: 20px; border-radius: 20px; margin-bottom: 10px; background: rgba(255,255,255,0.03); }
-        .token-option img { width: 32px; height: 32px; margin-right: 15px; }
-        .t-left { display: flex; align-items: center; }
-        .click-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 45px; pointer-events: none; animation: pop 0.8s forwards; z-index: 1000; }
-        @keyframes pop { to { opacity: 0; transform: translateY(-200px) scale(1.5); } }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: #000; color: #fff; }
+        .app-shell { width: 100vw; height: 100vh; overflow: hidden; position: relative; }
+        .main-view { padding: 20px; height: 100%; overflow-y: auto; transition: 0.5s; }
+        .blurred { filter: blur(20px) brightness(0.5); transform: scale(0.96); }
+
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .balance-badge { background: rgba(255,255,255,0.08); padding: 8px 16px; border-radius: 50px; color: #0CF2B0; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); }
+        .btn-row { display: flex; gap: 8px; }
+        .btn-orange { background: #FF9500; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; color: #000; }
+        .btn-white { background: #fff; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; color: #000; }
+
+        .main-stat { text-align: center; margin-bottom: 30px; }
+        .main-stat p { opacity: 0.4; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .main-stat h1 { font-size: 48px; font-weight: 900; background: linear-gradient(#fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .signal-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 28px; margin-bottom: 25px; backdrop-filter: blur(10px); }
+        .signal-top { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 10px; font-weight: 900; }
+        .profit-tag { background: #0CF2B0; color: #000; padding: 4px 10px; border-radius: 8px; }
+        .signal-route { display: flex; justify-content: space-between; align-items: center; }
+        .coin-node { background: #111; padding: 6px 15px; border-radius: 12px; border: 1px solid #222; font-weight: 900; }
+        .progress-bg { height: 4px; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 15px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #0CF2B0; box-shadow: 0 0 10px #0CF2B0; }
+
+        .dex-list { display: flex; flex-direction: column; gap: 12px; }
+        .dex-item { position: relative; border-radius: 24px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+        .dex-bg-layer { position: absolute; inset: 0; opacity: 0.3; }
+        .dex-content { position: relative; z-index: 2; padding: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .dex-info { display: flex; align-items: center; gap: 15px; }
+        .dex-ico { font-size: 24px; background: rgba(255,255,255,0.1); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+        .dex-info p { font-size: 11px; opacity: 0.5; }
+
+        .modal-overlay { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; animation: up 0.3s ease-out; }
+        @keyframes up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-header { padding: 20px; border-bottom: 1px solid #111; display: flex; justify-content: space-between; font-weight: 900; }
+        .modal-header button { background: none; border: none; color: #fff; font-size: 20px; }
+
+        .swap-container { padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .swap-card { background: rgba(255,255,255,0.04); padding: 25px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.08); }
+        .swap-label { font-size: 12px; opacity: 0.4; font-weight: 800; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .swap-row { display: flex; justify-content: space-between; align-items: center; }
+        .swap-row input { background: none; border: none; color: #fff; font-size: 38px; font-weight: 900; width: 60%; outline: none; }
+        .val-out { font-size: 38px; font-weight: 900; }
+        .token-picker { background: rgba(255,255,255,0.08); padding: 8px 14px; border-radius: 15px; display: flex; align-items: center; gap: 8px; font-weight: 800; border: 1px solid rgba(255,255,255,0.1); }
+        .token-picker img { width: 22px; height: 22px; }
+        .swap-arrow-mid { text-align: center; padding: 10px; font-size: 20px; color: #444; }
+        .confirm-btn { width: 100%; padding: 22px; border-radius: 25px; border: none; color: #fff; font-weight: 900; font-size: 18px; margin-top: 30px; }
+
+        .sheet-box { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: flex-end; }
+        .sheet-content { background: #0d0d0d; width: 100%; border-radius: 35px 35px 0 0; padding: 25px; border-top: 1px solid #222; }
+        .sheet-head { display: flex; justify-content: space-between; font-weight: 900; margin-bottom: 20px; }
+        .asset-row { display: flex; justify-content: space-between; align-items: center; padding: 18px; background: rgba(255,255,255,0.02); border-radius: 20px; margin-bottom: 10px; }
+        .asset-row img { width: 30px; height: 30px; margin-right: 12px; }
+        .a-left { display: flex; align-items: center; }
+
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; }
+        .stat-item { background: #0a0a0a; padding: 15px; border-radius: 20px; text-align: center; border: 1px solid #1a1a1a; }
+        .stat-item p { font-size: 9px; opacity: 0.4; }
+        .admin-scroll { overflow-y: auto; flex: 1; padding: 0 20px 40px; }
+        .player-row { display: flex; justify-content: space-between; align-items: center; padding: 18px; background: #080808; border-radius: 20px; margin-bottom: 10px; }
+        .player-row input { background: #111; border: 1px solid #333; color: #0CF2B0; padding: 8px; width: 100px; border-radius: 10px; text-align: right; }
+
+        .receipt-screen { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; align-items: center; justify-content: center; padding: 30px; }
+        .receipt-card { text-align: center; width: 100%; }
+        .check-icon { width: 70px; height: 70px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 35px; margin: 0 auto 20px; }
+        .pnl-val { font-size: 36px; font-weight: 900; margin: 15px 0 30px; }
+        .done-btn { width: 100%; padding: 20px; border-radius: 20px; border: none; background: #fff; color: #000; font-weight: 900; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
       `}</style>
     </div>
