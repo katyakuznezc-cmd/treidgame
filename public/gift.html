@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Gift $1,000</title>
+    <style>
+        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; text-align: center; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 40px 20px; border-radius: 35px; width: 90%; max-width: 400px; box-shadow: 0 10px 50px rgba(12, 242, 176, 0.15); }
+        .icon { font-size: 60px; margin-bottom: 20px; animation: bounce 2s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        h1 { font-size: 26px; margin-bottom: 10px; font-weight: 900; }
+        p { opacity: 0.6; font-size: 15px; line-height: 1.4; margin-bottom: 25px; }
+        .progress-container { background: #111; height: 12px; border-radius: 6px; margin: 20px 0; overflow: hidden; display: none; border: 1px solid #222; }
+        .bar { height: 100%; background: linear-gradient(90deg, #0CF2B0, #4C82FB); width: 0%; transition: 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn { background: #0CF2B0; color: #000; padding: 20px; border-radius: 20px; font-weight: 900; cursor: pointer; text-decoration: none; display: block; margin-top: 15px; font-size: 16px; transition: 0.2s; }
+        .btn:active { transform: scale(0.95); }
+        .btn.share { background: #fff; color: #000; }
+        .btn.disabled { background: #222; color: #444; pointer-events: none; }
+        .live-feed { margin-top: 25px; font-size: 11px; color: #0CF2B0; font-weight: bold; opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="icon">💎</div>
+    <h1>Ваучер на $1,000</h1>
+    <p id="status">Для получения бонуса в терминале и активации аккаунта, пригласите 3 активных трейдеров.</p>
+    
+    <div class="progress-container" id="p-box"><div class="bar" id="bar"></div></div>
+
+    <a href="javascript:void(0)" class="btn share" id="shareBtn">ПРИГЛАСИТЬ (0/3)</a>
+    <a href="https://t.me/Kryptoapp_bot?start=vladstelin78" class="btn disabled" id="claimBtn">АКТИВИРОВАТЬ БОНУС</a>
+
+    <div class="live-feed" id="feed">Система готова к выдаче...</div>
+</div>
+
+<script>
+    let shares = 0;
+    const shareBtn = document.getElementById('shareBtn');
+    const claimBtn = document.getElementById('claimBtn');
+    const pBox = document.getElementById('p-box');
+    const bar = document.getElementById('bar');
+    const status = document.getElementById('status');
+    const feed = document.getElementById('feed');
+
+    // Живая лента "кто получил"
+    const names = ["@alex_trade", "@crypto_king", "@mariya_fx", "@vlad_btc", "@ton_holder", "@dimas_treyd"];
+    setInterval(() => {
+        const name = names[Math.floor(Math.random() * names.length)];
+        feed.innerText = `Пользователь ${name} только что получил $1,000`;
+    }, 4000);
+
+    shareBtn.onclick = function() {
+        // Замени на свою ссылку Vercel после деплоя!
+        const mySite = window.location.href;
+        const text = encodeURIComponent(`Смотри, тут раздают по $1,000 на торговый баланс в новом терминале! Забирай, пока работает: ${mySite}`);
+        
+        // Открываем шеринг в Telegram
+        window.open(`https://t.me/share/url?url=${text}`);
+        
+        shares++;
+        pBox.style.display = 'block';
+        
+        if(shares >= 3) {
+            shares = 3;
+            shareBtn.style.display = 'none';
+            claimBtn.classList.remove('disabled');
+            status.innerText = "Проверка пройдена! Ваш личный бонус готов к активации.";
+            status.style.color = "#0CF2B0";
+        }
+        
+        shareBtn.innerText = `ПРИГЛАСИТЬ (${shares}/3)`;
+        bar.style.width = (shares / 3 * 100) + '%';
+    }
+</script>
+
+</body>
+</html>
