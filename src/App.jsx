@@ -145,7 +145,7 @@ export default function App() {
         </header>
 
         <div className="hero-block">
-          <div className="hero-sub">Live Account Balance</div>
+          <div className="hero-sub">Live Balance</div>
           <div className="hero-main">${balance.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
         </div>
 
@@ -157,7 +157,7 @@ export default function App() {
             </div>
             <div className="arb-route">
               <div className="node"><small>BUY</small><b style={{color: deal.buyAt.color}}>{deal.buyAt.name}</b></div>
-              <div className="asset-circle">{deal.coin.symbol}</div>
+              <div className="asset-tag">{deal.coin.symbol}</div>
               <div className="node"><small>SELL</small><b style={{color: deal.sellAt.color}}>{deal.sellAt.name}</b></div>
             </div>
             <div className="timer-bar"><div className="progress" style={{width: `${(timeLeft/120)*100}%`}}></div></div>
@@ -180,9 +180,8 @@ export default function App() {
 
       {showAdmin && (
         <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setShowAdmin(false)}>✕</button><span>ADMIN: PLAYERS</span><div style={{width:30}}></div></div>
+          <div className="modal-top"><button onClick={() => setShowAdmin(false)}>✕</button><span>PLAYERS</span><div style={{width:30}}></div></div>
           <div className="admin-body">
-            <div className="admin-stats">Connected: {Object.keys(allPlayers).length} users</div>
             <div className="player-scroll">
               {Object.entries(allPlayers).map(([pId, pData]) => (
                 <div key={pId} className="admin-player-card">
@@ -200,13 +199,15 @@ export default function App() {
 
       {activeDex && (
         <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name} Terminal</span><div style={{width:30}}></div></div>
+          <div className="modal-top"><button onClick={() => setActiveDex(null)}>✕</button><span>{activeDex.name}</span><div style={{width:30}}></div></div>
           <div className="swap-box">
              <div className="input-group">
                 <label>PAY <span onClick={() => setPayAmount(payToken.symbol === 'USDC' ? balance : (wallet[payToken.symbol] || 0))}>MAX</span></label>
                 <div className="row">
                   <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)} placeholder="0.00" />
-                  <div className="token" onClick={() => setShowTokenList('pay')}><img src={payToken.icon} alt="" /> {payToken.symbol}</div>
+                  <div className="token-pill" onClick={() => setShowTokenList('pay')}>
+                    <img src={payToken.icon} className="icon-fix" alt="" /> {payToken.symbol}
+                  </div>
                 </div>
              </div>
              <div className="divider-icon">↓</div>
@@ -214,11 +215,13 @@ export default function App() {
                 <label>RECEIVE</label>
                 <div className="row">
                   <div className="val">{(payAmount * payToken.price / getToken.price).toFixed(6)}</div>
-                  <div className="token" onClick={() => setShowTokenList('get')}><img src={getToken.icon} alt="" /> {getToken.symbol}</div>
+                  <div className="token-pill" onClick={() => setShowTokenList('get')}>
+                    <img src={getToken.icon} className="icon-fix" alt="" /> {getToken.symbol}
+                  </div>
                 </div>
              </div>
              <button className="swap-btn" style={{background: activeDex.bg}} onClick={handleSwap} disabled={isPending}>
-               {isPending ? 'EXECUTING...' : 'CONFIRM SWAP'}
+               {isPending ? 'PROCESSING...' : 'SWAP ASSETS'}
              </button>
           </div>
         </div>
@@ -230,7 +233,7 @@ export default function App() {
              <div className="sheet-header">Select Asset</div>
              {Object.values(assets).map(a => (
                <div key={a.symbol} className="token-option" onClick={() => { if(showTokenList==='pay') setPayToken(a); else setGetToken(a); setShowTokenList(null); }}>
-                 <img src={a.icon} alt="" />
+                 <img src={a.icon} className="icon-fix" alt="" />
                  <div className="t-info"><b>{a.symbol}</b><br/><small>${a.price}</small></div>
                  <div className="t-balance">{a.symbol === 'USDC' ? balance.toFixed(2) : (wallet[a.symbol] || 0).toFixed(4)}</div>
                </div>
@@ -241,7 +244,7 @@ export default function App() {
 
       {showRefs && (
         <div className="full-modal">
-          <div className="modal-top"><button onClick={() => setShowRefs(false)}>✕</button><span>Referral Hub</span><div style={{width:30}}></div></div>
+          <div className="modal-top"><button onClick={() => setShowRefs(false)}>✕</button><span>Friends</span><div style={{width:30}}></div></div>
           <div className="ref-content">
             <div className="ref-card">
               <h3>Пригласи друга</h3>
@@ -252,11 +255,6 @@ export default function App() {
                 alert("Скопировано!");
               }}>COPY LINK</button>
             </div>
-            <div className="ref-list">
-              {referrals.map((r, i) => (
-                <div key={i} className="ref-item"><span>@{r.username}</span><b style={{color: '#0CF2B0'}}>+$1,000</b></div>
-              ))}
-            </div>
           </div>
         </div>
       )}
@@ -265,7 +263,7 @@ export default function App() {
         <div className="receipt-overlay">
           <div className="receipt-card">
             <div className="r-check">✓</div>
-            <h2>Transaction Sent</h2>
+            <h2>Success</h2>
             <div className="r-value" style={{color: receipt.pnl < 0 ? '#ff4b4b' : '#0CF2B0'}}>
               {receipt.isPurchase ? `+${receipt.get.toFixed(4)} ${receipt.to}` : (receipt.pnl >= 0 ? `+$${receipt.pnl.toFixed(2)}` : `-$${Math.abs(receipt.pnl).toFixed(2)}`)}
             </div>
@@ -279,41 +277,42 @@ export default function App() {
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; }
         body { background: #000; color: #fff; overflow: hidden; }
-        .viewport { padding: 20px; transition: 0.5s cubic-bezier(0.1, 0.7, 0.1, 1); height: 100vh; overflow-y: auto; }
-        .is-modal-open { filter: blur(15px) brightness(0.5) scale(0.92); pointer-events: none; }
+        .viewport { padding: 20px; transition: 0.5s; height: 100vh; overflow-y: auto; }
+        .is-modal-open { filter: blur(12px) brightness(0.4); pointer-events: none; }
         .main-nav { display: flex; justify-content: space-between; align-items: center; }
-        .wallet-pill { background: #111; padding: 10px 15px; border-radius: 20px; color: #0CF2B0; font-weight: 900; border: 1px solid #333; box-shadow: 0 0 15px rgba(12,242,176,0.1); }
+        .wallet-pill { background: #111; padding: 10px 15px; border-radius: 20px; color: #0CF2B0; font-weight: 900; border: 1px solid #222; }
         .nav-btns { display: flex; gap: 8px; }
         .admin-btn { background: #FF9500; color: #000; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; }
-        .ref-btn, .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; box-shadow: 0 4px 10px rgba(255,255,255,0.1); }
-        .hero-block { text-align: center; padding: 45px 0; }
-        .hero-main { font-size: 52px; font-weight: 900; background: linear-gradient(#fff, #999); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .arbitrage-card { background: rgba(20,20,20,0.8); border: 1px solid #222; padding: 20px; border-radius: 30px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
-        .live-tag { color: #0CF2B0; font-size: 10px; font-weight: 900; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .asset-circle { background: #111; border: 1px solid #333; padding: 10px 15px; border-radius: 50%; font-weight: 900; font-size: 12px; }
-        .timer-bar { height: 4px; background: #111; margin-top: 20px; border-radius: 2px; }
+        .ref-btn, .mgr-btn { background: #fff; color: #000; border: none; padding: 8px 12px; border-radius: 12px; font-weight: 900; font-size: 10px; }
+        .hero-block { text-align: center; padding: 35px 0; }
+        .hero-main { font-size: 46px; font-weight: 900; }
+        .arbitrage-card { background: #0a0a0a; border: 1px solid #111; padding: 20px; border-radius: 25px; margin-bottom: 25px; }
+        .asset-tag { background: #1a1a1a; padding: 6px 12px; border-radius: 10px; font-weight: 900; font-size: 12px; border: 1px solid #222; }
+        .timer-bar { height: 3px; background: #111; margin-top: 15px; border-radius: 2px; }
         .progress { height: 100%; background: #0CF2B0; transition: width 1s linear; }
-        .dex-card { position: relative; padding: 28px; border-radius: 26px; overflow: hidden; margin-bottom: 15px; transition: 0.2s; }
-        .dex-card:active { transform: scale(0.97); }
-        .dex-bg { position: absolute; inset: 0; opacity: 0.5; z-index: 1; }
+        .dex-card { position: relative; padding: 25px; border-radius: 24px; overflow: hidden; margin-bottom: 12px; }
+        .dex-bg { position: absolute; inset: 0; opacity: 0.4; z-index: 1; }
         .dex-inner { position: relative; z-index: 2; display: flex; align-items: center; gap: 15px; }
-        .full-modal { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        .admin-body { flex: 1; overflow-y: auto; padding: 20px; -webkit-overflow-scrolling: touch; }
-        .player-scroll { display: flex; flex-direction: column; gap: 10px; padding-bottom: 40px; }
-        .admin-player-card { background: #0a0a0a; padding: 18px; border-radius: 22px; display: flex; justify-content: space-between; border: 1px solid #1a1a1a; }
+        .full-modal { position: fixed; inset: 0; background: #000; z-index: 100; display: flex; flex-direction: column; }
+        .modal-top { padding: 20px; display: flex; justify-content: space-between; border-bottom: 1px solid #111; font-weight: 900; }
+        .admin-body { flex: 1; overflow-y: auto; padding: 20px; }
+        .player-scroll { display: flex; flex-direction: column; gap: 10px; }
+        .admin-player-card { background: #080808; padding: 15px; border-radius: 20px; display: flex; justify-content: space-between; border: 1px solid #111; }
+        .p-edit input { background: #111; border: 1px solid #333; color: #0CF2B0; padding: 8px; width: 100px; text-align: right; border-radius: 10px; font-weight: 900; }
         .swap-box { padding: 20px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
-        .input-group { background: #080808; padding: 22px; border-radius: 26px; border: 1px solid #161616; }
-        .row input { background: none; border: none; color: #fff; font-size: 34px; font-weight: 900; width: 60%; outline: none; }
-        .token { background: #1a1a1a; padding: 10px 15px; border-radius: 16px; display: flex; align-items: center; gap: 10px; font-weight: 900; border: 1px solid #333; }
-        .swap-btn { width: 100%; padding: 24px; border: none; border-radius: 24px; color: #fff; font-weight: 900; margin-top: 35px; font-size: 18px; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
-        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 200; display: flex; align-items: flex-end; }
-        .sheet-container { background: #0a0a0a; width: 100%; border-radius: 35px 35px 0 0; padding: 35px; border-top: 1px solid #222; }
-        .click-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 45px; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 1000; text-shadow: 0 0 15px rgba(12,242,176,0.6); }
-        @keyframes pop { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-250px) scale(1.5); } }
+        .input-group { background: #080808; padding: 20px; border-radius: 24px; border: 1px solid #111; }
+        .token-pill { background: #1a1a1a; padding: 8px 12px; border-radius: 14px; display: flex; align-items: center; gap: 8px; font-weight: 900; border: 1px solid #333; }
+        .icon-fix { width: 24px !important; height: 24px !important; object-fit: contain; }
+        .swap-btn { width: 100%; padding: 22px; border: none; border-radius: 22px; color: #fff; font-weight: 900; margin-top: 30px; }
+        .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; display: flex; align-items: flex-end; }
+        .sheet-container { background: #0a0a0a; width: 100%; border-radius: 30px 30px 0 0; padding: 30px; }
+        .token-option { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #111; }
+        .click-pop { position: fixed; color: #0CF2B0; font-weight: 900; font-size: 40px; pointer-events: none; animation: pop 0.8s ease-out forwards; z-index: 1000; }
+        @keyframes pop { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-200px); } }
         .receipt-overlay { position: fixed; inset: 0; background: #000; z-index: 300; display: flex; align-items: center; padding: 40px; text-align: center; }
-        .r-check { width: 90px; height: 90px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 45px; margin: 0 auto 20px; box-shadow: 0 0 30px rgba(12,242,176,0.3); }
+        .r-check { width: 80px; height: 80px; background: #0CF2B0; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px; }
+        .ref-card { background: #080808; padding: 30px; border-radius: 25px; border: 1px solid #111; text-align: center; }
+        .ref-link { display: block; background: #000; padding: 15px; border-radius: 12px; margin: 20px 0; color: #0CF2B0; font-size: 11px; }
       `}</style>
     </div>
   );
